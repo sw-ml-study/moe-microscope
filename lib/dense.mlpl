@@ -156,3 +156,56 @@ def u:topk_agreement(export) {
   ids = reshape(export.topk_ids, [export.count, export.top_k]);
   mean(eq(reshape(gather_rows(reshape(ids, [export.count * export.top_k, 1]), range(export.count) * export.top_k), [export.count]), export.targets))
 }
+
+def u:pad_to(ids, T) {
+  "Right-pad a rank-one id vector with zeros to length T.";
+  n = reduce_mul(shape(ids));
+  if lt(n, T) {
+    concat(ids, fill([T - n], 0))
+  } else {
+    ids
+  }
+}
+
+def u:greedy_padded(forward, prompt_ids, max_new, T) {
+  "Greedy decode for a forward that only accepts full T-length windows: pad, run, read the row at the sequence end; stops at the stop id, max_new, or the window edge.";
+  seq = prompt_ids;
+  out = fill([0], 0);
+  k = 0;
+  while lt(k, max_new) {
+    n = reduce_mul(shape(seq));
+    nxt = if lt(n, T) {
+      argmax(take(call(forward, u:pad_to(seq, T)), 0, n - 1))
+    } else { u:stop_id() };
+    seq = concat(seq, nxt);
+    out = concat(out, nxt);
+    k = if eq(nxt, u:stop_id()) {
+      max_new
+    } else {
+      k + 1
+    }
+  };
+  out
+}
+
+def u:evaluate_prompts_padded(forward, d, index, max_new, T) {
+  "Per-family and overall exact-match accuracy of padded greedy answers over the indexed examples.";
+  n = reduce_mul(shape(index));
+  acc = "";
+  i = 0;
+  while lt(i, n) {
+    prompt = str_concat(unwrap(list_get(d.prompts, take(index, 0, i))), "|");
+    text = u:answer_text(u:greedy_padded(forward, unwrap(u:domain_encode(prompt)), max_new, T));
+    acc = if eq(i, 0) {
+      text
+    } else {
+      str_concat(str_concat(acc, ";"), text)
+    };
+    i = i + 1
+  };
+  preds = str_split(acc, ";");
+  answers = u:select_list(d.answers, index);
+  hits = u:exact_match(preds, answers);
+  tags = reshape(gather_rows(reshape(d.tags, [d.count, 1]), index), [n]);
+  {accuracy: u:accuracy_by_tag(hits, tags), hits: hits, preds: preds}
+}

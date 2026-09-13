@@ -25,7 +25,7 @@ gate = emit_frame("moe/router/gate", 4, u:switch_gate(logits, E));
 mask2 = emit_frame("moe/router/mask-top2", 4, u:topk_mask(logits, 2, E));
 load = emit_frame("moe/dispatch/load", 5, u:expert_load(mask));
 entropy = emit_frame("moe/router/entropy", 5, u:router_entropy(probs));
-balance = emit_frame("moe/router/balance", 5, u:balance_loss(probs, mask, E));
+balance = emit_frame("moe/router/balance", 5, u:balance_loss(probs, mask, E, T));
 disp(logits);
 disp(gate);
 print("NUMERICAL CONTRACT -- every probability row sums to one; every mask row has one 1; gate equals probs where mask is 1 and zero elsewhere; loads sum to T; balance of this fixture is", u:svg_round(balance, 4), "; entropy", u:svg_round(entropy, 4), "of log(4)=", u:svg_round(log(4), 4));

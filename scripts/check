@@ -11,6 +11,7 @@ repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 "$repo_dir/scripts/run-domain-demo"
 "$repo_dir/scripts/run-dense-demo"
 "$repo_dir/scripts/run-router-demo"
+"$repo_dir/scripts/run-moe-demo"
 "$repo_dir/scripts/check-catalog"
 "$repo_dir/scripts/run-emit-frame-loops"
 "$repo_dir/scripts/check-dense-recording"

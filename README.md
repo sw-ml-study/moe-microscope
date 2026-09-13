@@ -128,6 +128,30 @@ just router          # run the routing microscope and check its diagram
 just tests tests/test_moe.mlpl
 ```
 
+## Mixture of experts, trained
+
+MX01 replaces DN01's feed-forward layer with four experts and a router, and
+trains everything end to end one example at a time with the Switch
+load-balance term (weight 0.01). Training runs dense-masked: every expert
+is evaluated and the gate zeroes all but the chosen one, so the mathematics
+is exactly the sparse model while autograd stays simple. The run takes about
+36 seconds and is deterministic.
+
+![MX01 run: training and validation loss, tokens per expert over training, entropy and balance, and per-family accuracy](assets/previews/moe-run.svg)
+
+![MX01 load-balance term: one window's routing, the router probabilities, the routed fraction and importance per expert, and the term's value](assets/previews/moe-balance.svg)
+
+```sh
+just moe             # run MX01 and check its diagrams and results row
+just moe write       # regenerate the committed diagrams and the MX01 results row
+```
+
+The four experts stay in use (final loads 208, 30, 47, and 121 of 406 masked
+training tokens) rather than collapsing onto one, validation loss matches
+DN01's (3.76 against 3.79) with more total but similar active parameters,
+and prose is again the only family that generalizes. The family-by-expert
+counts are recorded now; the specialization map is drawn in MX02.
+
 ## In-repo teacher fixture
 
 TE01 is the teacher that Saga 4 distills from: two 32-wide blocks, 19,956
@@ -219,6 +243,7 @@ just domain          # run DM01 and check its diagrams
 just dense           # run DN01 (about 16 s) and check its diagrams and results row
 just teacher         # validate the committed TE01 fixture without retraining
 just router          # run the MX01 routing microscope and check its diagram
+just moe             # run MX01 training (about 36 s) and check its diagrams and results row
 just mlpl-style      # canonical formatting and docstring checks
 ```
 

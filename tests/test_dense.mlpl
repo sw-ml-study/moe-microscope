@@ -87,4 +87,17 @@ def u:test_topk_export() {
   u:assert_approx(u:topk_agreement(e), 0.5, 0.000001, "one of two targets is the stop id")
 }
 
+def u:copy_forward(seq) {
+  "A forward stub over a full window that predicts, at every position, the id found there (copy).";
+  one_hot(seq, 52) * 5
+}
+
+@test {name: "padded greedy reads the row at the prompt end and stops at the window edge", tags: ["dense", "decode"]}
+def u:test_greedy_padded() {
+  "The copy stub repeats the last prompt id; a window of 8 with a 5-id prompt leaves three new ids before the edge stop.";
+  ids = u:greedy_padded(:u:copy_forward, [4, 12, 5, 15, 50], 6, 8);
+  u:assert_eq(ids, [50, 50, 50, u:stop_id()], "three copies then the edge stop")?;
+  u:assert_eq(u:pad_to([1, 2], 4), [1, 2, 0, 0], "padding")
+}
+
 u:run_registered_tests()

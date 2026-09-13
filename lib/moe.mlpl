@@ -54,9 +54,8 @@ def u:router_entropy(probs) {
   0 - mean(reduce_add(probs * log(probs + 0.000000000001), 1))
 }
 
-def u:balance_loss(probs, mask, E) {
-  "Switch load-balance term: E times the sum over experts of routed fraction times mean probability; equals one when perfectly balanced.";
-  T = reduce_mul(shape(take(mask, 1, 0)));
+def u:balance_loss(probs, mask, E, T) {
+  "Switch load-balance term: E times the sum over experts of routed fraction times mean probability; equals one when perfectly balanced (T is explicit: size arithmetic is not traced, F12).";
   fraction = reduce_add(mask, 0) / T;
   importance = reduce_add(probs, 0) / T;
   E * reduce_add(fraction * importance)

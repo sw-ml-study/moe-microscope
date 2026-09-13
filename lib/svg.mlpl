@@ -2,7 +2,7 @@
 
 def u:svg_head(title, desc) {
   "Open an SVG document with a title, description, and the shared style.";
-  str_concat(str_concat(str_concat("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" width=\"960\" height=\"540\" role=\"img\"><title>", title), "</title><desc>"), str_concat(desc, "</desc><style>text{font-family:ui-monospace,monospace;fill:#dbeafe;font-size:12px}.h{font-size:20px}.k{fill:#fbbf24}.s{font-size:9px}.m{fill:#a5b4fc}.panel{fill:#172033;stroke:#52627a;stroke-width:2}.cell{fill:#0f172a;stroke:#52627a}.pad{fill:#1e293b;stroke:#334155}.on{fill:#db2777}.t0{fill:#2563eb}.t1{fill:#16a34a}.t2{fill:#d97706}.t3{fill:#7c3aed}.tr{fill:#2563eb}.va{fill:#db2777}.l1{fill:none;stroke:#fbbf24;stroke-width:2}.l2{fill:none;stroke:#db2777;stroke-width:2}.axis{stroke:#52627a;stroke-width:1}.heat{fill:#2563eb;stroke:#52627a}.box{fill:#172033;stroke:#a5b4fc;stroke-width:1.5}</style><rect width=\"960\" height=\"540\" fill=\"#0b1020\"/>"))
+  str_concat(str_concat(str_concat("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" width=\"960\" height=\"540\" role=\"img\"><title>", title), "</title><desc>"), str_concat(desc, "</desc><style>text{font-family:ui-monospace,monospace;fill:#dbeafe;font-size:12px}.h{font-size:20px}.k{fill:#fbbf24}.s{font-size:9px}.m{fill:#a5b4fc}.panel{fill:#172033;stroke:#52627a;stroke-width:2}.cell{fill:#0f172a;stroke:#52627a}.pad{fill:#1e293b;stroke:#334155}.on{fill:#db2777}.t0{fill:#2563eb}.t1{fill:#16a34a}.t2{fill:#d97706}.t3{fill:#7c3aed}.tr{fill:#2563eb}.va{fill:#db2777}.l1{fill:none;stroke:#fbbf24;stroke-width:2}.l2{fill:none;stroke:#db2777;stroke-width:2}.l3{fill:none;stroke:#3b82f6;stroke-width:2}.l4{fill:none;stroke:#7c3aed;stroke-width:2}.axis{stroke:#52627a;stroke-width:1}.heat{fill:#2563eb;stroke:#52627a}.box{fill:#172033;stroke:#a5b4fc;stroke-width:1.5}</style><rect width=\"960\" height=\"540\" fill=\"#0b1020\"/>"))
 }
 
 def u:svg_num(v) {
@@ -128,6 +128,23 @@ def u:svg_grid(M, x0, y0, wd, places, on_mask) {
       out = str_concat(out, u:svg_rect(x0 + j * wd, y0 + i * 26, wd - 2, 24, cls));
       out = str_concat(out, u:svg_text(x0 + j * wd + 4, y0 + i * 26 + 16, "s", u:svg_num(u:svg_round(take(take(M, 0, i), 0, j), places))));
       j = j + 1
+    };
+    i = i + 1
+  };
+  out
+}
+
+def u:svg_vec(v, places) {
+  "A rank-one vector as space-separated rounded numbers.";
+  n = reduce_mul(shape(v));
+  out = "";
+  i = 0;
+  while lt(i, n) {
+    item = u:svg_num(u:svg_round(take(v, 0, i), places));
+    out = if eq(i, 0) {
+      item
+    } else {
+      str_concat(str_concat(out, "  "), item)
     };
     i = i + 1
   };

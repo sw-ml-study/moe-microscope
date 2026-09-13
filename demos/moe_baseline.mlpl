@@ -1,0 +1,289 @@
+# MX01 dense-masked mixture of experts: DN01's block with its FFN replaced by four routed experts, trained per example with the Switch load-balance term, recording loads, entropy, balance, loss, and accuracy.
+include "../lib/dense.mlpl";
+include "../lib/moe.mlpl";
+include "../lib/observe.mlpl";
+include "../lib/svg.mlpl";
+include "../lib/results.mlpl";
+
+print("WHAT THIS SHOWS -- Four experts and a router trained end to end; every expert runs on every token (dense-masked) but only the routed expert's output survives, so the mathematics is the sparse model.");
+print("SHAPES -- ids:[T], embedding:[T,16], router logits/gate:[T,4], each expert 16->32->16, logits:[T,52]; 120 examples, 90 train / 30 validation.");
+
+out_dir = if list_len(args()) {
+  unwrap(list_get(args(), 0))
+} else {
+  ""
+};
+binary = if gt(list_len(args()), 1) {
+  unwrap(list_get(args(), 1))
+} else {
+  "unknown"
+};
+writing = str_len(out_dir);
+m = unwrap(u:domain_load_mixture(u:domain_mixture_path()));
+d = u:domain_build(m);
+w = unwrap(u:domain_windows(d.texts, m.window));
+s = u:domain_split(d.count, m.train_fraction, m.seed);
+V = u:domain_vocab_size();
+T = m.window;
+dm = 16;
+hidden = 32;
+E = 4;
+epochs = 300;
+lr = 0.003;
+alpha = 0.01;
+every = 25;
+ntrain = reduce_mul(shape(s.train));
+nval = reduce_mul(shape(s.val));
+train_x = gather_rows(w.x, s.train);
+train_y = gather_rows(w.y, s.train);
+train_m = gather_rows(w.mask, s.train);
+val_x = gather_rows(w.x, s.val);
+val_y = gather_rows(w.y, s.val);
+val_m = gather_rows(w.mask, s.val);
+train_tags = reshape(gather_rows(reshape(d.tags, [d.count, 1]), s.train), [ntrain]);
+posT = u:positions(T, dm);
+config = emit_frame("moe/config", 0, [dm, hidden, E, 1, T, epochs, ntrain, nval]);
+
+emb = embed(V, dm, 0);
+att = chain(rms_norm(dm), causal_attention(dm, 1, 1));
+pre = rms_norm(dm);
+router = linear(dm, E, 9);
+ex0 = chain(linear(dm, hidden, 20), relu_layer(), linear(hidden, dm, 21));
+ex1 = chain(linear(dm, hidden, 22), relu_layer(), linear(hidden, dm, 23));
+ex2 = chain(linear(dm, hidden, 24), relu_layer(), linear(hidden, dm, 25));
+ex3 = chain(linear(dm, hidden, 26), relu_layer(), linear(hidden, dm, 27));
+norm = rms_norm(dm);
+head = linear(dm, V, 4);
+
+def u:moe_block(h1) {
+  "Dense-masked mixture over a T-length window: every expert runs on the normalized state; the Switch gate zeroes all but each token's chosen expert.";
+  x = apply(pre, h1);
+  gate = u:switch_gate(apply(router, x), E);
+  reshape(take(gate, 1, 0), [T, 1]) * apply(ex0, x) + reshape(take(gate, 1, 1), [T, 1]) * apply(ex1, x) + reshape(take(gate, 1, 2), [T, 1]) * apply(ex2, x) + reshape(take(gate, 1, 3), [T, 1]) * apply(ex3, x)
+}
+
+def u:body(h0) {
+  "Residual attention block, residual mixture block, norm, head.";
+  h1 = h0 + apply(att, h0);
+  h2 = h1 + u:moe_block(h1);
+  apply(head, apply(norm, h2))
+}
+
+def u:balance_at(h0) {
+  "The Switch load-balance term of this window's routing.";
+  h1 = h0 + apply(att, h0);
+  logits = apply(router, apply(pre, h1));
+  u:balance_loss(u:router_probs(logits), u:top1_mask(logits, E), E, T)
+}
+
+def u:forward(x1) {
+  "Logits for one full T-length window.";
+  u:body(apply(emb, x1) + posT)
+}
+
+def u:routing_of(x1) {
+  "Router logits [T, E] of one window, eagerly.";
+  h0 = apply(emb, x1) + posT;
+  h1 = h0 + apply(att, h0);
+  apply(router, apply(pre, h1))
+}
+
+def u:train_routing() {
+  "Over every masked training position: tokens per expert, family-by-expert counts [4, E], mean entropy, and mean balance.";
+  load = fill([E], 0);
+  fam = fill([4, E], 0);
+  ent = 0;
+  bal = 0;
+  i = 0;
+  while lt(i, ntrain) {
+    logits = u:routing_of(take(train_x, 0, i));
+    mrow = reshape(take(train_m, 0, i), [T, 1]);
+    mask = u:top1_mask(logits, E) * mrow;
+    counts = u:expert_load(mask);
+    load = load + counts;
+    fam = fam + reshape(one_hot([take(train_tags, 0, i)], 4), [4, 1]) * reshape(counts, [1, E]);
+    probs = u:router_probs(logits);
+    ent = ent + u:router_entropy(probs);
+    bal = bal + u:balance_loss(probs, u:top1_mask(logits, E), E, T);
+    i = i + 1
+  };
+  {load: load, family: fam, entropy: ent / ntrain, balance: bal / ntrain}
+}
+
+p_emb = param_count(emb);
+p_att = param_count(att);
+p_router = param_count(router) + param_count(pre);
+p_expert = param_count(ex0);
+p_head = param_count(norm) + param_count(head);
+params = p_emb + p_att + p_router + E * p_expert + p_head;
+active = params - p_emb + dm - (E - 1) * p_expert;
+print("MODEL -- params", params, "of which router", p_router, "each expert", p_expert, "; active per token", active, "(one expert)");
+
+curve_e = fill([0], 0);
+curve_t = fill([0], 0);
+curve_v = fill([0], 0);
+curve_load = fill([0, E], 0);
+curve_ent = fill([0], 0);
+curve_bal = fill([0], 0);
+train_ms = 0;
+e = 0;
+while lt(e, epochs) {
+  ts = clock_ms();
+  i = 0;
+  while lt(i, ntrain) {
+    x1 = take(train_x, 0, i);
+    y1 = take(train_y, 0, i);
+    m1 = take(train_m, 0, i);
+    adam(u:masked_ce(u:body(apply(emb, x1) + posT), y1, m1, V) + alpha * u:balance_at(apply(emb, x1) + posT), [emb, att, pre, router, ex0, ex1, ex2, ex3, norm, head], lr, 0.9, 0.999, 0.00000001);
+    i = i + 1
+  };
+  train_ms = train_ms + (clock_ms() - ts);
+  e = e + 1;
+  if eq(mod(e, every), 0) {
+    tl = emit_frame("moe/loss/train", e, u:set_loss(:u:forward, train_x, train_y, train_m, ntrain, V));
+    vl = emit_frame("moe/loss/val", e, u:set_loss(:u:forward, val_x, val_y, val_m, nval, V));
+    st = u:train_routing();
+    ld = emit_frame("moe/load", e, st.load);
+    en = emit_frame("moe/entropy", e, st.entropy);
+    ba = emit_frame("moe/balance", e, st.balance);
+    curve_e = concat(curve_e, e);
+    curve_t = concat(curve_t, tl);
+    curve_v = concat(curve_v, vl);
+    curve_load = concat(curve_load, reshape(ld, [1, E]), 0);
+    curve_ent = concat(curve_ent, en);
+    curve_bal = concat(curve_bal, ba);
+    print("epoch", e, "train", u:svg_round(tl, 4), "val", u:svg_round(vl, 4), "load", ld, "entropy", u:svg_round(en, 3), "balance", u:svg_round(ba, 3))
+  } else {
+    0
+  }
+};
+steps = epochs * ntrain;
+ms_per_token = train_ms / (steps * T);
+final = u:train_routing();
+family = emit_frame("moe/family-by-expert", epochs, final.family);
+rv = u:evaluate_prompts_padded(:u:forward, d, s.val, 12, T);
+rt = u:evaluate_prompts_padded(:u:forward, d, s.train, 12, T);
+val_acc = emit_frame("moe/accuracy/val", epochs, [rv.accuracy.arithmetic, rv.accuracy.sequence, rv.accuracy.mlpl, rv.accuracy.prose, rv.accuracy.overall]);
+train_acc = emit_frame("moe/accuracy/train", epochs, [rt.accuracy.arithmetic, rt.accuracy.sequence, rt.accuracy.mlpl, rt.accuracy.prose, rt.accuracy.overall]);
+final_train = take(curve_t, 0, reduce_mul(shape(curve_t)) - 1);
+final_val = take(curve_v, 0, reduce_mul(shape(curve_v)) - 1);
+example = "2+3=|5.";
+ex_ids = u:pad_to(unwrap(u:domain_encode(example)), T);
+ex_logits = u:routing_of(ex_ids);
+ex_route = emit_frame("moe/route/example", epochs, u:domain_slice(argmax(ex_logits, 1), 0, 7));
+ex_probs = gather_rows(u:router_probs(ex_logits), range(7));
+
+row = {lesson: "MX01", config: "moe E4 top1 d16 h32 1head T28 120ex 300ep lr0.003 alpha0.01", binary: binary, params: params, active_params: active, expert_evals: 1, bytes_per_token: active * 8, ms_per_token: u:svg_round(ms_per_token, 4), val_loss: u:svg_round(final_val, 4), ppl: u:svg_round(exp(final_val), 2), arith_acc: u:svg_round(rv.accuracy.arithmetic, 3), seq_acc: u:svg_round(rv.accuracy.sequence, 3), mlpl_acc: u:svg_round(rv.accuracy.mlpl, 3), prose_acc: u:svg_round(rv.accuracy.prose, 3), router_entropy: u:svg_round(final.entropy, 3), balance: u:svg_round(final.balance, 3)};
+r_row = if writing {
+  write_atomic(str_concat(out_dir, "/results-row.md"), str_concat(u:results_row(row), "\n"))
+} else {
+  ok(0)
+};
+print("MEMORY -- params", params, "active/token", active, "bytes/token (f64)", active * 8);
+print("SPEED -- ms/token", u:svg_round(ms_per_token, 4), "expert evals/token 1 of", E, "(", binary, ")");
+print("QUALITY -- train loss", u:svg_round(final_train, 4), "val loss", u:svg_round(final_val, 4), "val acc", val_acc, "train acc", train_acc, "entropy", u:svg_round(final.entropy, 3), "balance", u:svg_round(final.balance, 3));
+print("ROUTING -- final load", final.load, "family-by-expert rows arithmetic/sequence/mlpl/prose:", final.family);
+
+def u:bars(vals, x0, y0, wd, cls) {
+  "Vertical bars for values in [0, 1], 100 px tall at most.";
+  n = reduce_mul(shape(vals));
+  out = "";
+  i = 0;
+  while lt(i, n) {
+    h = round(take(vals, 0, i) * 100);
+    out = str_concat(out, u:svg_rect(x0 + i * 80, y0 + 100 - h, wd, h + 1, cls));
+    out = str_concat(out, u:svg_text(x0 + i * 80, y0 + 100 - h - 4, "s", u:svg_num(u:svg_round(take(vals, 0, i), 2))));
+    i = i + 1
+  };
+  out
+}
+
+def u:run_svg() {
+  "Diagram: loss curves, per-expert load over training, entropy and balance, and accuracy bars.";
+  page = u:svg_head("MX01 training run", "Training and validation loss over 300 epochs, the number of masked training tokens each of four experts receives at every checkpoint, router entropy and balance, and per-family accuracy on training and validation rows.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "MX01 RUN -- four experts learn to share the tokens"));
+  page = str_concat(page, u:svg_text(32, 60, "m", str_concat(str_concat("WHAT: ", u:svg_num(steps)), " one-example Adam steps; loss = masked cross-entropy + 0.01 x balance; routing counted every 25 epochs")));
+  n = reduce_mul(shape(curve_e));
+  top = reduce(:max, concat(curve_t, curve_v));
+  xs = 60 + (curve_e / epochs) * 360;
+  page = str_concat(page, "<line x1=\"60\" y1=\"250\" x2=\"420\" y2=\"250\" class=\"axis\"/><line x1=\"60\" y1=\"90\" x2=\"60\" y2=\"250\" class=\"axis\"/>");
+  page = str_concat(page, u:svg_polyline(xs, 250 - (curve_t / top) * 160, "l1"));
+  page = str_concat(page, u:svg_polyline(xs, 250 - (curve_v / top) * 160, "l2"));
+  page = str_concat(page, u:svg_text(60, 82, "k", str_concat("masked loss; top = ", u:svg_num(u:svg_round(top, 3)))));
+  page = str_concat(page, u:svg_text(60, 268, "m", "epoch 0 .. 300   gold = train, pink = validation"));
+  total_masked = reduce_add(take(curve_load, 0, 0));
+  page = str_concat(page, u:svg_text(60, 300, "k", str_concat(str_concat("tokens per expert over training (of ", u:svg_num(total_masked)), " masked training tokens)")));
+  page = str_concat(page, "<line x1=\"60\" y1=\"430\" x2=\"420\" y2=\"430\" class=\"axis\"/><line x1=\"60\" y1=\"310\" x2=\"60\" y2=\"430\" class=\"axis\"/>");
+  page = str_concat(page, u:svg_polyline(xs, 430 - (take(curve_load, 1, 0) / total_masked) * 120, "l1"));
+  page = str_concat(page, u:svg_polyline(xs, 430 - (take(curve_load, 1, 1) / total_masked) * 120, "l2"));
+  page = str_concat(page, u:svg_polyline(xs, 430 - (take(curve_load, 1, 2) / total_masked) * 120, "l3"));
+  page = str_concat(page, u:svg_polyline(xs, 430 - (take(curve_load, 1, 3) / total_masked) * 120, "l4"));
+  page = str_concat(page, u:svg_text(60, 448, "m", str_concat("e0 gold, e1 pink, e2 blue, e3 violet; final ", u:svg_vec(final.load, 0))));
+  page = str_concat(page, u:svg_text(480, 82, "k", "exact-match accuracy: blue = train rows, pink = validation rows"));
+  page = str_concat(page, u:bars(train_acc, 480, 90, 30, "tr"));
+  page = str_concat(page, u:bars(val_acc, 514, 90, 30, "va"));
+  page = str_concat(page, str_concat(str_concat(u:svg_text(480, 208, "s", "arith"), u:svg_text(560, 208, "s", "seq")), str_concat(str_concat(u:svg_text(640, 208, "s", "mlpl"), u:svg_text(720, 208, "s", "prose")), u:svg_text(800, 208, "s", "overall"))));
+  page = str_concat(page, u:svg_text(480, 250, "k", "router entropy (nats, of log 4 = 1.386) and balance (1.0 = even)"));
+  page = str_concat(page, "<line x1=\"480\" y1=\"400\" x2=\"920\" y2=\"400\" class=\"axis\"/><line x1=\"480\" y1=\"270\" x2=\"480\" y2=\"400\" class=\"axis\"/>");
+  xs2 = 480 + (curve_e / epochs) * 440;
+  page = str_concat(page, u:svg_polyline(xs2, 400 - (curve_ent / 2) * 130, "l1"));
+  page = str_concat(page, u:svg_polyline(xs2, 400 - (curve_bal / 2) * 130, "l2"));
+  page = str_concat(page, u:svg_text(480, 418, "m", str_concat(str_concat("gold entropy, pink balance; top = 2.0; final ", u:svg_num(u:svg_round(final.entropy, 3))), str_concat(" and ", u:svg_num(u:svg_round(final.balance, 3))))));
+  page = str_concat(page, u:svg_text(480, 448, "", str_concat(str_concat("train ", u:svg_num(u:svg_round(final_train, 4))), str_concat("  val ", str_concat(u:svg_num(u:svg_round(final_val, 4)), str_concat("  (DN01 3.7888)  params ", u:svg_num(params)))))));
+  page = str_concat(page, u:svg_rect(30, 466, 900, 70, "panel"));
+  page = str_concat(page, u:svg_text(50, 488, "", "WHY: with only the task loss one expert would win every token; the balance term keeps all four in use so each can specialize."));
+  page = str_concat(page, u:svg_text(50, 508, "", "HOW: u:moe_block runs all four experts and scales each by its Switch gate column; adam updates ten models per example."));
+  page = str_concat(page, u:svg_text(50, 528, "m", "Loads are counted on masked training tokens only; every curve point is an emitted moe/* observation."));
+  str_concat(page, "</svg>")
+}
+
+def u:balance_svg() {
+  "Diagram: the load-balance term computed from the trained router on one window: fraction routed per expert, mean probability per expert, their product, and E times the sum.";
+  probs = u:router_probs(ex_logits);
+  mask = u:top1_mask(ex_logits, E);
+  fraction = reduce_add(mask, 0) / T;
+  importance = reduce_add(probs, 0) / T;
+  product = fraction * importance;
+  page = u:svg_head("MX01 load-balance term", "For one 28-token window the trained router's one-hot choices give a routed fraction per expert, its probabilities give a mean importance per expert, and the balance term is the number of experts times the sum of their products; it is one when both are uniform.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "MX01 LOAD BALANCE -- why no expert is allowed to take everything"));
+  page = str_concat(page, u:svg_text(32, 60, "m", "WHAT: balance = E x sum_e f_e x P_e, with f_e = fraction of tokens routed to e and P_e = mean router probability of e"));
+  page = str_concat(page, u:svg_text(32, 96, "k", str_concat("window ", str_concat(example, ": expert per position (first 7)"))));
+  page = str_concat(page, u:svg_cells(ex_route, 32, 104, 40, fill([7], 0)));
+  page = str_concat(page, u:svg_text(32, 156, "k", "router probabilities at those positions [7, 4]"));
+  page = str_concat(page, u:svg_heat(ex_probs, 32, 164, 34));
+  page = str_concat(page, u:svg_text(420, 96, "k", "per expert (all 28 positions)"));
+  page = str_concat(page, u:svg_text(420, 120, "", "expert            e0      e1      e2      e3"));
+  page = str_concat(page, u:svg_text(420, 144, "", str_concat("f_e (fraction)    ", u:svg_vec(fraction, 3))));
+  page = str_concat(page, u:svg_text(420, 168, "", str_concat("P_e (importance)  ", u:svg_vec(importance, 3))));
+  page = str_concat(page, u:svg_text(420, 192, "", str_concat("f_e x P_e         ", u:svg_vec(product, 4))));
+  page = str_concat(page, u:svg_text(420, 224, "k", str_concat(str_concat("balance = 4 x ", u:svg_num(u:svg_round(reduce_add(product), 4))), str_concat(" = ", u:svg_num(u:svg_round(4 * reduce_add(product), 3))))));
+  page = str_concat(page, u:svg_text(420, 248, "", "uniform routing: f = P = 0.25 each, balance = 4 x 4 x 0.0625 = 1.0"));
+  page = str_concat(page, u:svg_text(420, 272, "", "one expert takes all: f = (1,0,0,0), P -> (1,0,0,0), balance -> 4.0"));
+  page = str_concat(page, u:svg_text(32, 430, "k", str_concat("training-set load after 300 epochs: ", u:svg_vec(final.load, 0))));
+  page = str_concat(page, u:svg_rect(30, 452, 900, 84, "panel"));
+  page = str_concat(page, u:svg_text(50, 476, "", "WHY: f_e is a count and has no gradient; P_e is differentiable, so the term pushes probabilities away from over-used experts."));
+  page = str_concat(page, u:svg_text(50, 498, "", "WHY: weight 0.01 (Switch) is enough here; the loads above stayed spread instead of collapsing onto one expert."));
+  page = str_concat(page, u:svg_text(50, 520, "m", "HOW: u:balance_loss(probs, mask, E, T); T is explicit because size arithmetic is not traced (F12). Tests pin 1.0 when uniform."));
+  str_concat(page, "</svg>")
+}
+
+r1 = if writing {
+  write_atomic(str_concat(out_dir, "/moe-run.svg"), u:run_svg())
+} else {
+  ok(0)
+};
+r2 = if writing {
+  write_atomic(str_concat(out_dir, "/moe-balance.svg"), u:balance_svg())
+} else {
+  ok(0)
+};
+print("NUMERICAL CONTRACT -- training loss ends below 0.3; every expert receives at least 5 percent of masked training tokens; balance ends below 2.5.");
+print("THE POINT -- Conditional compute at microscope scale: one of four experts per token, all four kept alive by the balance term.");
+print("BOUNDARY -- Dense-masked training evaluates every expert; the sparse dispatch that saves compute is the next lesson.");
+min_share = reduce(:min, final.load) / reduce_add(final.load);
+contract = lt(final_train, 0.3) * gt(min_share, 0.05) * lt(final.balance, 2.5);
+if contract * is_ok(r1) * is_ok(r2) * is_ok(r_row) {
+  ok("moe baseline written")
+} else {
+  err("moe baseline contract failed")
+}

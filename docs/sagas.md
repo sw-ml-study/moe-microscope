@@ -30,6 +30,12 @@ experts, and the MoE recordings for the generic host.
 6. `moe-recordings-and-host-handoff` - MX01 and MX02 recorded over live SSE,
    pinned, and handed to the generic host.
 
+Step 2 status: complete. MX01 trained dense-masked with the balance term
+(`demos/moe_baseline.mlpl`): loads, entropy, balance, family-by-expert
+counts, loss and accuracy recorded; two diagrams; results row beside DN01;
+padded greedy decoding added to `lib/dense.mlpl` because the mixture block
+is fixed to the window length.
+
 Step 1 status: complete. `lib/moe.mlpl` (router logits, probabilities,
 top-1 and top-k masks, Switch and renormalized gates, load, entropy, balance
 loss) with five tests; the MX01 routing microscope and its diagram.

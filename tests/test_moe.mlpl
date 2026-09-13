@@ -39,9 +39,9 @@ def u:test_load_entropy_balance() {
   u:assert_eq(u:expert_load(m), [1, 1, 1, 1], "one token per expert")?;
   uniform = fill([4, 4], 0.25);
   u:assert_approx(u:router_entropy(uniform), log(4), 0.000001, "uniform entropy is log E")?;
-  u:assert_approx(u:balance_loss(uniform, m, 4), 1, 0.000001, "perfectly balanced routing scores one")?;
+  u:assert_approx(u:balance_loss(uniform, m, 4, 4), 1, 0.000001, "perfectly balanced routing scores one")?;
   skewed = [[1, 0, 0, 0], [1, 0, 0, 0], [1, 0, 0, 0], [1, 0, 0, 0]];
-  u:assert_gt(u:balance_loss(u:router_probs(fixture_logits * 0 + skewed * 5), skewed, 4), 1, "collapsed routing scores above one")
+  u:assert_gt(u:balance_loss(u:router_probs(fixture_logits * 0 + skewed * 5), skewed, 4, 4), 1, "collapsed routing scores above one")
 }
 
 @test {name: "the router receives a gradient through the Switch gate", tags: ["moe", "gradient"]}

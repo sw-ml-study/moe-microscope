@@ -1,6 +1,6 @@
 number = 2
 slug = "dense-masked-training"
-status = "pending"
+status = "in-progress"
 description = "MX01 part 2: train the MoE on the synthetic domain with the dense-masked form..."
 role = "production"
 context_files = []

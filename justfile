@@ -48,6 +48,10 @@ teacher mode="check":
 router mode="check":
     ./scripts/run-router-demo {{mode}}
 
+# Run MX01, the dense-masked mixture of experts (about 36 seconds), and check its diagrams and results row; `just moe write` regenerates them.
+moe mode="check":
+    ./scripts/run-moe-demo {{mode}}
+
 # Print the selected sw-MLPL executable.
 mlpl-path:
     ./scripts/select-mlpl

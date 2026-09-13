@@ -54,15 +54,17 @@ status = "accepted"
 
 [[lesson]]
 id = "MX01"
-slug = "routing"
-title = "Routing: logits, probabilities, mask, gate, dispatch"
-source = "demos/router_microscope.mlpl"
-library = ["lib/moe.mlpl", "lib/svg.mlpl"]
-test = ["tests/test_moe.mlpl"]
-previews = ["assets/previews/router-routing.svg"]
+slug = "moe-top1"
+title = "Four experts learn to share the tokens"
+source = "demos/moe_baseline.mlpl"
+library = ["lib/moe.mlpl", "lib/dense.mlpl", "lib/domain.mlpl", "lib/evaluate.mlpl", "lib/results.mlpl", "lib/svg.mlpl"]
+test = ["tests/test_moe.mlpl", "tests/test_dense.mlpl"]
+previews = ["assets/previews/router-routing.svg", "assets/previews/moe-run.svg", "assets/previews/moe-balance.svg"]
+routing_demo = "demos/router_microscope.mlpl"
+fixture = "fixtures/domain/mixture-v0.json"
 implementation = "from-scratch"
-observations = ["moe/router/hidden", "moe/router/logits", "moe/router/probs", "moe/router/mask", "moe/router/gate", "moe/router/mask-top2", "moe/dispatch/load", "moe/router/entropy", "moe/router/balance"]
-memory = "router 4x4 weights plus 4 biases for E=4 experts over d=4; masks and gates are [T, E]"
-speed = "four small matrix operations per token batch; the fixture runs in milliseconds"
-quality = "routing only (no training yet): row sums, one-hot rows, gate identity, loads, entropy, balance, and router gradient are pinned by tests"
-status = "partial"
+observations = ["moe/config", "moe/loss/train", "moe/loss/val", "moe/load", "moe/entropy", "moe/balance", "moe/family-by-expert", "moe/accuracy/train", "moe/accuracy/val", "moe/route/example"]
+memory = "7,096 parameters (router 68, four experts of 1,072, attention 1,024, embedding 832, head 884); 3,064 active per token with one expert; 24,512 bytes per token at f64"
+speed = "27,000 one-example Adam steps with every expert evaluated (dense-masked); about 1.1 ms per step; the lesson runs in about 36 seconds; sparse dispatch is the next lesson"
+quality = "validation masked loss 3.76 (DN01 3.79) with 0.667 prose accuracy; training exact match 0.62; final load 208/30/47/121, entropy 0.62 nats, balance 1.17"
+status = "accepted"
