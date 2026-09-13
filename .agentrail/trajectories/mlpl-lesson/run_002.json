@@ -1,0 +1,11 @@
+{
+  "task_type": "mlpl-lesson",
+  "state": {
+    "number": 2,
+    "step": "docent-dense"
+  },
+  "action": "CD01 dense docent done: lib/docent.mlpl (hashed word+bigram features, pooled embedding, two heads, eval, docent results table), demo with three diagrams, six tests; snapshot A extended with the status intent, forty off-topic rows, the institute/ML wing/MoE Microscope places, and a 54-row held-out paraphrase fixture; results: held-out intent 0.938, destination 0.925, paraphrases 0.296 dest, unsupported recall 0.3, ambiguous top-2 0.091 (recorded as the baseline; value over the matcher is open). F13 flipped to resolved, F19 filed. Plan gained the live-demo and campus-live sagas, the matcher step, and the value-over-matcher bar. Gate passed; pushed.",
+  "result": "success",
+  "reward": 1,
+  "timestamp": "2026-09-13T16:27:23"
+}
