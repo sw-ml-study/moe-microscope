@@ -556,10 +556,24 @@ relitigate them:
    the story policy, and the link back to the microscope; recordings pinned
    for the generic host.
 
-Exit: a batch-trained tiny MoE, loaded in the page, navigates among the
-three destinations with explainable routing and catalog-backed responses,
-tells the right canned story once and another on request,
-and the live-training budget has a measured answer;
+Usefulness bar, measured by steps 1 to 4 before any integration:
+
+- destination exact match on held-out authored questions at or above 0.9
+  across the three destinations, and intent accuracy at or above 0.9
+  including the unsupported class;
+- ambiguous questions return a ranked recommendation, not a wrong single
+  answer;
+- story policy tests pass on scripted visits (arrival story once, no repeat
+  unless asked, another offered while untold ones remain, cleared context
+  starts over);
+- model at or under 30 KB at INT8 with a manifest naming the catalog
+  revision; per-query latency under 50 ms in the browser (step 5).
+
+Exit: the usefulness bar is met and recorded in the results table; a
+batch-trained tiny MoE, loaded in the page, navigates among the three
+destinations with explainable routing and catalog-backed responses, tells
+the right canned story once and another on request, and the live-training
+budget has a measured answer;
 dense, four-expert, and eight-expert rows sit in the results table with the
 docent metrics; snapshot A is preserved with its provenance; sw-campus has an
 implementation-ready easel handoff.
