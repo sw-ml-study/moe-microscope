@@ -1,9 +1,10 @@
 number = 4
 slug = "readme-as-executive-summary"
-status = "in-progress"
+status = "completed"
 description = "Rewrite README.md as a two-to-four-screen executive summary: what and why, st..."
 role = "production"
 context_files = []
 created_at = "2026-09-13T09:42:19"
+completed_at = "2026-09-13T10:53:50"
 task_type = "documentation"
-commits = []
+commits = ["acfd6e6efa6594f58fdfcfd37eed92b72eb548a3"]

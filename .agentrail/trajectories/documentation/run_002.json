@@ -1,0 +1,11 @@
+{
+  "task_type": "documentation",
+  "state": {
+    "number": 4,
+    "step": "readme-as-executive-summary"
+  },
+  "action": "Fixed the stale LD01 preview first; split the old README by section into experiment stubs with relinked paths; wrote the summary README from the results and RB01/GB01 documents; updated landing page, structure check, saga status; gate; commit by name; push.",
+  "result": "success",
+  "reward": 1,
+  "timestamp": "2026-09-13T10:53:50"
+}
