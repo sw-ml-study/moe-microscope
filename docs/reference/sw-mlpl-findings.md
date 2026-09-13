@@ -30,8 +30,9 @@ upstream `moe-microscope-followups-2` saga (`mlpl-repl` 08:11, `mlpl-serve`
 | F14 `fill`/`zeros`/`ones` rejected inside `grad` | constant constructors are constant leaves on the tape | `61da67ae` | probe file expects success |
 | D1 silent zero gradient for an untracked `wrt` leaf | loud error: "the loss does not depend on 'W' (no gradient flows to it)" | upstream `moe-microscope-followups` step 3 | probe "grad of a pre-evaluated loss variable raises a loud error"; `probes/d1_silent_zero_grad.mlpl` expects the error |
 | F5 `one_hot`/`argmax` rejected inside `grad` | index and mask builtins (`argmax`, `one_hot`, `eq`, `gt`, `lt`, `argtop_k`) are stop-gradient constants on the tape | `54ad5849` | probe "one_hot and argmax act as stop-gradient constants"; `probes/f5_one_hot_in_grad.mlpl` now expects success |
+| F12 shape-derived size arithmetic rejected inside `grad` | parameter-independent subexpressions such as `reduce_mul(shape(...))` are constant-folded on the tape | `82e55a6a`, verified against the 12:52 rebuilt binary | probe file expects success ("grad 3 3 3"); `u:masked_ce` keeps its explicit `vocab` argument by choice |
 
-## Open, queued upstream as `moe-microscope-followups` (F7, F8, F11, F12, F13, F16, F17, S1; upstream is working F11 to F13 in `followups-2`)
+## Open, queued upstream as `moe-microscope-followups` (F7, F8, F11, F13, F16, F17, S1; upstream is working F11 and F13 in `followups-2`)
 
 ### F7: a model value cannot be a user-function argument
 
@@ -80,19 +81,6 @@ and `gather_rows`. Workaround: slice chunks eagerly before the loss and pass
 arrays into the loss function. Affects: any lesson helper that slices inside
 the loss. Proposed fix: bind nested-call parameters in the inliner's scope
 before walking index expressions.
-
-### F12: shape-derived size arithmetic is rejected inside `grad`
-
-```
-grad(reduce_add(W) * reduce_mul(shape(take(W, 0, 0))), W)
-# error: unsupported: grad: function 'reduce_mul' not supported inside grad()
-```
-
-Reproducer: `probes/f12_size_arithmetic_in_grad.mlpl`. Workaround: pass sizes
-(vocabulary, width) as explicit arguments; `u:masked_ce` takes `vocab`.
-Affects: every loss helper that derives a size from a shape. Proposed fix:
-treat `shape` and reductions over it as stop-gradient constants, like the F5
-index builtins.
 
 ### F13: `attention_weights` cannot find an attention layer inside `residual(chain(...))`
 

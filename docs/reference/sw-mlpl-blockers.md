@@ -36,6 +36,7 @@ Gaps with reproducers are written up as upstream work orders in
 | Sparse expert dispatch | no batched gather across experts on the tape; per-token loops in the interpreter (16 routing decisions measured well under a millisecond) | dense-masked training plus forward-only sparse dispatch with parity assertion |
 | Top-k gate on the tape | `argmax`/`one_hot`/`argtop_k` are stop-gradient constants inside `grad` (F5 resolved), so the mask can live inside the loss; the Switch-style gate `softmax(logits) * mask` gives the router a gradient (a renormalized top-1 gate is identically 1 and gives none) | probes "adam trains a list of expert models..." and "one_hot and argmax act as stop-gradient constants" |
 | Batched sequences | `embed` now accepts `[B, T]` (F9 resolved); lessons still train one example per step so attention never spans examples and positions stay per example | per-example loop |
+| Size arithmetic derived from `shape` inside `grad` | probe file `probes/f12_size_arithmetic_in_grad.mlpl` expects success (F12 resolved) | loss helpers may derive sizes from shapes; `u:masked_ce` keeps `vocab` explicit by choice |
 | Positional table on the tape | the labeled `sinusoidal_encoding` output trains inside `adam` (F10 resolved) | `u:positions` still strips labels; harmless |
 | Recurrence depth as a runtime value | `repeat` unrolls on the tape with a literal or parameter-bound count (F6, F15 resolved) | `repeat r` inside a user function |
 | Models as user-function parameters | models cannot be arguments (F7); they are reached as globals | lesson helpers name their globals |
@@ -57,7 +58,6 @@ Gaps with reproducers are written up as upstream work orders in
 | F7 model as user-function argument | probe "a model value cannot be a user-function argument"; `probes/f7_model_argument.mlpl` | globals |
 | F8 `emit_frame` literal name | probe "emit_frame rejects a name held in a variable"; `probes/f8_emit_frame_name.mlpl` | literal names |
 | F11 nested traced call loses an index parameter | `probes/f11_nested_param_binding_in_grad.mlpl` | slice chunks eagerly, pass arrays into the loss |
-| F12 size arithmetic inside `grad` | `probes/f12_size_arithmetic_in_grad.mlpl` | pass sizes as arguments |
 | F13 `attention_weights` and `residual` | `probes/f13_attention_weights_residual.mlpl` | explicit residual with a separate attention sub-model |
 | F17 record field access inside `grad` | `probes/f17_record_field_in_grad.mlpl` | bind fields to variables eagerly |
 | F16 no include/sandbox/args on `eval_stream` | `scripts/run-emit-frame-loops` | `scripts/bundle-program`, inline mixture twin, guarded writes |
@@ -65,6 +65,15 @@ Gaps with reproducers are written up as upstream work orders in
 ## Still to be probed
 
 1. The user-function MoE loss under `device("mlx") { }` at lab scale.
+2. The docent lesson (Model DSL, `adam`, `train`, `write_atomic`) evaluated
+   through the browser `WasmSession` reached by the iframe bridge proven in
+   `../demo-abstract-algebra`; expected: same results as the terminal REPL
+   with the corpus inlined, since the WASM surface has no filesystem sandbox.
+3. A headless `--target web` build of `mlpl-wasm` (shared ask, abstract
+   algebra blocker B7); until it exists the page loads the playground.
+4. Model export and reload inside the browser session (`to_json` of packed
+   weights, `parse_json` back) for the in-browser retrain and IndexedDB
+   round trip.
 
 A confirmed blocker must add a minimal `.mlpl` reproducer, the configured
 binary version, expected signature and semantics, positive/negative/boundary

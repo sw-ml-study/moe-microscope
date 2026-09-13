@@ -1,4 +1,4 @@
-# F12 reproducer: shape-derived size arithmetic (reduce_mul(shape(...))) is rejected inside grad; checked by scripts/run-probes.
+# F12 reproducer: shape-derived size arithmetic (reduce_mul(shape(...))) inside grad; resolved upstream by constant folding, so scripts/run-probes expects the 4x3 gradient of threes.
 W = param[4, 3]
 W = reshape(range(12), [4, 3])
 print("eager width", reduce_mul(shape(take(W, 0, 0))))
