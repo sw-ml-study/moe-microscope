@@ -1,7 +1,7 @@
 # Teacher fixture schema
 
 `fixtures/teacher/teacher-v0.json` holds the in-repo teacher's soft targets
-for the training split. Distillation lessons (Saga 4) read it; an external
+for the training split. Distillation lessons (the distillation saga) read it; an external
 teacher export must produce the same shape so the student code does not
 change. `scripts/run-teacher write` trains the teacher once (about a minute)
 and installs the fixture, its index, diagram, and results row;
@@ -53,7 +53,7 @@ are not present.
 
 ## Producing the same shape from an external teacher
 
-An exporter for a local quantized model (Saga 4 step 4) must tokenize with
+An exporter for a local quantized model (the distillation saga) must tokenize with
 this alphabet (the domain is byte-level over 52 symbols, so an external
 tokenizer needs a character-level mapping), score the same training texts,
 and emit the same fields with `teacher.id` set to its own label. It may set

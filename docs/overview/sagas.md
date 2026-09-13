@@ -314,27 +314,41 @@ checked in with its schema.
 
 ## Future
 
+Next up is the campus docent (Saga 4); the mechanism sagas follow in their
+original order.
+
 Every saga from here ends with a host step that pins its recordings and hands
 them to the generic `../demo-extensions` microscope; see the visualization
 track in [`plan.md`](plan.md).
 
-- Saga 4 `recurrence-and-engram`: RC01, RM01, EG01 (both forms: from scratch
+- Saga 4 `campus-docent-v0` (next): the second training area, from
+  [`research3.txt`](../research/research3.txt). A tiny MoE that runs, trains,
+  and retrains in the browser and directs visitors of the sw-campus site:
+  snapshot A of the campus catalog (IBM 1130, APL, RCA 1802) with a
+  deterministic corpus generator, the dense classifier CD01, the routed
+  docent CD02 with its specialization map CD03 and ambiguity panel CD04,
+  export with manifest, the in-browser "train the docent" page CD05 on the
+  proven `mlpl-wasm` bridge, and the easel handoff to sw-campus.
+- Saga 5 `campus-docent-v1`: when the campus adds the 1442 card reader and
+  its radio demo, the stale-model, retraining-versus-forgetting, and
+  quantization study (CD06 to CD08) and the revision comparison page.
+- Saga 6 `recurrence-and-engram`: RC01, RM01, EG01 (both forms: from scratch
   and builtin, with parity), RE01, the seven-row ablation table, and the
   live-demo foundation handoff.
-- Saga 5 `distillation`: token KD against the in-repo teacher, router warm
+- Saga 7 `distillation`: token KD against the in-repo teacher, router warm
   start, expert-delta distillation, and the gated external-teacher export.
-- Saga 6 `quantization-packing-and-cache`: INT8 and INT4 experts, the packed
+- Saga 8 `quantization-packing-and-cache`: INT8 and INT4 experts, the packed
   TinyMoE file, the LRU expert-cache simulator with capacity curves, and
   prefill double buffering.
-- Saga 7 `hybrid-execution-and-embedded-budget`: bandwidth calibration, the
+- Saga 9 `hybrid-execution-and-embedded-budget`: bandwidth calibration, the
   q-star transfer/compute split, expert banks, and the 256 MB budget report.
-- Saga 8 `interactive-microscope-host`: systems recordings, live-demo
+- Saga 10 `interactive-microscope-host`: systems recordings, live-demo
   acceptance (the only `sw-checklist` scope), and the pocket-helper demo.
-- Saga 9 `configuration-frontier`: one harness over configuration records;
+- Saga 11 `configuration-frontier`: one harness over configuration records;
   sweeps of expert count, top-k, shared always-on experts, Engram slots, and
   recurrence depth; a Pareto frontier with smallest, fastest, and best picks.
-- Saga 10 `cuda-and-host-resident-experts`: backend probes for CUDA and MLX,
+- Saga 12 `cuda-and-host-resident-experts`: backend probes for CUDA and MLX,
   lab-scale training on the GPU, expert weights in host RAM with a bounded
   GPU cache, CPU execution of missing experts, and a VRAM-budget report.
-- Saga 11 `findings-and-recommendations`: `docs/report.md` with findings,
+- Saga 13 `findings-and-recommendations`: `docs/report.md` with findings,
   recommendations, and ranked future improvements, every claim cited.

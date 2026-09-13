@@ -429,7 +429,124 @@ home in the hierarchy and every link resolves; RB01 and the generation
 benchmark give measured resource and latency numbers with M/D/E labels;
 the wiki mirrors the hierarchy with verified diagrams and links.
 
-## Saga 4: recurrence and Engram
+## Saga 4: campus docent v0
+
+Source: [`research3.txt`](../research/research3.txt). The Software Wrighter
+research campus (`../../software-wrighter-lab/sw-campus`, live at
+<https://software-wrighter-lab.github.io/sw-campus/>) is a painted map you
+walk into: campus, building, wing, exhibit, demo, every place with its own
+URL. Each lobby gets an easel that features an exhibit and, when asked,
+answers "where is", "what is", and "what should I see" with a tiny MoE that
+runs, trains, and retrains in the browser. This is the second training area
+of the microscope and the first one whose domain is a real, evolving
+artifact.
+
+Design decisions, taken from the research and kept here so the steps do not
+relitigate them:
+
+- The model predicts meaning, not facts: an intent (navigate, explain,
+  recommend, unsupported) and a destination distribution over places. The
+  campus catalog remains the authority for titles, summaries, URLs,
+  breadcrumbs, and status, so a stale model can never invent an exhibit.
+- The corpus is derived from the catalog. Each place carries a reviewable
+  docent block (aliases, concepts, example queries); a deterministic MLPL
+  generator expands it into a small, inspectable training set (a few hundred
+  examples) with navigation, recommendation, deliberately ambiguous, and
+  out-of-domain questions. Snapshot A holds three semantically distinct
+  destinations that exist today: the IBM 1130 demo, the APL demo, and the
+  RCA 1802 demo. The 1442 card reader and its radio demo are excluded on
+  purpose; they are v1's new-knowledge event.
+- Input is hashed word and bigram features pooled into an embedding, not the
+  language lesson's character vocabulary: no tokenizer file, bounded
+  vocabulary, graceful on unseen names. A later lesson compares it with a
+  token vocabulary.
+- Architecture near existing MicroMoE dimensions: embedding 24 to 48, router
+  to 4 or 8 experts, rank-4 delta experts as in LD01, top-1 first, two heads.
+  Tens of thousands of parameters at most; INT8 tens of kilobytes.
+- Experts are not assigned subjects. Train, measure the routing distribution
+  per destination and per concept, and annotate what each expert appears to
+  have learned; the "why this?" panel shows the router's choice and signals.
+- Browser execution is MLPL itself. sw-MLPL's `mlpl-wasm` crate runs the same
+  evaluator, Model DSL, autograd, and `train` loop as the terminal REPL; the
+  proven way to reach it from a page is `../demo-abstract-algebra`'s
+  `learn/runtime.js` bridge, which loads the published playground in a hidden
+  same-origin iframe and calls its `WasmSession` (blocker B7 there asks
+  upstream for a headless `--target web` build of `mlpl-wasm` alone). That
+  bridge is adapted, not rewritten; no Rust model code is written for the
+  docent, so `sw-checklist` scope is unchanged.
+- Provenance is first-class: every snapshot keeps its catalog, corpus,
+  weights, manifest (model, version, catalog hash, experts, top-k, params,
+  quantization), and metrics, so revisions can be compared.
+- The visualization contract holds: what/why/how diagrams for the corpus
+  generator, the feature hashing, the router, the specialization map, and
+  the export; memory, speed, and quality measured for every lesson, plus the
+  docent's own metrics (model, corpus, catalog, and WASM bytes; browser load
+  and inference latency; retraining time).
+
+1. **campus-snapshot-a (CD00).** The catalog snapshot fixture
+   (`fixtures/campus/snapshot-a.json`) in the sw-campus `Place` shape plus
+   the docent block for the three destinations, authored here and handed to
+   sw-campus for adoption; the deterministic corpus generator in MLPL with
+   its diagram (source place, transformation, resulting rows, labels); the
+   split; the catalog-hash function. Locate the APL and RCA 1802 demo
+   repositories and record their URLs, or mark them placeholder as sw-campus
+   does. Tests over the generator, the label space, and the split.
+2. **docent-dense (CD01).** Hashed-feature encoder, pooled embedding, one
+   hidden layer, intent and destination heads, masked losses; the flat
+   classifier baseline with its diagram and results row (intent accuracy,
+   destination accuracy, top-3, params, bytes, ms per query).
+3. **docent-moe (CD02, CD03).** The same encoder behind a router over 4 and
+   8 rank-4 delta experts, top-1, balance term; the routing and
+   specialization map per destination and per concept, expert annotations
+   derived from measured distributions, entropy and balance, and the
+   ambiguous-query panel (top-2 comparison, CD04) as a recorded lesson.
+4. **docent-export (CD08 first half).** The packed weights, labels, and
+   manifest written by MLPL (`write_atomic`, `to_json`), INT8 projection with
+   measured file sizes, and an MLPL inference twin that reloads the export
+   and asserts parity with the trained model on every corpus row.
+5. **docent-in-browser (CD05).** The "train the docent" page under `learn/`:
+   the adapted iframe bridge, the corpus inlined into the program (the WASM
+   surface has no filesystem sandbox), train and retrain controls, per-epoch
+   accuracy and expert utilization, the "why this?" panel, export to
+   IndexedDB; measured browser load, per-query inference latency, and
+   training time per epoch, recorded as CD06's browser benchmark row.
+   Published on GitHub Pages from this repository.
+6. **easel-handoff.** The work order for sw-campus: the easel component
+   (passive featured exhibit, interactive docent), loading the exported
+   model, catalog-hash comparison with a stale badge, the local
+   `DocentContext` (current place, recent places, interests, recent
+   queries) in IndexedDB, and the link back to the microscope; recordings
+   pinned for the generic host.
+
+Exit: a browser-resident tiny MoE trained in the page navigates among the
+three destinations with explainable routing and catalog-backed responses;
+dense, four-expert, and eight-expert rows sit in the results table with the
+docent metrics; snapshot A is preserved with its provenance; sw-campus has an
+implementation-ready easel handoff.
+
+## Saga 5: campus docent v1
+
+Starts when the campus adds the IBM 1442 card read punch and its radio demo
+(snapshot B). If that content is not yet published, the step authors
+snapshot B as a handoff fixture first and reruns when the real content lands.
+
+1. **stale-model (CD06).** Ask model A the snapshot-B questions before any
+   retraining; the runtime catalog reports "no sufficiently specific
+   destination" rather than inventing one; the version-mismatch badge.
+2. **retraining (CD07).** Incremental retraining from model A versus full
+   retraining on snapshot B: destination scores before and after, expert
+   maps before and after (did a new specialization emerge or did an existing
+   expert absorb the material), old-domain and new-domain accuracy,
+   forgetting measured per destination, training time.
+3. **quantized-docent (CD08).** INT8 and INT4 docent quality against f64 on
+   both snapshots, bytes, and browser latency.
+4. **revision-compare.** The "compare revisions A to B" page and the sw-campus
+   handoff update.
+
+Exit: the before/after study is a recorded lesson with rows and diagrams,
+and the campus easel can show which revision its docent knows.
+
+## Saga 6: recurrence and Engram
 
 1. **recurrent-block (RC01).** Shared block applied `R` times with recorded
    state per recurrence, accuracy versus `R`, and the deep-supervision loss.
@@ -451,7 +568,7 @@ the wiki mirrors the hierarchy with verified diagrams and links.
 Exit: the ablation matrix rows through RE01 exist with diagrams and triples;
 the live demo has a written, implementation-ready handoff.
 
-## Saga 5: distillation
+## Saga 7: distillation
 
 1. **token-kd (KD01 part 1).** `beta L_KD` against the in-repo teacher
    fixture; KL and accuracy deltas versus the same student without KD.
@@ -465,7 +582,7 @@ the live demo has a written, implementation-ready handoff.
 
 Exit: each distillation term has a measured, diagrammed, and tabled effect.
 
-## Saga 6: quantization, packed format, and expert cache
+## Saga 8: quantization, packed format, and expert cache
 
 1. **int8-experts (QZ01).** Symmetric INT8 experts and shared weights as
    integer-valued arrays plus scales; quality delta; bytes per expert.
@@ -488,7 +605,7 @@ Exit: each distillation term has a measured, diagrammed, and tabled effect.
 Exit: the same model runs from a packed file through a capacity-limited cache
 with a checked curve of hit rate and bytes per token versus capacity.
 
-## Saga 7: hybrid execution and the embedded budget
+## Saga 9: hybrid execution and the embedded budget
 
 1. **bandwidth-calibration.** A tiny `bench bw` analogue measuring the
    simulated transfer and host-compute bandwidths (from counted bytes and
@@ -505,7 +622,7 @@ with a checked curve of hit rate and bytes per token versus capacity.
 Exit: HY01 and PK01 rows exist; the embedded gap is a written handoff, not a
 claim.
 
-## Saga 8: interactive microscope host, complete
+## Saga 10: interactive microscope host, complete
 
 1. **systems-recordings.** Pinned recordings for QZ01, XC01, HY01, and PK01;
    cache traces and q-star splits proven in the generic host.
@@ -520,7 +637,7 @@ claim.
 Exit: every recorded lesson renders in the generic host without lesson-
 specific Rust, and the pocket helper runs end to end.
 
-## Saga 9: configuration frontier
+## Saga 11: configuration frontier
 
 After the mechanisms exist, compare configurations on the dimensions the
 results table already records and produce a size, speed, quality frontier.
@@ -542,7 +659,7 @@ results table already records and produce a size, speed, quality frontier.
 Exit: a frontier diagram whose every point is a results row and a
 recording.
 
-## Saga 10: CUDA system and CPU-resident expert weights
+## Saga 12: CUDA system and CPU-resident expert weights
 
 Today every lesson runs in the f64 CPU interpreter; `device("mlx")` and the
 CUDA backend in sw-MLPL are unused here. This saga moves the lab-scale runs
@@ -565,13 +682,13 @@ cache or executed on the CPU.
    real); measured tokens per second against the transfer-only policy and
    against all-GPU, with VRAM held below a chosen ceiling.
 5. **vram-budget-report.** The smallest VRAM that serves each frontier pick
-   from Saga 8 at a stated tokens-per-second, with the CPU/GPU split that
+   from Saga 10 at a stated tokens-per-second, with the CPU/GPU split that
    achieves it.
 
 Exit: a lab-scale MoE runs on CUDA with expert weights in host RAM at a
 documented VRAM ceiling, and the sw-MLPL backend findings are filed.
 
-## Saga 11: findings, recommendations, and future work
+## Saga 13: findings, recommendations, and future work
 
 The closing document, `docs/report.md`, written from the results table,
 the recordings, the findings ledger, and the frontier: what was built, what

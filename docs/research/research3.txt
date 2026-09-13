@@ -1,0 +1,1295 @@
+ an idea for another training area.  there is a repo ../../software-wrighter-lab/sw-canvas.  It has interative campus map, building lobbies/directories, and eventually interactive wings/exhibits.  I'd like to add an easel in the each lobby to direct to a featured or special exhibit.  I want to be able to train (and re-train) a tiny MoE model running in the browser, to help direct users, maybe answer questions about what is available and how to get there.
+
+this is related to: 
+sw-ml-study/moe-microscope training an in-browser tiny MoE (facilitated with Rust/Yew/WASM) that could be a live-demo for that repo.  The training domain is the navigation and content in: 
+software-wrighter-lab/sw-campus which is evolving, so we need to be able to re-train after changes/additions.  It has a live-demo: https://software-wrighter-lab.github.io/sw-campus/ which could have a integrated Tiny MoE (updatable periodically) chat bot "docent" to guide, explain, answer questions, make informed suggestions, use browser local cache for context history.  
+
+how can I make this happen and demo it soon?
+
+You can make this happen soon by treating it as two demos sharing one tiny model format:
+
+moe-microscope: “train a docent” — an educational page where visitors can watch a tiny MoE learn the campus domain, inspect routing/expert specialization, retrain it, and export weights.
+sw-campus: “ask the docent” — a polished, lightweight inference-only assistant integrated into each lobby/easel, using a pre-trained model shipped with the site.
+
+That separation keeps sw-campus pleasant while turning moe-microscope into the microscope for exactly the same model.
+
+Your existing MicroMoE is already at the right scale: the current top-1 model is only 7,096 parameters / ~55 KiB f64, and a full expert is just 1,072 parameters. The repo is explicitly designed so every tensor, expert, routing decision, and byte can be inspected, and it already hands recordings to a generic Rust/Yew host.
+
+1. Don't initially train a conventional “chat LLM”
+
+I would make the first Campus Docent a tiny domain model with structured outputs.
+
+Input:
+
+“Where can I see the old IBM card reader?”
+
+Output internally:
+
+intent: navigate
+place: computer-history/ibm-1130/1442
+confidence: 0.93
+experts:
+  computer-history: 0.74
+  navigation:       0.21
+
+UI response:
+
+IBM 1442 Card Read Punch
+You'll find it in the Computer History Museum → IBM 1130 Wing.
+It also has the “Card-reader radio” demonstration showing how RFI could produce music.
+
+[Take me there]
+
+That is a far easier and more interesting tiny-ML problem than trying to train a 7K-parameter GPT to write fluent prose.
+
+The browser supplies the prose from templates and campus metadata.
+
+This yields a system like:
+
+                ┌───────────────────────┐
+question ──────►│ tiny tokenizer/embed │
+                └──────────┬────────────┘
+                           ▼
+                    ┌─────────────┐
+                    │ MoE router  │
+                    └──┬──┬──┬───┘
+                       │  │  │
+               ┌───────┘  │  └────────┐
+               ▼          ▼           ▼
+         navigation     history       ML
+          expert        expert      expert
+               \          │           /
+                └──────┬──┴──────────┘
+                       ▼
+             structured prediction
+                       │
+        ┌──────────────┼──────────────┐
+        ▼              ▼              ▼
+     place-id        intent       confidence
+        │
+        ▼
+   campus catalog
+        │
+        ▼
+ template + URL + recommendations
+
+The crucial architectural decision is:
+
+The model predicts meaning; sw-campus remains the authoritative source of facts.
+
+That prevents stale weights from hallucinating nonexistent exhibits.
+
+2. Make sw-campus itself the training corpus
+
+The existing design is unusually convenient for this. You already intend the semantic model to be independent of rendering, with places, titles, taglines, summaries, children and links stored as structured RON.
+
+Extend Place slightly:
+
+pub struct Place {
+    // existing fields...
+
+    pub aliases: Vec<String>,
+    pub topics: Vec<String>,
+    pub questions: Vec<String>,
+}
+
+Example:
+
+(
+    id: "1442",
+    title: "IBM 1442 Card Read Punch",
+    tagline: "80-column punched-card input and output",
+    summary: "...",
+
+    aliases: [
+        "IBM card reader",
+        "card punch",
+        "1442",
+        "punched card reader",
+    ],
+
+    topics: [
+        "punched cards",
+        "IBM 1130",
+        "RFI",
+        "computer history",
+    ],
+
+    questions: [
+        "Where is the card reader?",
+        "Show me something about punched cards",
+        "What made music on a transistor radio?",
+        "Where can I learn about the IBM 1442?",
+    ],
+)
+
+Then derive training examples automatically.
+
+Positive transformations
+
+From:
+
+IBM 1442 Card Read Punch
+
+generate examples such as:
+
+where is the IBM 1442?
+show me the card reader
+take me to punched cards
+what exhibit covers card readers?
+I want to see an IBM peripheral
+where is the radio music demo?
+
+Labels:
+
+intent = navigate
+building = computer-history
+wing = ibm-1130
+place = 1442
+
+The dataset generator should be deterministic and part of the repo.
+
+sw-campus/content/
+        │
+        ▼
+campus-dataset
+        │
+        ├── places.json
+        ├── train.jsonl
+        ├── validation.jsonl
+        └── corpus-version.json
+                              │
+                              ▼
+                       moe-microscope
+
+That solves your retraining requirement naturally.
+
+3. Experts should correspond to useful campus concepts
+
+Don't arbitrarily use Expert 0–15.
+
+Make specialization something visitors can understand.
+
+Initially perhaps:
+
+Expert	Intended specialization
+E0	navigation / location
+E1	computer history
+E2	embedded systems
+E3	programming languages
+E4	mathematics
+E5	machine learning / AI
+E6	operating systems
+E7	recommendations / “what next?”
+
+But I would not explicitly force these labels during training.
+
+Instead train normally, inspect specialization, and afterward annotate what each expert appears to have learned.
+
+That fits the whole thesis of moe-microscope: your existing experiment already observes that experts specialize without family labels.
+
+So the UI could say:
+
+Question:
+"Where can I learn about punched cards?"
+
+Router
+────────────────────────────────
+Expert 3 ███████████████  71%
+Expert 6 ████             18%
+Expert 1 ██                8%
+Expert 4 █                 3%
+
+Observed Expert 3 specialization:
+Computer history / hardware
+
+That becomes a much stronger MoE demonstration than another synthetic corpus.
+
+4. Use hierarchical prediction
+
+The campus hierarchy gives you another nice experiment.
+
+Instead of predicting among every exhibit simultaneously:
+
+question
+   ↓
+building
+   ↓
+wing
+   ↓
+exhibit
+
+For example:
+
+"show me the punched card radio"
+
+Campus router
+   │
+   ├─ Computer History       .91
+   ├─ Computational Sciences .05
+   └─ Embedded Systems       .04
+             │
+             ▼
+       Computer History
+             │
+       ┌─────┴──────┐
+       ▼            ▼
+    IBM 1130      IBM 360
+      .87           .08
+       │
+       ▼
+      1442
+      .94
+       │
+       ▼
+     radio
+
+This gives you several research comparisons:
+
+Flat classifier
+
+query → one of N campus destinations
+
+versus
+
+Hierarchical classifier
+
+query → building → wing → exhibit
+
+versus eventually
+
+MoE hierarchical classifier
+
+query → router → sparse experts → hierarchy
+
+These would fit moe-microscope extremely well.
+
+5. Phase 1 should deliberately avoid generative text
+
+For a first live demo, support perhaps four intents:
+
+enum Intent {
+    Navigate,
+    Explain,
+    Recommend,
+    Search,
+}
+
+Examples:
+
+Where is sw-MLPL?
+
+Navigate(sw_mlpl)
+
+What is sw-MLPL?
+
+Explain(sw_mlpl)
+
+I'm interested in old minicomputers.
+
+Recommend([ibm_1130, ...])
+
+Anything about punched cards?
+
+Search([029, 1442, radio])
+
+Then generate answers deterministically from Catalog.
+
+For example:
+
+fn answer(prediction: Prediction, catalog: &Catalog) -> Response
+
+The model does semantic interpretation, not factual generation.
+
+Benefits
+tiny training set
+tiny network
+fast WASM
+easy correctness testing
+deterministic URLs
+no hallucinated exhibits
+easy retraining
+explainable predictions
+excellent visualization
+model can genuinely be trained in-browser
+
+That is much more compelling than saying you downloaded a 500 MB transformer into WebGPU.
+
+6. A realistic first MicroMoE
+
+I'd start near your existing dimensions rather than designing another architecture.
+
+Something on this order:
+
+Vocabulary/hash features      256–512
+Embedding dimension            24–48
+
+Router
+    32 → 8 experts
+
+Experts
+    8 × tiny MLP
+    perhaps rank-4 deltas
+
+Top-k
+    1 initially
+
+Heads
+    intent
+    place/category
+
+Potential size:
+
+embedding       ~12K params
+router             256
+experts          ~4–8K
+heads            ~2–5K
+--------------------------------
+total           ~20–30K params
+
+At INT8:
+
+~20–30 KB
+
+At INT4:
+
+~10–15 KB payload
+
+Even if you intentionally make it 10× larger, browser footprint remains trivial.
+
+And your current measurements already indicate these tiny models run thousands of tokens/operations per second even through the MLPL interpreter; compiled Rust/WASM inference should not be the limiting factor.
+
+7. But tokenize differently from MicroMoE's language lesson
+
+For this task I would strongly consider starting with hashed word/subword features, rather than a conventional generative vocabulary.
+
+For example:
+
+"Where can I see the punched card reader?"
+
+lowercase
+     ↓
+tokens
+     ↓
+where
+can
+see
+punched
+card
+reader
+     ↓
+FNV/hash modulo 512
+     ↓
+embedding lookup
+     ↓
+mean/pool
+
+You could augment that with bigrams:
+
+punched_card
+card_reader
+computer_history
+
+Advantages:
+
+no tokenizer file
+handles new names reasonably
+bounded vocabulary
+easy Rust implementation
+tiny model
+excellent for retraining
+ideal educational implementation
+
+Later compare it with BPE/token vocab as another microscope experiment.
+
+8. The important separation: weights vs knowledge
+
+Because sw-campus changes frequently, do not bake all descriptive text into model weights.
+
+Use:
+
+MODEL
+"What does the user want?"
+
+CATALOG
+"What currently exists?"
+
+The model knows things like:
+
+punched card ↔ historical computing ↔ likely IBM 1130
+
+The catalog knows:
+
+IBM 1442 currently exists
+URL = /campus/computer-history/ibm-1130/1442
+summary = ...
+status = open
+
+Therefore adding:
+
+IBM 2310 Disk Drive
+
+may require only an updated catalog immediately.
+
+Retraining improves recognition later.
+
+This allows graceful stale-model operation.
+
+9. Add model and catalog versions
+
+Ship:
+
+docent/
+├── model.bin
+├── model.ron
+├── labels.ron
+└── manifest.ron
+
+Manifest:
+
+(
+    model: "campus-docent-moe",
+    version: 7,
+    trained_from_commit: "8da91...",
+    catalog_hash: "...",
+    experts: 8,
+    top_k: 1,
+    params: 23784,
+    quantization: "int8",
+)
+
+At startup:
+
+model.catalog_hash == current_catalog_hash
+                │
+           yes ─┴─ no
+            │       │
+            ▼       ▼
+          normal   stale badge
+                   still usable
+
+The easel could subtly say:
+
+Docent knowledge: campus revision 42
+
+That is actually educational.
+
+10. Browser persistence: use IndexedDB, not merely localStorage
+
+I would separate state:
+
+IndexedDB
+├── model versions
+├── user-trained models
+├── optional training datasets
+└── conversation/session state
+
+sessionStorage
+└── transient route/UI state
+
+Conversation history should probably be structured context, not raw endless chat:
+
+struct DocentContext {
+    current_place: PlaceId,
+    recent_places: Vec<PlaceId>,
+    interests: Vec<TopicId>,
+    recent_queries: Vec<String>,
+}
+
+So:
+
+“What's nearby?”
+
+has useful semantic context.
+
+And:
+
+“Something more mathematical?”
+
+can use recent recommendations.
+
+This remains entirely local.
+
+11. Your easel idea is especially good
+
+I'd put one easel in every lobby.
+
+It has two functions.
+
+Passive mode
+┌─────────────────────────────────┐
+│        FEATURED EXHIBIT         │
+│                                 │
+│   Card Reader Radio             │
+│                                 │
+│ See how an IBM 1442 could       │
+│ accidentally play music on      │
+│ a nearby transistor radio.      │
+│                                 │
+│       [Visit exhibit]           │
+│                                 │
+│  Ask the campus docent...       │
+└─────────────────────────────────┘
+Interactive mode
+
+Clicking the bottom section opens:
+
+┌─────────────────────────────────────┐
+│ Campus Docent                       │
+│                                     │
+│ What would you like to explore?     │
+│                                     │
+│ > something about early languages  │
+│                                     │
+│ I suggest ...                       │
+│                                     │
+│ [Go there] [Why this?]              │
+└─────────────────────────────────────┘
+
+And “Why this?” is the killer feature.
+
+It opens a mini MoE microscope:
+
+Router selected
+
+E2  Programming languages   62%
+E5  Computer history        27%
+
+Signals:
+  "language"
+  "early"
+
+Recommended:
+  ...
+
+Then:
+
+Open full MoE Microscope
+
+That links into the educational repo.
+
+Now the two projects reinforce each other.
+
+12. moe-microscope gets a new real-world lesson
+
+I would add something like:
+
+demos/
+    docent/
+        01-corpus.mlpl
+        02-flat-classifier.mlpl
+        03-routed.mlpl
+        04-hierarchical.mlpl
+        05-browser-training.mlpl
+
+And experiments:
+
+CD01 Campus dense classifier
+CD02 Campus top-1 MoE
+CD03 Expert specialization
+CD04 Hierarchical routing
+CD05 Incremental campus update
+CD06 Browser training benchmark
+CD07 Quantized browser inference
+
+Especially interesting:
+
+CD05 — campus changes
+
+Train on:
+
+revision A
+
+then add:
+
+new wing/exhibits
+
+Measure:
+
+before retraining
+after incremental retraining
+after full retraining
+
+Now you have a concrete study of model adaptation to changing knowledge.
+
+13. First demo workflow
+
+I would target this exact vertical slice:
+
+sw-campus catalog
+       │
+       ▼
+generate 300–1000 examples
+       │
+       ▼
+train tiny dense classifier
+       │
+       ▼
+train top-1 4/8 expert MoE
+       │
+       ▼
+compare
+       │
+       ▼
+export weights
+       │
+       ▼
+Rust/WASM inference
+       │
+       ▼
+Docent easel
+
+Only support perhaps 20 destinations initially.
+
+Questions can be synthetic plus hand-written.
+
+You already have a perfect initial domain: the Computer History Museum and IBM 1130 vertical slice that sw-campus describes as its MVP.
+
+14. In-browser training comes second—but very shortly afterward
+
+There are actually two valuable browser modes.
+
+Production campus
+load pretrained model
+→ inference only
+
+Fast and deterministic.
+
+Microscope demo
+[Reset Model]
+
+Epoch 0    accuracy 8%
+Epoch 1    accuracy 41%
+Epoch 2    accuracy 68%
+Epoch 5    accuracy 91%
+
+Expert utilization
+E0 ████████████
+E1 █████████
+E2 ██████
+E3 ███████████
+
+[Train one epoch]
+[Train continuously]
+[Stop]
+
+And allow:
+
+Add exhibit:
+"Mechanical calculators"
+
+Add examples:
+"show me old calculators"
+"where are calculating machines?"
+
+[Retrain]
+
+Then watch expert behavior shift.
+
+That is an unusually good demonstration of ML because visitors can understand both the data and the task.
+
+15. You can even make training part of the museum metaphor
+
+In moe-microscope, instead of a generic ML dashboard:
+
+Train the new campus docent
+
+Visitors see a tiny apprentice docent learning the campus.
+
+Lesson cards
+───────────────────────────
+✓ Campus layout
+✓ Computer History Museum
+✓ IBM 1130 Wing
+○ Computational Sciences
+○ Embedded Systems
+
+Training examples: 486
+Validation examples: 122
+
+[Teach one epoch]
+
+Beside it:
+
+Docent's experts
+
+Expert A — hardware/history
+Expert B — navigation
+Expert C — programming
+Expert D — mathematics
+
+Those labels can emerge from measured routing distributions.
+
+That fits your “training area” metaphor far better than a generic model dashboard.
+
+16. A useful later hybrid: tiny MoE + retrieval
+
+Eventually:
+
+              query
+                │
+          Tiny MoE router
+          /      |       \
+ navigation    topic     explain
+      │          │          │
+      └──────────┼──────────┘
+                 ▼
+         campus retrieval
+                 │
+          relevant summaries
+                 │
+                 ▼
+       tiny generative model
+
+But don't start there.
+
+A tiny generative component can eventually turn:
+
+place metadata + query
+
+into freer prose.
+
+Until then templated text is a feature, not a deficiency: it lets the demonstration prove what the MoE itself learned.
+
+17. Recommended crate boundary
+
+Because both projects need the same implementation, I would extract a reusable little library rather than let campus depend on microscope UI code:
+
+campus-docent/
+├── docent-core
+│   ├── tensor
+│   ├── router
+│   ├── expert
+│   └── inference
+│
+├── docent-train
+│   ├── dataset
+│   ├── optimizer
+│   └── trainer
+│
+├── docent-format
+│   ├── weights
+│   └── manifest
+│
+└── docent-web
+    └── IndexedDB / worker glue
+
+Conceptually, though, it can initially live under moe-microscope until the interface stabilizes.
+
+Your existing microscope explicitly says its generic Rust/Yew/WASM host lives in demo-extensions, so I would investigate reusing that host rather than creating another web ML framework.
+
+18. Web Worker is worth doing immediately
+
+Training should not block Yew rendering.
+
+Main browser thread
+   │
+   ├── campus/Yew
+   ├── chat UI
+   └── visualization
+          │
+      postMessage
+          │
+          ▼
+      Web Worker
+     Rust/WASM model
+       │       │
+   inference training
+
+Even if training initially takes only a second or two, this is the right boundary.
+
+Eventually WebGPU or SIMD can sit underneath without altering the UI.
+
+19. Metrics to expose
+
+Since this is also an experiment, record:
+
+Category	Measurements
+Model	total params, active params
+MoE	experts, top-k, utilization
+Storage	fp32/f16/int8/int4 sizes
+Training	epochs, examples/sec, total training time
+Quality	intent accuracy, destination accuracy, top-3
+Routing	specialization, entropy, load balance
+Browser	load time, inference latency
+Updating	retraining time after catalog change
+
+And especially:
+
+model bytes
+training corpus bytes
+catalog bytes
+WASM bytes
+
+That makes the whole stack tangible.
+
+20. A strong “soon” milestone
+
+I would not initially tackle all of campus.
+
+Build exactly this:
+
+             Campus Docent v0
+                    │
+                    ▼
+       Computer History Museum
+                    │
+              IBM 1130 Wing
+           /       |       \
+         029      1130     1442
+                            │
+                          Radio
+
+Train it on maybe:
+
+~6 destinations
+4 intents
+~20 authored questions/place
++ deterministic augmentations
+≈ 300–600 examples
+
+Compare:
+
+Dense
+4-expert top-1
+8-expert top-1
+
+Then embed the winner in the existing static/Yew transition.
+
+Even with the very small existing MicroMoE, this should be enough to demonstrate:
+
+A real MoE trained locally in your browser learned enough about this actual evolving software campus to guide you through it.
+
+That is considerably more interesting than a canned chatbot.
+
+The resulting project relationship
+                       sw-campus
+                          │
+                    semantic catalog
+                          │
+             ┌────────────┴────────────┐
+             ▼                         ▼
+       runtime catalog           training corpus
+             │                         │
+             │                         ▼
+             │                  moe-microscope
+             │                 "Train the Docent"
+             │                         │
+             │                     weights
+             │                         │
+             └────────────┬────────────┘
+                          ▼
+                    Campus Docent
+                          │
+             ┌────────────┼────────────┐
+             ▼            ▼            ▼
+          navigate      explain      suggest
+             │
+             ▼
+        exact campus URL
+
+I would make CD01 “Campus Docent” the next moe-microscope experiment and deliberately constrain its first goal to intent + destination classification, top-1 MoE, browser training, and model export. Once that works, the easel integration is mostly UI plumbing rather than ML research.
+
+the 1442/radio project is not yet implemented.  use an existing 1130 demo and/or use the APL demo, or the RCA 1802 demo (or all three). 1442/radio to be added later and will be a good way to test updating the model when new content is added
+
+Yes — that actually makes the first demo cleaner. I’d exclude 1442/radio from the initial training set entirely and intentionally reserve it as the first “new knowledge” update test.
+
+Better initial demo corpus
+
+Use three already-existing destinations with very different semantic profiles:
+
+Destination	Why it is useful for training
+IBM 1130 demo	hardware/system/history language
+APL demo	programming-language / notation / array-computing language
+RCA 1802 demo	microprocessor / hobby-computing / embedded-history language
+
+Those three are better than using several closely related IBM 1130 exhibits because they give the MoE router a chance to develop visibly distinct specialization.
+
+The first small corpus can contain questions like:
+
+"show me the IBM 1130"
+"where is the minicomputer demo?"
+"I want to see the console"
+
+"where can I try APL?"
+"show me array programming"
+"I want a programming language with glyphs"
+
+"show me the RCA processor"
+"where is the COSMAC demo?"
+"I want to see an early microprocessor"
+
+Then intentionally include ambiguous queries:
+
+"show me an old computer"
+"where can I learn about early programming?"
+"I want something from the 1970s"
+"show me a processor"
+
+Those are particularly useful because you can expose top-k routing and recommendation behavior, rather than merely test exact keyword recognition.
+
+Revised first architecture
+
+I’d make the first docent problem:
+
+User query
+   │
+   ▼
+feature/token encoder
+   │
+   ▼
+Tiny MoE
+   │
+   ├── intent
+   │     navigate
+   │     explain
+   │     recommend
+   │
+   └── semantic destination scores
+          │
+          ├── IBM 1130
+          ├── APL
+          └── RCA 1802
+                │
+                ▼
+          current campus catalog
+
+The catalog still supplies the actual title, description, URL, breadcrumb, status, and related exhibits.
+
+So a query such as:
+
+“I'd like to see an early microprocessor rather than a complete minicomputer.”
+
+could result in:
+
+RCA 1802       0.81
+IBM 1130       0.14
+APL            0.05
+
+with perhaps:
+
+router:
+  expert 2     0.67
+  expert 0     0.24
+
+That is already a meaningful MoE visualization.
+
+Make 1442/radio the planned update experiment
+
+This is actually one of the strongest parts of the demo.
+
+Call the initial corpus something like:
+
+Campus snapshot A
+
+containing:
+
+IBM 1130
+APL
+RCA 1802
+
+Train the model and preserve:
+
+model-A.bin
+dataset-A.jsonl
+catalog-A.hash
+metrics-A.json
+
+Later, when the 1442/radio project exists:
+
+Campus snapshot B
+
+adds:
+
+IBM 1442 Card Read Punch
+└── Radio / RFI music demo
+
+Now you have a genuine experiment rather than an artificial ML benchmark.
+
+Before retraining
+
+Ask model A:
+
+“Where can I hear the IBM card reader play music?”
+
+The old model might reasonably produce:
+
+IBM 1130    0.63
+RCA 1802    0.25
+APL         0.12
+
+The runtime catalog can notice:
+
+No sufficiently specific destination found.
+
+That is correct behavior. Don't let it invent one.
+
+Then update the catalog.
+
+The catalog can immediately expose the new exhibit through normal campus navigation, while the docent shows:
+
+Model knowledge:
+out of date
+
+Campus revision: B
+Model trained on: A
+
+That is a very nice visible distinction between:
+
+application knowledge
+model knowledge
+Then retrain in front of the user
+
+Now add training rows:
+
+"show me the card reader"
+"where is the IBM 1442?"
+"what device read punched cards?"
+"where is the radio music demonstration?"
+"how did the card reader make music?"
+"show me the RFI experiment"
+
+and click:
+
+Retrain Docent
+
+You could show:
+
+                 Before       After
+---------------------------------------
+IBM 1130          63%          5%
+RCA 1802          25%          2%
+APL               12%          1%
+1442 / Radio       —          92%
+
+Even better, show how the experts change:
+
+Before update
+
+Expert 0   IBM systems       ███████████
+Expert 1   languages         ████████
+Expert 2   micros            ███████
+
+
+After update
+
+Expert 0   IBM systems       ███████████
+Expert 1   languages         ████████
+Expert 2   micros            ███████
+Expert 3   IBM peripherals   █████
+
+Or perhaps the existing IBM-history expert absorbs the new material instead of a new specialization emerging.
+
+Either outcome is interesting.
+
+That's precisely the sort of thing moe-microscope should measure rather than prescribe.
+
+This suggests a particularly good sequence of experiments
+
+I'd revise my proposed Campus Docent series to:
+
+Experiment	Question
+CD01	Can a tiny dense model distinguish IBM 1130, APL, and RCA 1802?
+CD02	Does a tiny top-1 MoE learn the same task?
+CD03	Do experts spontaneously specialize by subject?
+CD04	How does top-2 affect ambiguous recommendations?
+CD05	Can the model train entirely in-browser?
+CD06	What happens when the campus adds the 1442/radio exhibit?
+CD07	Incremental retraining vs full retraining
+CD08	Does quantization preserve docent quality?
+
+Of those, CD06/CD07 may ultimately be the most educational experiments.
+
+They demonstrate something people constantly hear about AI systems but rarely get to see at understandable scale:
+
+The world changed. The application's database knows it changed. The model doesn't. Now watch the model learn the change.
+
+Three destinations are enough for the very first version
+
+I would resist the temptation to ingest the whole campus immediately.
+
+Start with roughly:
+
+             Campus Docent v0
+
+                  query
+                    │
+             ┌──────┴───────┐
+             │  Tiny MoE    │
+             └──────┬───────┘
+                    │
+       ┌────────────┼────────────┐
+       ▼            ▼            ▼
+   IBM 1130        APL        RCA 1802
+
+Perhaps 30–50 authored/derived questions per destination, plus:
+
+20 navigation questions
+20 recommendation questions
+20 deliberately ambiguous questions
+20 out-of-domain questions
+
+So maybe only 150–250 high-quality examples to start.
+
+That's small enough that users can inspect the training data itself.
+
+You could literally expose:
+
+Training set — 184 examples
+
+and let someone expand it.
+
+That's much more consistent with the philosophy of moe-microscope than silently feeding it thousands of generated examples.
+
+Include negative/out-of-domain training early
+
+This matters for the docent.
+
+Give it examples such as:
+
+"what's the weather?"
+"write me a sorting algorithm"
+"who won the Super Bowl?"
+"what should I buy?"
+
+and train:
+
+intent = unsupported
+
+Then the docent can answer:
+
+I only know about exhibits and navigation in this campus.
+
+That's especially valuable for such a tiny model.
+
+APL is particularly useful
+
+APL makes a very good third domain because it is semantically very unlike the two hardware-oriented examples.
+
+You can then ask things such as:
+
+“I want something about programming, not hardware.”
+
+The model should strongly choose APL.
+
+But:
+
+“Show me an old programming environment associated with IBM systems.”
+
+could activate both an APL/language expert and an IBM/history expert.
+
+That's exactly where top-2 routing becomes intuitively understandable.
+
+Likewise:
+
+“Which exhibit should I visit if I like both old processors and programming languages?”
+
+could legitimately return ranked recommendations rather than a single classification.
+
+RCA 1802 gives you another useful contrast
+
+IBM 1130 and RCA 1802 also let the docent learn concepts that overlap but aren't identical:
+
+             historic computing
+                   │
+        ┌──────────┴─────────┐
+        │                    │
+ IBM 1130                RCA 1802
+        │                    │
+ minicomputer           microprocessor
+ system/console         CPU / hobby machine
+ business/science       embedded / personal
+
+So it isn't merely memorizing names.
+
+You can test:
+
+“I want to see a whole minicomputer.”
+
+versus:
+
+“I want to see an early single-chip processor.”
+
+That's a much stronger semantic test.
+
+One change I'd make to the catalog design
+
+Keep the human-facing catalog authoritative, but add explicit ML metadata without contaminating the primary description:
+
+(
+    id: "rca-1802",
+    title: "RCA COSMAC 1802",
+    summary: "...",
+
+    docent: Some((
+        aliases: [
+            "1802",
+            "COSMAC",
+            "RCA processor",
+        ],
+        concepts: [
+            "microprocessor",
+            "8-bit",
+            "1970s computing",
+            "hobby computer",
+            "embedded computing",
+        ],
+        example_queries: [
+            "show me an early microprocessor",
+            "where is the COSMAC demo?",
+        ],
+    )),
+)
+
+That makes the training source human-reviewable.
+
+The generator can then derive variations, but the source corpus remains intentional rather than AI-generated mush.
+
+And save every training snapshot
+
+For this particular project I would make dataset/model provenance first-class:
+
+artifacts/
+  campus-a/
+    catalog.json
+    train.jsonl
+    validation.jsonl
+    model.bin
+    metrics.json
+
+  campus-b/
+    catalog.json
+    train.jsonl
+    validation.jsonl
+    model.bin
+    metrics.json
+
+Then moe-microscope can provide:
+
+Compare revisions A → B
+
+with:
+
+Destinations            3 → 5
+Training examples     184 → 247
+Parameters          unchanged
+Training time       420ms → 557ms
+Accuracy             94% → 93%
+Old-domain accuracy   94% → 92%
+New-domain accuracy    — → 96%
+
+And later measure catastrophic forgetting:
+
+Did teaching it about the 1442 make it worse at identifying APL?
+
+That turns the humble campus chatbot into a very legitimate tiny continual-learning experiment.
+
+So I would explicitly define the milestone as
+
+Campus Docent v0: Train a browser-resident tiny MoE to navigate among three existing, semantically distinct live exhibits — IBM 1130, APL, and RCA 1802 — with explainable routing and deterministic catalog-backed responses.
+
+Then:
+
+Campus Docent v1: Add the new 1442/radio exhibit after v0 is frozen and use it to demonstrate catalog/model version mismatch, incremental training, full retraining, expert adaptation, and catastrophic-forgetting measurements.
+
+That is actually a better experimental design than if the 1442 were already available today. It gives you a naturally occurring before/after event rather than having to manufacture one.

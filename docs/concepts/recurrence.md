@@ -36,4 +36,4 @@ and F15, resolved), so depth can be a function argument.
 
 ## Deeper reference
 
-- [Delivery plan](../overview/plan.md), Saga 4
+- [Delivery plan](../overview/plan.md), the recurrence-and-Engram saga

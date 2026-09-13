@@ -4,4 +4,6 @@
   (FreeToken, HRM/TRM, Engram, the tiny recursive MoE)
 - [research2.txt](research2.txt): the review after Saga 2 that reshaped
   the documentation and asked for the resource budget
+- [research3.txt](research3.txt): the campus docent discussion, a second
+  training area whose domain is the evolving sw-campus site
 - [MoE and Engram questions and answers](moe-engram-discussion.md)

@@ -39,12 +39,41 @@ metadata, and an immutable revision this repository can vendor by hash.
 
 ## `../demo-ml-utils`: external teacher export
 
-Trigger: Saga 4 step 4. The gated Rust-native training and generation path
+Trigger: the distillation saga. The gated Rust-native training and generation path
 documented in `docs/rust-native-model-training.md` there is the intended way
 to obtain top-k next-token log probabilities from a local quantized 1B to 7B
 model. This repository defines the fixture schema; the export tool would live
 beside the existing gated recipes and exit with the documented status when
 the capability is unavailable.
+
+## `../../software-wrighter-lab/sw-campus`: the campus docent easel
+
+Trigger: the campus docent saga (`docs/overview/plan.md`, Saga 4). This
+repository trains the docent model and publishes the "train the docent"
+page; the campus site hosts inference only. The campus agent should:
+
+1. adopt `fixtures/campus/snapshot-a.json` as the shape of a reviewable
+   docent block on `Place` (aliases, concepts, example queries) without
+   changing the human-facing catalog fields, and export the catalog with a
+   stable hash so the docent manifest can name the revision it was trained
+   on;
+2. add one easel per lobby with a passive face (featured exhibit, visit
+   link) and an interactive face (ask the docent, "why this?", open the full
+   microscope);
+3. load the exported model, labels, and manifest at startup and show a
+   stale badge when the manifest's catalog hash differs from the live
+   catalog; the catalog, never the model, supplies titles, URLs, breadcrumbs,
+   and status, and "no sufficiently specific destination" is a valid answer;
+4. keep the docent context (current place, recent places, interests, recent
+   queries) in IndexedDB and transient route state in session storage;
+5. run inference through the same `mlpl-wasm` session the microscope page
+   uses, or a headless build of it once upstream publishes one; no Rust
+   model code; `sw-checklist` applies to the Yew easel as to the rest of the
+   campus app.
+
+The 1442 card read punch and its radio demo are deliberately absent from
+snapshot A; when the campus publishes them, that revision is snapshot B and
+starts the docent v1 saga here.
 
 ## `../sw-mlpl`: language and generic host
 
@@ -57,3 +86,8 @@ Upstream has queued them as `moe-microscope-followups`; the recommended order
 is F5, F8, F7, F6, D1, because F5 and F8 change what the lessons and the
 observation facade can express. F1 to F4 were fixed upstream in
 `moe-microscope-findings` and are verified here.
+
+For the campus docent, one ask is shared with `../demo-abstract-algebra`
+(its blocker B7): a headless `--target web` build of `mlpl-wasm` alone, so a
+page can load the evaluator as a library instead of the whole playground in
+a hidden iframe. Until then both projects use the iframe bridge.

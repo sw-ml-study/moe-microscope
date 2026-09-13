@@ -21,7 +21,7 @@ rather than by anything a human would call a topic.
 That is why the plan treats specialization as something to measure, not
 assume. The domain carries task tags precisely so MX02 can draw the
 family-by-expert heatmap and report a specialization score, and why the
-router warm start in Saga 4 (nudging the router toward task tags early, then
+router warm start in the distillation saga (nudging the router toward task tags early, then
 releasing it) is an experiment with a control rather than a design
 assumption.
 
@@ -141,7 +141,7 @@ repository can make measurable:
   scoring, so cost is E times d_router instead of E times d_model.
 - Grouped or hierarchical routing: score G groups first, then experts within
   the winning groups. DeepSeek does this for hardware locality; the plan's
-  "expert banks" step (Saga 6) is the NPU-friendly version.
+  "expert banks" step (the hybrid execution saga) is the NPU-friendly version.
 - Hash routing: pick the expert from a hash of the token id, zero router
   cost and no learning. It is the same mechanism as Engram addressing
   applied to compute, and a good comparison lesson.
@@ -183,7 +183,7 @@ on the same data and plot collisions from `engram_stats`, gate magnitude,
 and prose accuracy against it. The expected shape is a knee: accuracy flat
 until slots run out, then falling, with the gate shrinking as slots get
 muddy. That is the memory-side twin of the expert-cache capacity curve in
-Saga 5. Table size is a memory cost, not a compute cost: reading a slot is
+the quantization, packing, and cache saga. Table size is a memory cost, not a compute cost: reading a slot is
 O(1) whatever S is, which is why huge tables can live in host RAM.
 
 ## Consequences recorded in the plan

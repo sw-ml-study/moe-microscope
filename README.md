@@ -112,11 +112,14 @@ inventory is [`catalog/lessons.toml`](catalog/lessons.toml).
 
 ## Next
 
-Whether recurrence, Engram, distillation, and quantization move the
-quality and resource frontier for roughly the same active budget, then
-whether a bounded expert cache and heterogeneous execution let the whole
-model exceed fast memory and stay usable. Plan:
-[docs/overview/plan.md](docs/overview/plan.md).
+A second training area first: a campus docent, a tiny MoE that trains and
+retrains in the browser and directs visitors of the Software Wrighter
+research campus site, with the campus catalog as the authority for facts
+and the model predicting only intent and destination. Then whether
+recurrence, Engram, distillation, and quantization move the quality and
+resource frontier for roughly the same active budget, and whether a bounded
+expert cache and heterogeneous execution let the whole model exceed fast
+memory and stay usable. Plan: [docs/overview/plan.md](docs/overview/plan.md).
 
 ## What is here
 
