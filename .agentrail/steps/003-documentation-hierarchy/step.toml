@@ -1,6 +1,6 @@
 number = 3
 slug = "documentation-hierarchy"
-status = "pending"
+status = "in-progress"
 description = "Restructure docs/ into overview, results, concepts, experiments, implementati..."
 role = "production"
 context_files = []

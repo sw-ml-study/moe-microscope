@@ -18,8 +18,8 @@ if [ "$mode" = "write" ]; then
     cp "$repo_root/$tmp_rel/teacher-v0.json" "$fixture"
     cp "$repo_root/$tmp_rel/teacher-fixture.svg" "$preview"
     row=$(cat "$repo_root/$tmp_rel/results-row.md")
-    grep -q '^| TE01 |' "$repo_root/docs/results.md" && sed -i '' '/^| TE01 |/d' "$repo_root/docs/results.md"
-    printf '%s\n' "$row" >> "$repo_root/docs/results.md"
+    grep -q '^| TE01 |' "$repo_root/docs/reference/results.md" && sed -i '' '/^| TE01 |/d' "$repo_root/docs/reference/results.md"
+    printf '%s\n' "$row" >> "$repo_root/docs/reference/results.md"
     jq -n \
         --arg revision "$(git -C "$repo_root" rev-parse HEAD)" \
         --arg sha256 "$(shasum -a 256 "$fixture" | awk '{print $1}')" \
@@ -30,7 +30,7 @@ if [ "$mode" = "write" ]; then
         --argjson params "$(jq '.teacher.params' "$fixture")" \
         --argjson train_loss "$(jq '.teacher.train_loss' "$fixture")" \
         --argjson agreement "$(jq '.teacher.top1_agreement' "$fixture")" \
-        '{schema: "sw-ml-study.moe-microscope-teacher-index", version: 1, source_revision: $revision, fixtures: [{id: "TE01", fixture: "fixtures/teacher/teacher-v0.json", source: "demos/teacher.mlpl", preview: "assets/previews/teacher-fixture.svg", guide: "docs/teacher-fixture.md", sha256: $sha256, source_sha256: $source_sha256, bytes: $bytes, count: $count, top_k: $top_k, params: $params, train_loss: $train_loss, top1_agreement: $agreement}]}' > "$index"
+        '{schema: "sw-ml-study.moe-microscope-teacher-index", version: 1, source_revision: $revision, fixtures: [{id: "TE01", fixture: "fixtures/teacher/teacher-v0.json", source: "demos/teacher.mlpl", preview: "assets/previews/teacher-fixture.svg", guide: "docs/implementation/teacher-fixture.md", sha256: $sha256, source_sha256: $source_sha256, bytes: $bytes, count: $count, top_k: $top_k, params: $params, train_loss: $train_loss, top1_agreement: $agreement}]}' > "$index"
     rm -rf "$repo_root/$tmp_rel"
     echo "PASS teacher fixture trained, installed, and indexed"
     exit 0
@@ -58,7 +58,7 @@ field() { printf '%s' "$encoded" | base64 --decode | jq -r "$1"; }
 [ "$bytes" = "$(field '.bytes')" ] || { echo "teacher fixture size drift" >&2; exit 1; }
 [ "$(jq '.count' "$fixture")" = "$(field '.count')" ] || { echo "teacher count drift" >&2; exit 1; }
 [ -s "$preview" ] || { echo "missing teacher preview" >&2; exit 1; }
-grep -q '^| TE01 |' "$repo_root/docs/results.md" || { echo "missing TE01 results row" >&2; exit 1; }
+grep -q '^| TE01 |' "$repo_root/docs/reference/results.md" || { echo "missing TE01 results row" >&2; exit 1; }
 for path in "$(field '.guide')" "$(field '.source')" "$(field '.preview')"; do
     [ -f "$repo_root/$path" ] || { echo "missing indexed teacher input: $path" >&2; exit 1; }
 done

@@ -68,7 +68,7 @@ scale mode="check":
 delta mode="check":
     ./scripts/run-delta-demo {{mode}}
 
-# Regenerate or check the RB01 resource budget (no training): docs/resource-budget.md and its storage diagram.
+# Regenerate or check the RB01 resource budget (no training): docs/results/resource-economics.md and its storage diagram.
 budget mode="check":
     ./scripts/run-budget-demo {{mode}}
 

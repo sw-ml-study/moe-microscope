@@ -1,4 +1,4 @@
-# Results-table writer: one fixed-column markdown row per lesson run, appended to docs/results.md.
+# Results-table writer: one fixed-column markdown row per lesson run, appended to docs/reference/results.md.
 
 def u:results_columns() {
   "Record keys of the fixed results columns, in table order.";

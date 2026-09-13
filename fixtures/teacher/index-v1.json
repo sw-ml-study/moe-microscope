@@ -8,7 +8,7 @@
       "fixture": "fixtures/teacher/teacher-v0.json",
       "source": "demos/teacher.mlpl",
       "preview": "assets/previews/teacher-fixture.svg",
-      "guide": "docs/teacher-fixture.md",
+      "guide": "docs/implementation/teacher-fixture.md",
       "sha256": "33a70b87214412e3c3fe2dcf23b027e21ff0dee4ae31b6b34c9e87c6147ad5d2",
       "source_sha256": "c4df3337de446e232f24d83f2f0ab1511ef0ada655758faca03ae558732a52cc",
       "bytes": 75910,

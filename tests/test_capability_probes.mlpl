@@ -1,4 +1,4 @@
-# Executable capability probes behind docs/sw-mlpl-blockers.md and docs/sw-mlpl-findings.md.
+# Executable capability probes behind docs/reference/sw-mlpl-blockers.md and docs/reference/sw-mlpl-findings.md.
 
 def u:mse(a, b) {
   "Mean squared error between two same-shaped arrays.";

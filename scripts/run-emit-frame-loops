@@ -63,7 +63,7 @@ echo "PASS emit_frame inside while streams every iteration in order"
 
 run_program 'include "lib/observe.mlpl"; 1'
 grep -q 'include is a script-mode construct' "$response_file" || {
-    echo "F16 changed: include is now accepted on the eval_stream surface; update docs/sw-mlpl-findings.md and scripts/bundle-program" >&2
+    echo "F16 changed: include is now accepted on the eval_stream surface; update docs/reference/sw-mlpl-findings.md and scripts/bundle-program" >&2
     exit 1
 }
 echo "PASS probe F16 still reproduces: eval_stream has no source provider for include"

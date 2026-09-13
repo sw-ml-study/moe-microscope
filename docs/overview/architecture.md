@@ -10,7 +10,7 @@ as the toolchain for the educational visualization itself.
 Prefer a shipped sw-MLPL feature over an equivalent built here. Build from
 scratch only where watching the mechanism is the lesson, and then show both
 forms with a parity check. Every gap becomes a reproducer, a pinned probe,
-and an upstream work order in [`sw-mlpl-findings.md`](sw-mlpl-findings.md).
+and an upstream work order in [`sw-mlpl-findings.md`](../reference/sw-mlpl-findings.md).
 
 MicroMoE is written as readable MLPL: an embedding, an Engram lookup, one
 shared recurrent block containing causal attention and a router over a bank of
@@ -149,7 +149,7 @@ and the optional native renderer. Its Rust work is subject to `sw-checklist`.
 
 `../sw-mlpl` changes only for a measured language-wide gap with a minimal
 executable reproducer, recorded first in the
-[capability ledger](sw-mlpl-blockers.md).
+[capability ledger](../reference/sw-mlpl-blockers.md).
 
 ## Explicit non-boundaries
 

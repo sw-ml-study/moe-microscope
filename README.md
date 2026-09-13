@@ -40,7 +40,7 @@ checked against the interpreter itself, and short templated prose. Experts are
 distilled at four levels, token distributions from a teacher, a router warm
 start from task tags, low-rank expert deltas fitted to a dense teacher, and
 deep supervision across recurrences, each measured alone against the baseline.
-The [delivery plan](docs/plan.md) explains both choices in detail.
+The [delivery plan](docs/overview/plan.md) explains both choices in detail.
 
 The repository dogfoods sw-MLPL twice: as the language for building the model
 and its runtime pieces, and, together with `../demo-extensions`, as the
@@ -48,7 +48,7 @@ toolchain for the educational visualization itself. Shipped features are
 preferred over rebuilt ones; a mechanism is built from scratch only where
 watching it is the lesson, and then both forms are shown with a parity check.
 Every gap becomes a reproducer, a pinned probe, and an upstream work order in
-[`docs/sw-mlpl-findings.md`](docs/sw-mlpl-findings.md); the first four were
+[`docs/reference/sw-mlpl-findings.md`](docs/reference/sw-mlpl-findings.md); the first four were
 fixed upstream the day they were filed.
 
 The microscope scale (CPU, seconds, tens of thousands of parameters) is the
@@ -59,7 +59,7 @@ the packed file, not a training target.
 ## How big is MicroMoE?
 
 RB01 answers the size question without training. Every number in
-[`docs/resource-budget.md`](docs/resource-budget.md) is labeled M
+[`docs/results/resource-economics.md`](docs/results/resource-economics.md) is labeled M
 (measured), D (derived), or E (estimate), and the calculator behind it
 (`lib/budget.mlpl`) is pinned to the measured parameter counts of every
 lesson.
@@ -128,7 +128,7 @@ mixture ratios, total, window, and split fraction live in
 [`fixtures/domain/mixture-v0.json`](fixtures/domain/mixture-v0.json). The
 exact-match harness reports accuracy per family and overall, and the results
 writer appends one fixed-column row per lesson run to
-[`docs/results.md`](docs/results.md).
+[`docs/reference/results.md`](docs/reference/results.md).
 
 ## Dense baseline microscope
 
@@ -153,7 +153,7 @@ validation loss rises to 3.79, training rows are reproduced 70 percent of the
 time, and on held-out rows only the prose family (a local animal-to-place
 pattern) is answered correctly, two times in three. Arithmetic, sequence, and
 MLPL answers need rules this model cannot learn from 90 rows. The numbers are
-one row in [`docs/results.md`](docs/results.md), and the residual is written
+one row in [`docs/reference/results.md`](docs/reference/results.md), and the residual is written
 by hand so `attention_weights` can show the trained attention map.
 
 ## Routing microscope
@@ -315,7 +315,7 @@ behavior stays the same honest memorization story. Its export,
 [`fixtures/teacher/teacher-v0.json`](fixtures/teacher/teacher-v0.json), holds
 the top-8 next-token log-probabilities at every answer position of the
 training split as flat parallel vectors; the schema is documented in
-[`docs/teacher-fixture.md`](docs/teacher-fixture.md) so an external teacher
+[`docs/implementation/teacher-fixture.md`](docs/implementation/teacher-fixture.md) so an external teacher
 can export the same shape.
 
 ![TE01 teacher export: the first training row's answer positions with their top-8 next-token probabilities, target bars highlighted](assets/previews/teacher-fixture.svg)
@@ -333,7 +333,7 @@ SSE path into a recording under the peer version-zero schema from
 [`fixtures/recordings/index-v1.json`](fixtures/recordings/index-v1.json). The
 generic Rust/Yew/WASM microscope in `../demo-extensions` renders these
 recordings without lesson-specific Rust; the work order is
-[`docs/host-handoff.md`](docs/host-handoff.md). Because the server surface
+[`docs/implementation/host-handoff.md`](docs/implementation/host-handoff.md). Because the server surface
 has no `include`, `scripts/bundle-program` inlines a lesson's library tree
 into the single program a host submits.
 
@@ -358,17 +358,12 @@ the adjacent server binary is older than the evaluator fixes it needs.
 ## What is here
 
 ```text
-docs/plan.md                 Delivery plan, sagas, the distillation and domain answers
-docs/sagas.md                Saga queue (active and future)
-docs/architecture.md         Ownership, layering, the model under the lens
-docs/sw-mlpl-blockers.md     Capability ledger: supported, awkward, blocked
-docs/sw-mlpl-findings.md     Upstream work orders with reproducers and status
-docs/cross-repo-handoffs.md  Read-only work orders for sibling repositories
-docs/host-handoff.md         The demo-extensions work order for the DN01 recording
-docs/results.md              Memory/speed/quality rows, one per lesson run
-catalog/lessons.toml         Lesson inventory with implementation form and measured triple
-docs/research.txt            The original design discussion
-docs/moe-engram-discussion.md  How experts specialize, how routing decides, how Engram is sized
+docs/README.md               Documentation landing page with three reader journeys
+docs/overview/               Architecture, delivery plan, saga queue
+docs/results/                Resource economics (RB01) and the results dashboard
+docs/reference/              Full results table, generation benchmark, capability ledger, upstream findings
+docs/implementation/         Host handoff, sibling work orders, teacher fixture schema
+docs/research/               The design discussion, the Saga 2 review, the MoE/Engram questions
 lib/  demos/  tests/         MLPL model code, lessons, and native mlplunit tests
 probes/                      Standalone reproducers re-checked by the gate
 fixtures/  assets/previews/  Bounded fixtures, pinned recordings, and committed diagrams
@@ -376,7 +371,7 @@ catalog/                     Machine-readable lesson inventory
 scripts/  justfile           Thin gate and tool-selection scripts
 ```
 
-Lesson code lands saga by saga; see [`docs/sagas.md`](docs/sagas.md) for what
+Lesson code lands saga by saga; see [`docs/overview/sagas.md`](docs/overview/sagas.md) for what
 is active.
 
 ## Build and run

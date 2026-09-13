@@ -25,13 +25,13 @@ done
 
 keyof() { awk -F'|' '{ $4=""; $12=""; print }'; }
 if [ "$mode" = "write" ]; then
-    grep -v '^| LD01r\? |' "$repo_root/docs/results.md" > "$repo_root/$tmp_rel/results.md"
+    grep -v '^| LD01r\? |' "$repo_root/docs/reference/results.md" > "$repo_root/$tmp_rel/results.md"
     cat "$repo_root/$tmp_rel/results-row.md" >> "$repo_root/$tmp_rel/results.md"
-    cp "$repo_root/$tmp_rel/results.md" "$repo_root/docs/results.md"
+    cp "$repo_root/$tmp_rel/results.md" "$repo_root/docs/reference/results.md"
 else
     for lesson in LD01 LD01r; do
         generated_key=$(grep "^| $lesson |" "$repo_root/$tmp_rel/results-row.md" | keyof)
-        committed_key=$(grep "^| $lesson |" "$repo_root/docs/results.md" | keyof)
+        committed_key=$(grep "^| $lesson |" "$repo_root/docs/reference/results.md" | keyof)
         [ "$generated_key" = "$committed_key" ] || { echo "$lesson results row differs; run scripts/run-delta-demo write" >&2; exit 1; }
     done
 fi

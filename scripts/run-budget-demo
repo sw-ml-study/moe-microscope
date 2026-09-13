@@ -1,5 +1,5 @@
 #!/bin/sh
-# Run RB01 (no training) into a temporary directory; check (or write) docs/resource-budget.md and the storage diagram.
+# Run RB01 (no training) into a temporary directory; check (or write) docs/results/resource-economics.md and the storage diagram.
 set -eu
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
@@ -21,7 +21,7 @@ pair() {
         exit 1
     fi
 }
-pair resource-budget.md docs/resource-budget.md
+pair resource-budget.md docs/results/resource-economics.md
 pair budget-storage.svg assets/previews/budget-storage.svg
 rm -rf "$repo_root/$tmp_rel"
 echo "PASS resource budget document and diagram ($mode)"

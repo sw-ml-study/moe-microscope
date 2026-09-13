@@ -229,8 +229,8 @@ params2 = params - p_ffn;
 active2 = active - p_ffn;
 print("QUALITY (deltas only) -- train loss", u:svg_round(final_train2, 4), "val loss", u:svg_round(final_val2, 4), "val acc", val_acc2, "train exact", u:svg_round(rt2.accuracy.overall, 3));
 
-dn = unwrap(u:results_lookup("docs/results.md", "DN01"));
-mx = unwrap(u:results_lookup("docs/results.md", "MX01"));
+dn = unwrap(u:results_lookup("docs/reference/results.md", "DN01"));
+mx = unwrap(u:results_lookup("docs/reference/results.md", "MX01"));
 row = {lesson: "LD01", config: "shared ffn + 16 rank4 deltas top1 d16 T28 120ex 300ep lr0.003 alpha0.01 routerMACs272", binary: binary, params: params, active_params: active, bytes_per_expert: p_delta * 8, expert_evals: 1, bytes_per_token: active * 8, ms_per_token: u:svg_round(ms_per_token, 4), val_loss: u:svg_round(final_val, 4), ppl: u:svg_round(exp(final_val), 2), arith_acc: u:svg_round(rv.accuracy.arithmetic, 3), seq_acc: u:svg_round(rv.accuracy.sequence, 3), mlpl_acc: u:svg_round(rv.accuracy.mlpl, 3), prose_acc: u:svg_round(rv.accuracy.prose, 3), router_entropy: u:svg_round(final.entropy, 3), balance: u:svg_round(final.balance, 3), specialization: u:svg_round(spec, 3)};
 row2 = {lesson: "LD01r", config: "16 rank4 deltas only top1 d16 T28 120ex 300ep lr0.003 alpha0.01 routerMACs272", binary: binary, params: params2, active_params: active2, bytes_per_expert: p_delta * 8, expert_evals: 1, bytes_per_token: active2 * 8, ms_per_token: u:svg_round(train_ms2 / (steps * T), 4), val_loss: u:svg_round(final_val2, 4), ppl: u:svg_round(exp(final_val2), 2), arith_acc: u:svg_round(rv2.accuracy.arithmetic, 3), seq_acc: u:svg_round(rv2.accuracy.sequence, 3), mlpl_acc: u:svg_round(rv2.accuracy.mlpl, 3), prose_acc: u:svg_round(rv2.accuracy.prose, 3)};
 r_row = if writing {
@@ -291,7 +291,7 @@ def u:comparison_svg() {
   page = str_concat(page, u:svg_rect(30, 440, 900, 96, "panel"));
   page = str_concat(page, u:svg_text(50, 464, "", "WHY: DeepSeek-V3's shape at microscope scale: one shared expert always on, plus many cheap routed experts."));
   page = str_concat(page, u:svg_text(50, 486, "", "WHY: deltas alone are a linear map per token and lean on the attention block; the shared FFN restores the nonlinearity."));
-  page = str_concat(page, u:svg_text(50, 508, "", "HOW: DN01 and MX01 come from docs/results.md; LD01 and LD01r are trained here; the map counts masked training tokens."));
+  page = str_concat(page, u:svg_text(50, 508, "", "HOW: DN01 and MX01 come from docs/reference/results.md; LD01 and LD01r are trained here; the map counts masked training tokens."));
   page = str_concat(page, u:svg_text(50, 528, "m", "Sixteen experts on 406 tokens means about 25 tokens each; a column bright in one row is an expert one family owns."));
   str_concat(page, "</svg>")
 }

@@ -294,7 +294,7 @@ it with duplicated content or edit it independently.
   state together before completing a step. Stage named files, never broad
   worktree sweeps.
 - Treat every sibling repository as read-only. Record separately actionable
-  work in `docs/cross-repo-handoffs.md`; never change a sibling from here.
+  work in `docs/implementation/cross-repo-handoffs.md`; never change a sibling from here.
 - Never install or overwrite stable user tools. Prefer explicit absolute tool
   overrides (`MLPL`, `MLPLUNIT`), then `PATH`, then the documented adjacent
   development checkouts selected by `scripts/select-*`.
@@ -309,16 +309,16 @@ it with duplicated content or edit it independently.
   visualization itself, not only the model. Every lesson emits a recording
   for the generic host, and every saga ends with a host step. Every language
   or host gap gets a reproducer under `probes/`, a pinned mlplunit probe, a
-  workaround, and an entry in `docs/sw-mlpl-findings.md` in the same step.
+  workaround, and an entry in `docs/reference/sw-mlpl-findings.md` in the same step.
 - This is primarily an sw-MLPL project. MLPL owns the model (MicroMoE), the
   training loops, data generators, evaluation oracles, quantizers, packed-file
   reader/writer, expert-cache simulator, hybrid scheduler, lesson order,
   observation names, and lesson text. Hosts own only generic rendering,
   transport, retention, playback, and interaction.
 - Every lesson satisfies the visual and measurement contract in
-  `docs/plan.md`: an annotated what/why/how diagram for each data structure
+  `docs/overview/plan.md`: an annotated what/why/how diagram for each data structure
   and transformation, a step strip for the run, and recorded memory, speed,
-  and quality measurements written to the catalog and `docs/results.md`.
+  and quality measurements written to the catalog and `docs/reference/results.md`.
   Diagrams are derived from the same recorded values the tests assert on.
 - Training uses the dense-masked MoE formulation; inference uses sparse
   dispatch. Every lesson that introduces a sparse path asserts parity with
@@ -329,7 +329,7 @@ it with duplicated content or edit it independently.
   opt-in.
 - Use `emit_frame` as the low-level observation primitive and return observed
   values unchanged. Do not request new upstream syntax or builtins until an
-  executable probe in `docs/sw-mlpl-blockers.md` demonstrates a blocking gap.
+  executable probe in `docs/reference/sw-mlpl-blockers.md` demonstrates a blocking gap.
 - Promote helpers to `../demo-mlpl-libraries` only after three unrelated
   lessons prove a stable, domain-neutral API. Generic viewer work belongs in
   `../demo-extensions`; no host may contain router, cache, or Engram
@@ -365,6 +365,6 @@ it with duplicated content or edit it independently.
   run, commit/push status, what the next step will deliver, and explicit
   blockers or limitations (`none` when there are none).
 
-Planning references: `docs/research.txt`, `docs/plan.md`, `docs/sagas.md`,
-`docs/architecture.md`, `docs/sw-mlpl-blockers.md`, `docs/sw-mlpl-findings.md`,
-`docs/cross-repo-handoffs.md`, and `docs/results.md`.
+Planning references: `docs/research/research.txt`, `docs/overview/plan.md`, `docs/overview/sagas.md`,
+`docs/overview/architecture.md`, `docs/reference/sw-mlpl-blockers.md`, `docs/reference/sw-mlpl-findings.md`,
+`docs/implementation/cross-repo-handoffs.md`, and `docs/reference/results.md`.

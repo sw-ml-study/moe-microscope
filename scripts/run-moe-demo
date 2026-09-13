@@ -31,16 +31,16 @@ elif ! cmp -s "$repo_root/$tmp_rel/family-by-expert.json" "$repo_root/fixtures/m
     exit 1
 fi
 
-# The row's deterministic columns (everything except binary and ms/token) must match docs/results.md.
+# The row's deterministic columns (everything except binary and ms/token) must match docs/reference/results.md.
 row=$(cat "$repo_root/$tmp_rel/results-row.md")
 key=$(printf '%s\n' "$row" | awk -F'|' '{ $4=""; $12=""; print }')
 if [ "$mode" = "write" ]; then
-    grep -q '^| MX01 |' "$repo_root/docs/results.md" && sed -i '' '/^| MX01 |/d' "$repo_root/docs/results.md"
-    printf '%s\n' "$row" >> "$repo_root/docs/results.md"
+    grep -q '^| MX01 |' "$repo_root/docs/reference/results.md" && sed -i '' '/^| MX01 |/d' "$repo_root/docs/reference/results.md"
+    printf '%s\n' "$row" >> "$repo_root/docs/reference/results.md"
 else
-    committed_key=$(grep '^| MX01 |' "$repo_root/docs/results.md" | awk -F'|' '{ $4=""; $12=""; print }')
+    committed_key=$(grep '^| MX01 |' "$repo_root/docs/reference/results.md" | awk -F'|' '{ $4=""; $12=""; print }')
     [ "$key" = "$committed_key" ] || {
-        echo "MX01 results row differs from docs/results.md; run scripts/run-moe-demo write" >&2
+        echo "MX01 results row differs from docs/reference/results.md; run scripts/run-moe-demo write" >&2
         echo "generated: $key" >&2
         echo "committed: $committed_key" >&2
         exit 1

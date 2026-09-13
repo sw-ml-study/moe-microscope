@@ -10,7 +10,7 @@ expect_error() {
     pattern=$2
     output=$("$mlpl" --source-dir "$repo_root" "$repo_root/probes/$name.mlpl" 2>&1 || true)
     printf '%s\n' "$output" | grep -q -- "$pattern" || {
-        echo "probe $name: expected '$pattern'; upstream behavior changed, update docs/sw-mlpl-findings.md" >&2
+        echo "probe $name: expected '$pattern'; upstream behavior changed, update docs/reference/sw-mlpl-findings.md" >&2
         printf '%s\n' "$output" | tail -3 >&2
         exit 1
     }

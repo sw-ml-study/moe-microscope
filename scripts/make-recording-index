@@ -17,7 +17,7 @@ while IFS='|' read -r id lesson demo recording preview mf mo mv mt first last; d
         --argjson observation_count "$(jq '[.frames[].observations[]] | length' "$repo_root/$recording")" \
         --argjson value_count "$(jq '[.frames[].observations[].values | length] | add' "$repo_root/$recording")" \
         --argjson steps "$(jq -c '[.frames[].step]' "$repo_root/$recording")" \
-        '{id: $id, lesson: $lesson, source: $source, recording: $recording, preview: $preview, guide: "docs/host-handoff.md", recording_sha256: $recording_sha256, source_sha256: $source_sha256, bundle_sha256: $bundle_sha256, frame_count: $frame_count, observation_count: $observation_count, value_count: $value_count, steps: $steps}')
+        '{id: $id, lesson: $lesson, source: $source, recording: $recording, preview: $preview, guide: "docs/implementation/host-handoff.md", recording_sha256: $recording_sha256, source_sha256: $source_sha256, bundle_sha256: $bundle_sha256, frame_count: $frame_count, observation_count: $observation_count, value_count: $value_count, steps: $steps}')
     entries="$entries$entry"
 done < "$repo_root/scripts/recordings.conf"
 printf '%s' "$entries" | jq -s --arg revision "$revision" '{schema: "sw-ml-study.ml-microscope-fixture-index", version: 1, recording_schema: "fixtures/recordings/recording-schema-v0.json", source_repository: "https://github.com/sw-ml-study/moe-microscope.git", source_revision: $revision, bundler: "scripts/bundle-program", fixtures: .}' > "$repo_root/fixtures/recordings/index-v1.json"

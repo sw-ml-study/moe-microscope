@@ -38,7 +38,7 @@ label, rendered `docs/reference/generation-benchmark.md`, M/D/E legend;
 opt-in measurement, gate-time validation.
 
 Step 1 status: complete. `lib/budget.mlpl` calculator pinned to every
-measured parameter count; RB01 generates `docs/resource-budget.md` (sizes,
+measured parameter count; RB01 generates `docs/results/resource-economics.md` (sizes,
 expert cost and statistics, stored versus active, dtype projections,
 residency scenarios, transfer estimates, M/D/E labels) and the proportional
 storage diagram, both freshness-checked by the gate.
@@ -161,7 +161,7 @@ family map over sixteen experts, two diagrams, two results rows.
 Step 5 status: complete. DN01 recorded over live `mlpl-serve` SSE into
 `fixtures/recordings/dense-baseline-run-v0.json` with a hash-pinned index;
 `scripts/bundle-program` works around the server's missing source provider
-(F16); loop streaming proven; `docs/host-handoff.md` written for
+(F16); loop streaming proven; `docs/implementation/host-handoff.md` written for
 `../demo-extensions`; D1 and F10 verified fixed upstream.
 
 Step 7 status: complete. MX01 and MX02 recorded over live SSE (MX02 made
@@ -251,7 +251,7 @@ diagram and results row.
 Step 2 status: complete. Sixteen native probes and five standalone
 reproducers; F1 to F4 verified fixed upstream, F5 to F8 and D1 pinned and
 queued upstream as `moe-microscope-followups`. See
-[`sw-mlpl-findings.md`](sw-mlpl-findings.md).
+[`sw-mlpl-findings.md`](../reference/sw-mlpl-findings.md).
 
 Acceptance: `just check` passes from a clean checkout; the ledger classifies
 every probed capability with executable evidence; DN01 satisfies the visual

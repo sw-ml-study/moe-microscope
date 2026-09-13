@@ -29,7 +29,7 @@ framework proven there. Only Rust code is subject to `sw-checklist`.
 
 Every gap met on the way is a finding. It gets a reproducer, a pinned probe,
 a workaround, and an upstream work order in
-[`sw-mlpl-findings.md`](sw-mlpl-findings.md). The first four findings were
+[`sw-mlpl-findings.md`](../reference/sw-mlpl-findings.md). The first four findings were
 fixed upstream the same day they were filed; that loop is part of the product.
 
 ## Builtin first, from scratch where it teaches
@@ -51,12 +51,12 @@ The catalog records each lesson as `builtin`, `from-scratch`, or `both`.
 | Expert cache, q-star scheduler, packed file | no | from scratch | systems lessons; byte I/O builtins underneath |
 | Observation, SVG, recording, playback | yes (`emit_frame`, `svg`, peer schema, Yew host) | builtin | the host is dogfooded, not rebuilt |
 
-The source discussion is retained in [`research.txt`](research.txt) and the
+The source discussion is retained in [`research.txt`](../research/research.txt) and the
 Saga 2 review that reshaped the documentation in
-[`research2.txt`](research2.txt); the
+[`research2.txt`](../research/research2.txt); the
 questions about how experts specialize, how routing is decided, and how the
 Engram table is sized are answered in
-[`moe-engram-discussion.md`](moe-engram-discussion.md).
+[`moe-engram-discussion.md`](../research/moe-engram-discussion.md).
 
 ## Two questions answered up front
 
@@ -180,8 +180,8 @@ Blocked with workarounds, pinned by probes and queued upstream: index and mask
 builtins inside `grad` (eager mask passed as a constant), `repeat` inside a
 traced function (nested `apply`), models as user-function arguments
 (globals), and `emit_frame` names that are not literals (naming helpers
-only). Details are in the [capability ledger](sw-mlpl-blockers.md) and
-[findings](sw-mlpl-findings.md).
+only). Details are in the [capability ledger](../reference/sw-mlpl-blockers.md) and
+[findings](../reference/sw-mlpl-findings.md).
 
 ## Architecture rule
 
@@ -199,7 +199,7 @@ Rust hosts may own generic observation ingestion, retention, playback,
 tensor inspectors, and rendering. They must not contain a `MoeVisualizer`,
 router semantics, cache policy, or any other lesson-specific type. Sibling
 repositories are read-only from this project; their work is written down as a
-handoff in [`cross-repo-handoffs.md`](cross-repo-handoffs.md).
+handoff in [`cross-repo-handoffs.md`](../implementation/cross-repo-handoffs.md).
 
 ## MicroMoE at two scales
 
@@ -259,7 +259,7 @@ Every lesson measures three things and records them in its catalog entry:
 | Speed | expert evaluations per token, bytes transferred per token, cache hits/misses/loads, CPU versus NPU assignments, and wall-clock milliseconds per token and per training step | counted costs are the deterministic primary metric; `clock_ms()` gives the machine-dependent secondary metric, reported with the binary version |
 | Quality | validation loss, perplexity, per-task exact-match accuracy, teacher/student KL, router entropy, expert load balance, expert specialization by task, Engram gate magnitude and collisions, accuracy versus recurrence depth | evaluation harness over the fixed synthetic split; oracles for arithmetic, sequence, and MLPL tasks |
 
-Every run appends one row to a results table (`docs/results.md`) keyed by
+Every run appends one row to a results table (`docs/reference/results.md`) keyed by
 lesson ID, configuration, and binary version, so the ablation matrix from the
 research (dense, +recurrence, +MoE, +Engram, combinations, +quantization,
 +cache, +hybrid) fills in as sagas complete rather than being promised.
@@ -366,7 +366,7 @@ specialization map is a checked artifact; MoE rows exist in the results table.
 
 ## Saga 3: resource budget and documentation restructure
 
-Source: [`research2.txt`](research2.txt), the user's review of the README
+Source: [`research2.txt`](../research/research2.txt), the user's review of the README
 after Saga 2. Its diagnosis: the mechanisms are demonstrated, but the README
 buries the findings under implementation detail, and the reader has no
 physical sense of how small the models are or what an expert costs. This

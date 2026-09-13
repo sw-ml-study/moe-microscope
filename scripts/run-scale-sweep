@@ -22,9 +22,9 @@ if [ "$mode" = "write" ]; then
         cp "$repo_root/$tmp_rel/$name.json" "$fixture_dir/$name.json"
         cat "$repo_root/$tmp_rel/$name.json.row" >> "$rows"
     done
-    grep -v '(DS01)' "$repo_root/docs/results.md" > "$repo_root/$tmp_rel/results.md"
+    grep -v '(DS01)' "$repo_root/docs/reference/results.md" > "$repo_root/$tmp_rel/results.md"
     cat "$rows" >> "$repo_root/$tmp_rel/results.md"
-    cp "$repo_root/$tmp_rel/results.md" "$repo_root/docs/results.md"
+    cp "$repo_root/$tmp_rel/results.md" "$repo_root/docs/reference/results.md"
     list=""
     for spec in $points; do
         kind=${spec%%:*}; rest=${spec#*:}; total=${rest%%:*}; epochs=${rest#*:}
@@ -56,6 +56,6 @@ for encoded in $(jq -r '.points[] | @base64' "$index"); do
       .final_val > 0 and .final_train > 0 and .acc_overall >= 0 and .acc_overall <= 1
     ' "$file" >/dev/null
 done
-grep -c '(DS01)' "$repo_root/docs/results.md" | grep -q '^8$' || { echo "expected eight DS01 results rows" >&2; exit 1; }
+grep -c '(DS01)' "$repo_root/docs/reference/results.md" | grep -q '^8$' || { echo "expected eight DS01 results rows" >&2; exit 1; }
 "$repo_root/scripts/run-scale-diagram" check
 echo "PASS data-scale points, index, rows, and diagram"

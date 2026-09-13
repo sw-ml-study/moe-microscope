@@ -49,7 +49,7 @@ the capability is unavailable.
 ## `../sw-mlpl`: language and generic host
 
 Open work orders, each with a reproducer under `probes/` and a pinned probe,
-are in [`sw-mlpl-findings.md`](sw-mlpl-findings.md): F5 (index and mask
+are in [`sw-mlpl-findings.md`](../reference/sw-mlpl-findings.md): F5 (index and mask
 builtins as stop-gradient constants on the tape), F6 (`repeat` inside a
 traced function), F7 (models as user-function arguments), F8 (`emit_frame`
 with a non-literal name), and D1 (a loud error for an untracked `wrt` leaf).

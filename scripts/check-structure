@@ -4,8 +4,9 @@ set -eu
 repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 
 for path in AGENTS.md CLAUDE.md COPYRIGHT LICENSE README.md justfile mlplunit.conf \
-    docs/architecture.md docs/cross-repo-handoffs.md docs/plan.md docs/research.txt \
-    docs/results.md docs/sagas.md docs/sw-mlpl-blockers.md docs/sw-mlpl-findings.md \
+    docs/overview/architecture.md docs/implementation/cross-repo-handoffs.md docs/overview/plan.md docs/research/research.txt \
+    docs/reference/results.md docs/overview/sagas.md docs/reference/sw-mlpl-blockers.md docs/reference/sw-mlpl-findings.md \
+    docs/README.md docs/overview/README.md docs/results/README.md docs/implementation/README.md docs/reference/README.md docs/research/README.md \
     lib/observe.mlpl tests/test_observe.mlpl tests/test_capability_probes.mlpl \
     probes/f5_one_hot_in_grad.mlpl probes/f6_repeat_in_grad.mlpl probes/f7_model_argument.mlpl \
     probes/f8_emit_frame_name.mlpl probes/d1_silent_zero_grad.mlpl scripts/run-probes \
@@ -13,12 +14,12 @@ for path in AGENTS.md CLAUDE.md COPYRIGHT LICENSE README.md justfile mlplunit.co
     demos/domain_microscope.mlpl catalog/lessons.toml scripts/run-domain-demo scripts/check-catalog \
     lib/dense.mlpl lib/svg.mlpl tests/test_dense.mlpl demos/dense_baseline.mlpl scripts/run-dense-demo \
     assets/previews/dense-model.svg assets/previews/dense-run.svg \
-    docs/host-handoff.md fixtures/recordings/recording-schema-v0.json fixtures/recordings/index-v1.json \
+    docs/implementation/host-handoff.md fixtures/recordings/recording-schema-v0.json fixtures/recordings/index-v1.json \
     fixtures/recordings/dense-baseline-run-v0.json scripts/bundle-program scripts/select-mlpl-serve \
     scripts/capture-recording scripts/check-recordings scripts/run-recording-parity scripts/recordings.conf \
     fixtures/recordings/moe-top1-run-v0.json fixtures/recordings/moe-top2-run-v0.json \
     scripts/make-recording-index scripts/run-emit-frame-loops scripts/build-local-serve \
-    demos/teacher.mlpl tests/test_teacher.mlpl docs/teacher-fixture.md fixtures/teacher/teacher-v0.json \
+    demos/teacher.mlpl tests/test_teacher.mlpl docs/implementation/teacher-fixture.md fixtures/teacher/teacher-v0.json \
     fixtures/teacher/index-v1.json assets/previews/teacher-fixture.svg scripts/run-teacher \
     lib/moe.mlpl tests/test_moe.mlpl demos/router_microscope.mlpl assets/previews/router-routing.svg scripts/run-router-demo demos/moe_baseline.mlpl scripts/run-moe-demo assets/previews/moe-run.svg assets/previews/moe-balance.svg \
     demos/dispatch_microscope.mlpl scripts/run-dispatch-demo assets/previews/dispatch-combine.svg \
@@ -27,7 +28,7 @@ for path in AGENTS.md CLAUDE.md COPYRIGHT LICENSE README.md justfile mlplunit.co
     lib/scale.mlpl tests/test_scale.mlpl demos/scale_train.mlpl demos/scale_microscope.mlpl \
     scripts/run-scale-sweep scripts/run-scale-diagram fixtures/scale/index-v1.json assets/previews/scale-sweep.svg \
     demos/delta_experts.mlpl scripts/run-delta-demo assets/previews/delta-structure.svg assets/previews/delta-comparison.svg \
-    lib/budget.mlpl tests/test_budget.mlpl demos/resource_budget.mlpl scripts/run-budget-demo docs/resource-budget.md assets/previews/budget-storage.svg \
+    lib/budget.mlpl tests/test_budget.mlpl demos/resource_budget.mlpl scripts/run-budget-demo docs/results/resource-economics.md assets/previews/budget-storage.svg \
     lib/bench.mlpl tests/test_bench.mlpl demos/generation_benchmark.mlpl scripts/run-benchmark fixtures/benchmark/generation-v0.json docs/reference/generation-benchmark.md; do
     if [ ! -e "$repo_dir/$path" ]; then
         echo "missing required file: $path" >&2
@@ -63,8 +64,8 @@ fi
 if command -v sw-markdown-checker >/dev/null 2>&1; then
     # AGENTS.md is excluded: its generated Agentrail block is not ASCII-only.
     (cd "$repo_dir" && sw-markdown-checker -f "README.md" >/dev/null &&
-        sw-markdown-checker -p docs -f "*.md" >/dev/null) || {
-        echo "markdown checker reported issues in README.md or docs/*.md" >&2
+        sw-markdown-checker -p docs -f "**/*.md" >/dev/null) || {
+        echo "markdown checker reported issues in README.md or docs/**/*.md" >&2
         exit 1
     }
 fi
