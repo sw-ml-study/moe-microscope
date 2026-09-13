@@ -14,3 +14,4 @@ repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 "$repo_dir/scripts/run-emit-frame-loops"
 "$repo_dir/scripts/check-dense-recording"
 "$repo_dir/scripts/run-dense-recording"
+"$repo_dir/scripts/run-teacher"

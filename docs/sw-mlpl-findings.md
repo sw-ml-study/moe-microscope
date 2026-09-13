@@ -10,8 +10,9 @@ reproducers under `probes/` that `scripts/run-probes` re-checks on every
 this document is updated in the same step.
 
 Binary under test: `mlpl-repl 0.22.0` from the adjacent `../sw-mlpl`
-checkout at `a9ae2a79` (2026-09-12), rebuilt after the second step of the
-upstream `moe-microscope-followups` saga.
+checkout at `61da67ae` (2026-09-12), rebuilt after the second step of the
+upstream `moe-microscope-followups-2` saga (`mlpl-repl` 22:10, `mlpl-serve`
+21:51).
 
 ## Resolved upstream (verified here)
 
@@ -22,11 +23,12 @@ upstream `moe-microscope-followups` saga.
 | F3 `chain(blk, blk, blk)` does not share weights | documented as by design; weight sharing is spelled by reusing one block through nested `apply` | `b28fdf45` | probe "one shared block applied R times trains through nested apply" |
 | F4 `gather_rows` not differentiable; no `kl_divergence` | scatter-add backward for `gather_rows`; KL documented as `reduce_add(P * (log(P) - log(Q)))` | `e1d693af` | probes "gather_rows scatter-adds gradient" and "KL divergence is a composition" |
 | F6 `repeat` rejected inside a traced function | `repeat N` with a literal count unrolls onto the tape | `a9ae2a79` | probe "repeat with a literal count unrolls inside a traced function"; `probes/f6_repeat_in_grad.mlpl` expects success |
-| F10 labeled positional table panicked the tape inside a residual block | the tape now broadcasts a labeled table against an unlabeled activation like the eager path | upstream `followups-2`, verified against the 21:40 rebuilt binary | probe file expects success; `u:positions` keeps stripping labels only as documentation of the old workaround |
+| F10 labeled positional table panicked the tape inside a residual block | partial axis labels are unified per axis, so a labeled table broadcasts against an unlabeled activation on the tape as eagerly | `9cd62367` | probe file expects success; `u:positions` keeps stripping labels only as documentation of the old workaround |
+| F14 `fill`/`zeros`/`ones` rejected inside `grad` | constant constructors are constant leaves on the tape | `61da67ae` | probe file expects success |
 | D1 silent zero gradient for an untracked `wrt` leaf | loud error: "the loss does not depend on 'W' (no gradient flows to it)" | upstream `moe-microscope-followups` step 3 | probe "grad of a pre-evaluated loss variable raises a loud error"; `probes/d1_silent_zero_grad.mlpl` expects the error |
 | F5 `one_hot`/`argmax` rejected inside `grad` | index and mask builtins (`argmax`, `one_hot`, `eq`, `gt`, `lt`, `argtop_k`) are stop-gradient constants on the tape | `54ad5849` | probe "one_hot and argmax act as stop-gradient constants"; `probes/f5_one_hot_in_grad.mlpl` now expects success |
 
-## Open, queued upstream as `moe-microscope-followups` (F7 to F16, S1; upstream has queued F9 to F15 as `followups-2`)
+## Open, queued upstream as `moe-microscope-followups` (F7, F8, F9, F11, F12, F13, F15, F16, F17, S1; upstream is working F9 to F15 in `followups-2`)
 
 ### F7: a model value cannot be a user-function argument
 
@@ -120,18 +122,6 @@ weights are shared because the same model value is applied. This spelling is
 also more readable for the microscope. Affects: DN01 attention diagram.
 Proposed fix: walk `residual` and nested `chain` blocks in `attention_weights`.
 
-### F14: constant constructors are rejected inside `grad`
-
-```
-grad(reduce_add(W * fill([3], 2)), W)
-# error: unsupported: grad: function 'fill' not supported inside grad()
-```
-
-Reproducer: `probes/f14_fill_in_grad.mlpl`. Workaround: build constant
-arrays (masks, ones) eagerly and pass them in. Affects: loss helpers.
-Proposed fix: treat `fill`, `zeros`, `ones`, and `range` as constants on the
-tape, alongside the F5 index builtins.
-
 ### F15: `repeat` with a parameter count fails inside `grad`
 
 ```
@@ -161,6 +151,19 @@ pinned equal by test), and file writes are skipped when `args()` is empty.
 Affects: every recorded lesson. Proposed fix: let a session declare a
 read-only source root (or accept a multi-file program body) so includes and
 fixture reads work on the connect path.
+
+### F17: record field access is rejected inside `grad`
+
+```
+r = {a: [3, 4]}
+grad(reduce_add(r.a * W), W)     # error: unsupported: grad: expression form not supported inside grad()
+```
+
+Reproducer: `probes/f17_record_field_in_grad.mlpl`. `take(M, 0, i)` with a
+variable index is accepted, so the gap is the `r.field` expression form.
+Workaround: bind fields to variables eagerly before the loss. Affects: every
+lesson that keeps windows in a record. Proposed fix: evaluate field access
+as a constant (or trace it when the record holds a tracked value).
 
 ### S1: the adjacent `mlpl-serve` binary was stale
 

@@ -58,19 +58,6 @@ def u:forward(x1) {
   u:body(apply(emb, x1) + u:positions(reduce_mul(shape(x1)), dm))
 }
 
-def u:set_loss(X, Y, M, rows) {
-  "Masked next-token loss averaged over every answer target in the row set.";
-  total = 0;
-  count = 0;
-  i = 0;
-  while lt(i, rows) {
-    mrow = take(M, 0, i);
-    total = total + u:masked_ce(u:forward(take(X, 0, i)), take(Y, 0, i), mrow, V) * reduce_add(mrow);
-    count = count + reduce_add(mrow);
-    i = i + 1
-  };
-  total / count
-}
 
 p_emb = param_count(emb);
 p_att = param_count(att);
@@ -100,8 +87,8 @@ while lt(e, epochs) {
   train_ms = train_ms + (clock_ms() - ts);
   e = e + 1;
   if eq(mod(e, every), 0) {
-    tl = emit_frame("dense/loss/train", e, u:set_loss(train_x, train_y, train_m, ntrain));
-    vl = emit_frame("dense/loss/val", e, u:set_loss(val_x, val_y, val_m, nval));
+    tl = emit_frame("dense/loss/train", e, u:set_loss(:u:forward, train_x, train_y, train_m, ntrain, V));
+    vl = emit_frame("dense/loss/val", e, u:set_loss(:u:forward, val_x, val_y, val_m, nval, V));
     curve_e = concat(curve_e, e);
     curve_t = concat(curve_t, tl);
     curve_v = concat(curve_v, vl);

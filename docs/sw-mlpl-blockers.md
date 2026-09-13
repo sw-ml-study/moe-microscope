@@ -60,8 +60,8 @@ Gaps with reproducers are written up as upstream work orders in
 | F11 nested traced call loses an index parameter | `probes/f11_nested_param_binding_in_grad.mlpl` | slice chunks eagerly, pass arrays into the loss |
 | F12 size arithmetic inside `grad` | `probes/f12_size_arithmetic_in_grad.mlpl` | pass sizes as arguments |
 | F13 `attention_weights` and `residual` | `probes/f13_attention_weights_residual.mlpl` | explicit residual with a separate attention sub-model |
-| F14 `fill`/`zeros` inside `grad` | `probes/f14_fill_in_grad.mlpl` | build constants eagerly |
 | F15 `repeat` with a parameter count | `probes/f15_repeat_param_count.mlpl` | literal counts |
+| F17 record field access inside `grad` | `probes/f17_record_field_in_grad.mlpl` | bind fields to variables eagerly |
 | F16 no include/sandbox/args on `eval_stream` | `scripts/run-emit-frame-loops` | `scripts/bundle-program`, inline mixture twin, guarded writes |
 
 ## Still to be probed

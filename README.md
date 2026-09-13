@@ -112,6 +112,26 @@ MLPL answers need rules this model cannot learn from 90 rows. The numbers are
 one row in [`docs/results.md`](docs/results.md), and the residual is written
 by hand so `attention_weights` can show the trained attention map.
 
+## In-repo teacher fixture
+
+TE01 is the teacher that Saga 4 distills from: two 32-wide blocks, 19,956
+parameters, trained once for 300 epochs on the same 90 rows. It fits the
+training rows far more closely than DN01 (masked loss 0.135, top-1 agreement
+with the targets 0.963, training exact match 0.83) while its validation
+behavior stays the same honest memorization story. Its export,
+[`fixtures/teacher/teacher-v0.json`](fixtures/teacher/teacher-v0.json), holds
+the top-8 next-token log-probabilities at every answer position of the
+training split as flat parallel vectors; the schema is documented in
+[`docs/teacher-fixture.md`](docs/teacher-fixture.md) so an external teacher
+can export the same shape.
+
+![TE01 teacher export: the first training row's answer positions with their top-8 next-token probabilities, target bars highlighted](assets/previews/teacher-fixture.svg)
+
+```sh
+just teacher         # validate the committed fixture, index, preview, and results row
+just teacher write   # retrain the teacher (about a minute) and reinstall everything
+```
+
 ## Recording and host handoff
 
 Every lesson's observations are also captured over the live `mlpl-serve`
@@ -180,6 +200,7 @@ just tests           # native mlplunit tests (arguments filter paths or tags)
 just probes          # re-run the upstream-finding reproducers
 just domain          # run DM01 and check its diagrams
 just dense           # run DN01 (about 16 s) and check its diagrams and results row
+just teacher         # validate the committed TE01 fixture without retraining
 just mlpl-style      # canonical formatting and docstring checks
 ```
 

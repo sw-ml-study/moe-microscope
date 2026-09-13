@@ -10,7 +10,7 @@ The mandatory checklist in `AGENTS.md` applies to every step: focused tests,
 tracked-file audit, named-file staging, a detailed commit on `main`,
 Agentrail completion metadata, and a verified `git push origin main`.
 
-## Active: `moe-microscope-foundation` (Saga 1)
+## Completed: `moe-microscope-foundation` (Saga 1)
 
 Purpose: repository foundation, executable capability probes, the synthetic
 domain with exact-match evaluation, the dense baseline lesson DN01, and the
@@ -35,6 +35,12 @@ in-repo teacher fixture that later distillation lessons consume.
    connect path; `../demo-extensions` handoff written.
 6. `in-repo-teacher-fixture` - the larger dense teacher trained once, its
    next-token distributions exported as a bounded, hash-checked fixture.
+
+Step 6 status: complete. TE01 (`demos/teacher.mlpl`) trained once and
+exported to `fixtures/teacher/teacher-v0.json` with a hash-pinned index, a
+schema document for the Saga 4 external exporter, a fixture diagram, a
+results row, and a no-training gate check. Saga 1 is complete; Saga 2
+(mixture of experts from scratch) is next.
 
 Step 5 status: complete. DN01 recorded over live `mlpl-serve` SSE into
 `fixtures/recordings/dense-baseline-run-v0.json` with a hash-pinned index;

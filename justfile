@@ -40,6 +40,10 @@ dense-recording mode="check":
 build-local-serve:
     ./scripts/build-local-serve
 
+# Validate the committed teacher fixture; `just teacher write` retrains the teacher (about a minute) and reinstalls it.
+teacher mode="check":
+    ./scripts/run-teacher {{mode}}
+
 # Print the selected sw-MLPL executable.
 mlpl-path:
     ./scripts/select-mlpl

@@ -16,7 +16,9 @@ for path in AGENTS.md CLAUDE.md COPYRIGHT LICENSE README.md justfile mlplunit.co
     docs/host-handoff.md fixtures/recordings/recording-schema-v0.json fixtures/recordings/index-v1.json \
     fixtures/recordings/dense-baseline-run-v0.json scripts/bundle-program scripts/select-mlpl-serve \
     scripts/capture-dense-recording scripts/check-dense-recording scripts/run-dense-recording \
-    scripts/make-recording-index scripts/run-emit-frame-loops scripts/build-local-serve; do
+    scripts/make-recording-index scripts/run-emit-frame-loops scripts/build-local-serve \
+    demos/teacher.mlpl tests/test_teacher.mlpl docs/teacher-fixture.md fixtures/teacher/teacher-v0.json \
+    fixtures/teacher/index-v1.json assets/previews/teacher-fixture.svg scripts/run-teacher; do
     if [ ! -e "$repo_dir/$path" ]; then
         echo "missing required file: $path" >&2
         exit 1

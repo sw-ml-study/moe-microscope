@@ -1,5 +1,4 @@
-# F14 reproducer: constant constructors (fill, zeros) are rejected inside grad; checked by scripts/run-probes.
+# F14 reproducer, resolved upstream (61da67ae): constant constructors (fill, zeros, ones) are constant leaves inside grad.
 W = param[3]
 W = [1, 2, 3]
-print("eager", reduce_add(W * fill([3], 2)))
-print("grad", grad(reduce_add(W * fill([3], 2)), W))
+print("fill-in-grad gradient", grad(reduce_add(W * fill([3], 2)), W))

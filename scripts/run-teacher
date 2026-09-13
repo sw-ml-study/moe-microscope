@@ -1,0 +1,65 @@
+#!/bin/sh
+# write: train TE01 once (about a minute) and install its fixture, index, diagram, and results row. check: validate the committed fixture without training.
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+mode=${1:-check}
+fixture="$repo_root/fixtures/teacher/teacher-v0.json"
+index="$repo_root/fixtures/teacher/index-v1.json"
+preview="$repo_root/assets/previews/teacher-fixture.svg"
+max_bytes=262144
+
+if [ "$mode" = "write" ]; then
+    mlpl=$("$repo_root/scripts/select-mlpl")
+    tmp_rel="tmp/teacher-demo"
+    mkdir -p "$repo_root/$tmp_rel"
+    binary=$("$mlpl" --version 2>/dev/null | head -1 | tr -d '\n')
+    "$mlpl" --source-dir "$repo_root" "$repo_root/demos/teacher.mlpl" -- "$tmp_rel" "$binary"
+    cp "$repo_root/$tmp_rel/teacher-v0.json" "$fixture"
+    cp "$repo_root/$tmp_rel/teacher-fixture.svg" "$preview"
+    row=$(cat "$repo_root/$tmp_rel/results-row.md")
+    grep -q '^| TE01 |' "$repo_root/docs/results.md" && sed -i '' '/^| TE01 |/d' "$repo_root/docs/results.md"
+    printf '%s\n' "$row" >> "$repo_root/docs/results.md"
+    jq -n \
+        --arg revision "$(git -C "$repo_root" rev-parse HEAD)" \
+        --arg sha256 "$(shasum -a 256 "$fixture" | awk '{print $1}')" \
+        --arg source_sha256 "$(shasum -a 256 "$repo_root/demos/teacher.mlpl" | awk '{print $1}')" \
+        --argjson bytes "$(wc -c < "$fixture" | tr -d ' ')" \
+        --argjson count "$(jq '.count' "$fixture")" \
+        --argjson top_k "$(jq '.top_k' "$fixture")" \
+        --argjson params "$(jq '.teacher.params' "$fixture")" \
+        --argjson train_loss "$(jq '.teacher.train_loss' "$fixture")" \
+        --argjson agreement "$(jq '.teacher.top1_agreement' "$fixture")" \
+        '{schema: "sw-ml-study.moe-microscope-teacher-index", version: 1, source_revision: $revision, fixtures: [{id: "TE01", fixture: "fixtures/teacher/teacher-v0.json", source: "demos/teacher.mlpl", preview: "assets/previews/teacher-fixture.svg", guide: "docs/teacher-fixture.md", sha256: $sha256, source_sha256: $source_sha256, bytes: $bytes, count: $count, top_k: $top_k, params: $params, train_loss: $train_loss, top1_agreement: $agreement}]}' > "$index"
+    rm -rf "$repo_root/$tmp_rel"
+    echo "PASS teacher fixture trained, installed, and indexed"
+    exit 0
+fi
+
+[ -f "$fixture" ] || { echo "missing teacher fixture; run scripts/run-teacher write" >&2; exit 1; }
+bytes=$(wc -c < "$fixture" | tr -d ' ')
+[ "$bytes" -le "$max_bytes" ] || { echo "teacher fixture exceeds $max_bytes bytes: $bytes" >&2; exit 1; }
+jq -e '
+  .schema == "sw-ml-study.moe-microscope-teacher" and .version == 0 and
+  .teacher.id == "TE01" and (.teacher.params | type) == "number" and
+  .vocab == 52 and (.alphabet | length) == 52 and
+  .top_k == 8 and (.count | type) == "number" and
+  (.rows | length) == .count and (.positions | length) == .count and (.targets | length) == .count and
+  (.topk_ids | length) == .count * .top_k and (.topk_logprobs | length) == .count * .top_k and
+  (all(.topk_logprobs[]; . <= 0.000001)) and
+  (all(.targets[]; . >= 0 and . < 52)) and
+  (.split.train_index | length) == 90 and
+  .teacher.train_loss < 0.19 and .teacher.top1_agreement > 0.9
+' "$fixture" >/dev/null
+encoded=$(jq -r '.fixtures[0] | @base64' "$index")
+field() { printf '%s' "$encoded" | base64 --decode | jq -r "$1"; }
+[ "$(shasum -a 256 "$fixture" | awk '{print $1}')" = "$(field '.sha256')" ] || { echo "teacher fixture hash drift; run scripts/run-teacher write" >&2; exit 1; }
+[ "$(shasum -a 256 "$repo_root/demos/teacher.mlpl" | awk '{print $1}')" = "$(field '.source_sha256')" ] || { echo "teacher source changed since the fixture was trained; run scripts/run-teacher write" >&2; exit 1; }
+[ "$bytes" = "$(field '.bytes')" ] || { echo "teacher fixture size drift" >&2; exit 1; }
+[ "$(jq '.count' "$fixture")" = "$(field '.count')" ] || { echo "teacher count drift" >&2; exit 1; }
+[ -s "$preview" ] || { echo "missing teacher preview" >&2; exit 1; }
+grep -q '^| TE01 |' "$repo_root/docs/results.md" || { echo "missing TE01 results row" >&2; exit 1; }
+for path in "$(field '.guide')" "$(field '.source')" "$(field '.preview')"; do
+    [ -f "$repo_root/$path" ] || { echo "missing indexed teacher input: $path" >&2; exit 1; }
+done
+echo "PASS teacher fixture schema, bounds, pinned hashes, preview, and results row"

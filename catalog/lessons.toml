@@ -35,3 +35,19 @@ memory = "3,812 parameters (embedding 832, attention 1,024, FFN 1,072, norm and 
 speed = "27,000 per-example Adam steps; about 0.56 ms per step and 0.02 ms per token on an M1 Max with mlpl-repl 0.22.0; the whole lesson runs in about 16 seconds"
 quality = "validation masked loss 3.79 (perplexity 44.2); validation exact match arithmetic 0, sequence 0, mlpl 0, prose 0.667; training exact match 0.70"
 status = "accepted"
+
+[[lesson]]
+id = "TE01"
+slug = "in-repo-teacher"
+title = "A larger dense teacher exports soft targets"
+source = "demos/teacher.mlpl"
+library = ["lib/dense.mlpl", "lib/domain.mlpl", "lib/evaluate.mlpl", "lib/results.mlpl", "lib/svg.mlpl"]
+test = ["tests/test_teacher.mlpl", "tests/test_dense.mlpl"]
+previews = ["assets/previews/teacher-fixture.svg"]
+fixture = "fixtures/teacher/teacher-v0.json"
+implementation = "builtin"
+observations = ["teacher/config", "teacher/loss/train", "teacher/loss/val", "teacher/accuracy/train", "teacher/accuracy/val", "teacher/export/agreement"]
+memory = "19,956 parameters (two 32-wide blocks, 64-wide FFNs); 18,324 active per token; export 406 positions x top-8, about 75 KB"
+speed = "27,000 per-example Adam steps, about 2.5 ms per step; trained once by `just teacher write` (about a minute), never in the gate"
+quality = "training masked loss 0.135, top-1 agreement with targets 0.963, training exact match 0.83; validation loss 4.14 (memorization, as DN01)"
+status = "accepted"

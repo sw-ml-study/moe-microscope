@@ -1,0 +1,188 @@
+# TE01 in-repo teacher: a larger two-block dense model trained once on the same domain, exporting top-k next-token log-probabilities at every answer position of the training split.
+include "../lib/dense.mlpl";
+include "../lib/observe.mlpl";
+include "../lib/svg.mlpl";
+include "../lib/results.mlpl";
+
+print("WHAT THIS SHOWS -- A 20K-parameter two-block teacher fits the training rows far more closely than DN01 and exports soft targets for distillation.");
+print("SHAPES -- ids:[T], embedding:[T,32], two residual blocks, logits:[T,52]; export: parallel flat vectors over every masked training position with top_k=8.");
+
+out_dir = if list_len(args()) {
+  unwrap(list_get(args(), 0))
+} else {
+  ""
+};
+binary = if gt(list_len(args()), 1) {
+  unwrap(list_get(args(), 1))
+} else {
+  "unknown"
+};
+writing = str_len(out_dir);
+m = unwrap(u:domain_load_mixture(u:domain_mixture_path()));
+d = u:domain_build(m);
+w = unwrap(u:domain_windows(d.texts, m.window));
+s = u:domain_split(d.count, m.train_fraction, m.seed);
+V = u:domain_vocab_size();
+T = m.window;
+dm = 32;
+hidden = 64;
+epochs = if gt(list_len(args()), 3) {
+  to_number(unwrap(list_get(args(), 3)))?
+} else {
+  300
+};
+lr = if gt(list_len(args()), 2) {
+  to_number(unwrap(list_get(args(), 2)))?
+} else {
+  0.001
+};
+every = 50;
+top_k = 8;
+ntrain = reduce_mul(shape(s.train));
+nval = reduce_mul(shape(s.val));
+train_x = gather_rows(w.x, s.train);
+train_y = gather_rows(w.y, s.train);
+train_m = gather_rows(w.mask, s.train);
+val_x = gather_rows(w.x, s.val);
+val_y = gather_rows(w.y, s.val);
+val_m = gather_rows(w.mask, s.val);
+posT = u:positions(T, dm);
+config = emit_frame("teacher/config", 0, [dm, hidden, T, epochs, ntrain, nval, top_k]);
+
+emb = embed(V, dm, 0);
+att1 = chain(rms_norm(dm), causal_attention(dm, 1, 1));
+ffn1 = chain(rms_norm(dm), linear(dm, hidden, 2), relu_layer(), linear(hidden, dm, 3));
+att2 = chain(rms_norm(dm), causal_attention(dm, 1, 4));
+ffn2 = chain(rms_norm(dm), linear(dm, hidden, 5), relu_layer(), linear(hidden, dm, 6));
+norm = rms_norm(dm);
+head = linear(dm, V, 7);
+
+def u:body(h0) {
+  "Two explicit residual blocks (attention then FFN, twice), final norm, and the vocabulary head.";
+  h1 = h0 + apply(att1, h0);
+  h2 = h1 + apply(ffn1, h1);
+  h3 = h2 + apply(att2, h2);
+  h4 = h3 + apply(ffn2, h3);
+  apply(head, apply(norm, h4))
+}
+
+def u:forward(x1) {
+  "Logits for one sequence: embedding plus positions 0..n-1 through the body.";
+  u:body(apply(emb, x1) + u:positions(reduce_mul(shape(x1)), dm))
+}
+
+params = param_count(emb) + param_count(att1) + param_count(ffn1) + param_count(att2) + param_count(ffn2) + param_count(norm) + param_count(head);
+active = params - param_count(emb) + dm;
+print("MODEL -- params", params, "active per token", active);
+
+curve_e = fill([0], 0);
+curve_t = fill([0], 0);
+curve_v = fill([0], 0);
+train_ms = 0;
+e = 0;
+while lt(e, epochs) {
+  ts = clock_ms();
+  i = 0;
+  while lt(i, ntrain) {
+    x1 = take(train_x, 0, i);
+    y1 = take(train_y, 0, i);
+    m1 = take(train_m, 0, i);
+    adam(u:masked_ce(u:body(apply(emb, x1) + posT), y1, m1, V), [emb, att1, ffn1, att2, ffn2, norm, head], lr, 0.9, 0.999, 0.00000001);
+    i = i + 1
+  };
+  train_ms = train_ms + (clock_ms() - ts);
+  e = e + 1;
+  if eq(mod(e, every), 0) {
+    tl = emit_frame("teacher/loss/train", e, u:set_loss(:u:forward, train_x, train_y, train_m, ntrain, V));
+    vl = emit_frame("teacher/loss/val", e, u:set_loss(:u:forward, val_x, val_y, val_m, nval, V));
+    curve_e = concat(curve_e, e);
+    curve_t = concat(curve_t, tl);
+    curve_v = concat(curve_v, vl);
+    print("epoch", e, "train loss", u:svg_round(tl, 4), "val loss", u:svg_round(vl, 4))
+  } else {
+    0
+  }
+};
+steps = epochs * ntrain;
+ms_per_token = train_ms / (steps * T);
+rv = u:evaluate_prompts(:u:forward, d, s.val, 12);
+rt = u:evaluate_prompts(:u:forward, d, s.train, 12);
+val_acc = emit_frame("teacher/accuracy/val", epochs, [rv.accuracy.arithmetic, rv.accuracy.sequence, rv.accuracy.mlpl, rv.accuracy.prose, rv.accuracy.overall]);
+train_acc = emit_frame("teacher/accuracy/train", epochs, [rt.accuracy.arithmetic, rt.accuracy.sequence, rt.accuracy.mlpl, rt.accuracy.prose, rt.accuracy.overall]);
+final_train = take(curve_t, 0, reduce_mul(shape(curve_t)) - 1);
+final_val = take(curve_v, 0, reduce_mul(shape(curve_v)) - 1);
+
+export = u:topk_export(:u:forward, train_x, train_y, train_m, ntrain, top_k, V);
+agreement = emit_frame("teacher/export/agreement", epochs, u:topk_agreement(export));
+print("EXPORT --", export.count, "masked training positions, top_k", top_k, "; teacher top-1 equals target at", u:svg_round(agreement, 4), "of them");
+fixture = {schema: "sw-ml-study.moe-microscope-teacher", version: 0, teacher: {id: "TE01", config: "dense d32 h64 2blocks 1head T28 120ex 300ep lr0.001", params: params, seed: m.seed, epochs: epochs, binary: binary, train_loss: u:svg_round(final_train, 6), val_loss: u:svg_round(final_val, 6), top1_agreement: u:svg_round(agreement, 6)}, vocab: V, alphabet: u:domain_alphabet(), mixture: u:domain_mixture_path(), split: {train_fraction: m.train_fraction, seed: m.seed, train_index: s.train}, top_k: top_k, count: export.count, rows: export.rows, positions: export.positions, targets: export.targets, topk_ids: export.topk_ids, topk_logprobs: export.topk_logprobs};
+r_fixture = if writing {
+  write_atomic(str_concat(out_dir, "/teacher-v0.json"), unwrap(to_json(fixture)))
+} else {
+  ok(0)
+};
+
+row = {lesson: "TE01", config: "dense d32 h64 2blocks 1head T28 120ex 300ep lr0.001", binary: binary, params: params, active_params: active, expert_evals: 2, bytes_per_token: active * 8, ms_per_token: u:svg_round(ms_per_token, 4), val_loss: u:svg_round(final_val, 4), ppl: u:svg_round(exp(final_val), 2), arith_acc: u:svg_round(rv.accuracy.arithmetic, 3), seq_acc: u:svg_round(rv.accuracy.sequence, 3), mlpl_acc: u:svg_round(rv.accuracy.mlpl, 3), prose_acc: u:svg_round(rv.accuracy.prose, 3)};
+r_row = if writing {
+  write_atomic(str_concat(out_dir, "/results-row.md"), str_concat(u:results_row(row), "\n"))
+} else {
+  ok(0)
+};
+print("MEMORY -- params", params, "active/token", active, "bytes/token (f64)", active * 8);
+print("SPEED -- ms/token", u:svg_round(ms_per_token, 4), "(", binary, ")");
+print("QUALITY -- train loss", u:svg_round(final_train, 4), "val loss", u:svg_round(final_val, 4), "val acc", val_acc, "train acc", train_acc);
+
+def u:fixture_svg() {
+  "Diagram: the export data structure, one example's masked positions with their top-k distributions, and the parallel-vector layout.";
+  ids = reshape(export.topk_ids, [export.count, top_k]);
+  lps = reshape(export.topk_logprobs, [export.count, top_k]);
+  page = u:svg_head("TE01 teacher export data structure", "The teacher fixture stores, for every answer position of every training row, the target id and the top eight next-token ids with their log-probabilities as parallel flat vectors; the diagram shows the first training row's positions with probability bars.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "TE01 TEACHER EXPORT -- soft targets for distillation"));
+  page = str_concat(page, u:svg_text(32, 60, "m", str_concat(str_concat("WHAT: ", u:svg_num(export.count)), str_concat(" masked positions x top_k=8; parallel vectors rows, positions, targets, topk_ids, topk_logprobs; ", str_concat(u:svg_num(params), " teacher params")))));
+  first_row_text = unwrap(list_get(d.texts, take(s.train, 0, 0)));
+  page = str_concat(page, u:svg_text(32, 96, "k", str_concat("training row 0:  ", first_row_text)));
+  page = str_concat(page, u:svg_text(32, 118, "k", "position   target   top-8 ids (probability)"));
+  n = reduce_mul(shape(compress(eq(export.rows, 0), export.rows)));
+  i = 0;
+  while lt(i, n) {
+    pos = take(export.positions, 0, i);
+    tgt = take(export.targets, 0, i);
+    page = str_concat(page, u:svg_text(32, 146 + i * 46, "", str_concat(str_concat(u:svg_num(pos), "          "), str_concat(str_slice(u:domain_alphabet(), tgt, 1), str_concat("  (", str_concat(u:svg_num(tgt), ")"))))));
+    j = 0;
+    while lt(j, top_k) {
+      pid = take(take(ids, 0, i), 0, j);
+      prob = exp(take(take(lps, 0, i), 0, j));
+      wd = round(prob * 60) + 2;
+      cls = if eq(pid, tgt) {
+        "on"
+      } else {
+        "t0"
+      };
+      page = str_concat(page, u:svg_rect(250 + j * 84, 128 + i * 46, wd, 14, cls));
+      page = str_concat(page, u:svg_text(250 + j * 84, 156 + i * 46, "s", str_concat(str_concat(str_slice(u:domain_alphabet(), pid, 1), " "), u:svg_num(u:svg_round(prob, 2)))));
+      j = j + 1
+    };
+    i = i + 1
+  };
+  page = str_concat(page, u:svg_rect(30, 400, 900, 120, "panel"));
+  page = str_concat(page, u:svg_text(50, 428, "", "WHY: distillation needs the teacher's whole belief at each answer position, not only the answer; top-8 keeps it bounded."));
+  page = str_concat(page, u:svg_text(50, 453, "", "WHY: flat parallel vectors with explicit count and top_k are tool-neutral; an external teacher exports the same shape."));
+  page = str_concat(page, u:svg_text(50, 478, "", "HOW: u:topk_export runs the teacher on every training row, keeps masked positions, argtop_k over log softmax, gathers values."));
+  page = str_concat(page, u:svg_text(50, 503, "m", "Pink bars are the target id, blue bars competing ids; width is exp(logprob). Tests pin logprobs and agreement."));
+  str_concat(page, "</svg>")
+}
+
+r_svg = if writing {
+  write_atomic(str_concat(out_dir, "/teacher-fixture.svg"), u:fixture_svg())
+} else {
+  ok(0)
+};
+print("NUMERICAL CONTRACT -- teacher training loss ends below DN01's 0.19 and top-1 agreement with targets exceeds 0.9 on the training split.");
+print("THE POINT -- The teacher is not a strong model; it is a better-fitting in-repo source of soft targets that every distillation lesson can reproduce offline.");
+print("BOUNDARY -- Two 32-wide blocks and 90 rows; validation behavior stays the honest memorization story of DN01.");
+contract = lt(final_train, 0.19) * gt(agreement, 0.9);
+if contract * is_ok(r_fixture) * is_ok(r_row) * is_ok(r_svg) {
+  ok("teacher fixture written")
+} else {
+  err("teacher contract failed")
+}

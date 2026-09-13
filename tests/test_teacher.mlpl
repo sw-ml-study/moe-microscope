@@ -1,0 +1,60 @@
+# Teacher fixture contract: the committed export is a well-formed, bounded set of soft targets over the training split.
+include "lib/dense.mlpl";
+
+def u:teacher_fixture() {
+  "Load the committed teacher fixture record.";
+  unwrap(parse_json(unwrap(read_text("fixtures/teacher/teacher-v0.json"))))
+}
+
+@test {name: "teacher fixture declares its schema, vocabulary, and parallel vector lengths", tags: ["teacher", "fixture"]}
+def u:test_teacher_schema() {
+  "Every parallel vector has count entries (times top_k for the top-k vectors).";
+  f = u:teacher_fixture();
+  u:assert_text_eq(f.schema, "sw-ml-study.moe-microscope-teacher", "schema")?;
+  u:assert_eq(f.version, 0, "version")?;
+  u:assert_eq(f.vocab, u:domain_vocab_size(), "vocabulary size")?;
+  u:assert_text_eq(f.alphabet, u:domain_alphabet(), "alphabet")?;
+  u:assert_eq(f.top_k, 8, "top_k")?;
+  u:assert_shape(f.rows, [f.count], "rows")?;
+  u:assert_shape(f.positions, [f.count], "positions")?;
+  u:assert_shape(f.targets, [f.count], "targets")?;
+  u:assert_shape(f.topk_ids, [f.count * f.top_k], "topk_ids")?;
+  u:assert_shape(f.topk_logprobs, [f.count * f.top_k], "topk_logprobs")
+}
+
+@test {name: "teacher log-probabilities are non-positive and each top-k set has mass at most one", tags: ["teacher", "fixture"]}
+def u:test_teacher_probabilities() {
+  "Renormalized top-k distributions are what the distillation loss consumes.";
+  f = u:teacher_fixture();
+  u:assert_true(reduce_mul(lt(f.topk_logprobs, 0.000001)), "non-positive log-probabilities")?;
+  mass = reduce_add(exp(reshape(f.topk_logprobs, [f.count, f.top_k])), 1);
+  u:assert_true(reduce_mul(lt(mass, 1.000001)), "top-k mass never exceeds one")?;
+  u:assert_gt(mean(mass), 0.9, "top-8 captures most of the mass on average")
+}
+
+@test {name: "teacher positions are the masked answer positions of the training split", tags: ["teacher", "fixture"]}
+def u:test_teacher_positions() {
+  "Rows index the training split in order and every position is a masked target of that row.";
+  f = u:teacher_fixture();
+  m = u:domain_load_mixture(u:domain_mixture_path())?;
+  d = u:domain_build(m);
+  w = u:domain_windows(d.texts, m.window)?;
+  s = u:domain_split(d.count, m.train_fraction, m.seed);
+  u:assert_eq(f.split.train_index, s.train, "training split matches the seeded split")?;
+  train_m = gather_rows(w.mask, s.train);
+  train_y = gather_rows(w.y, s.train);
+  u:assert_eq(f.count, reduce_add(train_m), "one entry per masked training position")?;
+  i = 0;
+  ok_count = 0;
+  while lt(i, f.count) {
+    r = take(f.rows, 0, i);
+    p = take(f.positions, 0, i);
+    ok_count = ok_count + take(take(train_m, 0, r), 0, p) * eq(take(take(train_y, 0, r), 0, p), take(f.targets, 0, i));
+    i = i + 1
+  };
+  u:assert_eq(ok_count, f.count, "every entry sits on a masked position with the right target")?;
+  agreement = u:topk_agreement({topk_ids: f.topk_ids, targets: f.targets, count: f.count, top_k: f.top_k});
+  u:assert_approx(agreement, f.teacher.top1_agreement, 0.000001, "recorded agreement equals recomputed agreement")
+}
+
+u:run_registered_tests()

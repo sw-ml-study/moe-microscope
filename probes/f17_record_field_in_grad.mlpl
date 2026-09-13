@@ -1,0 +1,6 @@
+# F17 reproducer: record field access inside grad is rejected as an unsupported expression form; checked by scripts/run-probes.
+W = param[2]
+W = [1, 2]
+r = {a: [3, 4]}
+print("eager", reduce_add(r.a * W))
+print("grad", grad(reduce_add(r.a * W), W))

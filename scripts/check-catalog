@@ -8,6 +8,7 @@ catalog="$repo_root/catalog/lessons.toml"
 grep -q '^schema = "sw-ml-study.moe-microscope-lessons"$' "$catalog"
 grep -q '^id = "DM01"$' "$catalog"
 grep -q '^id = "DN01"$' "$catalog"
+grep -q '^id = "TE01"$' "$catalog"
 grep -Eq '^implementation = "(builtin|from-scratch|both)"$' "$catalog"
 
 for path in $(grep -oE '"(demos|lib|tests|assets|fixtures)/[^"]+"' "$catalog" | tr -d '"' | sort -u); do
