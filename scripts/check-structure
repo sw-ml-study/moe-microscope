@@ -1,0 +1,49 @@
+#!/bin/sh
+set -eu
+
+repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+
+for path in AGENTS.md CLAUDE.md COPYRIGHT LICENSE README.md justfile mlplunit.conf \
+    docs/architecture.md docs/cross-repo-handoffs.md docs/plan.md docs/research.txt \
+    docs/results.md docs/sagas.md docs/sw-mlpl-blockers.md; do
+    if [ ! -e "$repo_dir/$path" ]; then
+        echo "missing required file: $path" >&2
+        exit 1
+    fi
+done
+
+[ -L "$repo_dir/CLAUDE.md" ] || { echo "CLAUDE.md must be a symlink to AGENTS.md" >&2; exit 1; }
+[ "$(readlink "$repo_dir/CLAUDE.md")" = "AGENTS.md" ] || {
+    echo "CLAUDE.md must link to AGENTS.md" >&2
+    exit 1
+}
+
+cmp -s "$repo_dir/COPYRIGHT" "$repo_dir/../demo-mlpl-libraries/COPYRIGHT" || {
+    echo "COPYRIGHT differs from peer repository" >&2
+    exit 1
+}
+cmp -s "$repo_dir/LICENSE" "$repo_dir/../demo-mlpl-libraries/LICENSE" || {
+    echo "LICENSE differs from peer repository" >&2
+    exit 1
+}
+
+grep -q 'agentrail:global:start' "$repo_dir/AGENTS.md"
+grep -q 'Distributed under the \[MIT License\](LICENSE)' "$repo_dir/README.md"
+
+if command -v agentrail >/dev/null 2>&1; then
+    (cd "$repo_dir" && agentrail instructions status >/dev/null) || {
+        echo "generated Agentrail briefing is stale; run agentrail instructions apply" >&2
+        exit 1
+    }
+fi
+
+if command -v sw-markdown-checker >/dev/null 2>&1; then
+    # AGENTS.md is excluded: its generated Agentrail block is not ASCII-only.
+    (cd "$repo_dir" && sw-markdown-checker -f "README.md" >/dev/null &&
+        sw-markdown-checker -p docs -f "*.md" >/dev/null) || {
+        echo "markdown checker reported issues in README.md or docs/*.md" >&2
+        exit 1
+    }
+fi
+
+echo "PASS repository structure"

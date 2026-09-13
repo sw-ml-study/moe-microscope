@@ -1,0 +1,20 @@
+#!/bin/sh
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+adjacent="$repo_root/../../softwarewrighter/mlplunit/bin/mlplunit"
+
+if [ -n "${MLPLUNIT:-}" ]; then
+    candidate=$MLPLUNIT
+elif command -v mlplunit >/dev/null 2>&1; then
+    candidate=$(command -v mlplunit)
+else
+    candidate=$adjacent
+fi
+
+case "$candidate" in
+    /*) ;;
+    *) candidate=$(CDPATH= cd -- "$(dirname -- "$candidate")" && pwd)/$(basename -- "$candidate") ;;
+esac
+[ -x "$candidate" ] || { echo "mlplunit not found; set MLPLUNIT to an executable" >&2; exit 1; }
+printf '%s\n' "$candidate"

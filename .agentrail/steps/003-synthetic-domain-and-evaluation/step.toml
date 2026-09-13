@@ -1,0 +1,9 @@
+number = 3
+slug = "synthetic-domain-and-evaluation"
+status = "pending"
+description = "Implement deterministic seeded generators in lib/ for the four task families ..."
+role = "production"
+context_files = []
+created_at = "2026-09-12T17:13:14"
+task_type = "mlpl-lesson"
+commits = []

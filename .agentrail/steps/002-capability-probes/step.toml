@@ -1,0 +1,9 @@
+number = 2
+slug = "capability-probes"
+status = "pending"
+description = "Write native mlplunit probes for the items listed under 'To be probed' in doc..."
+role = "production"
+context_files = []
+created_at = "2026-09-12T17:13:14"
+task_type = "mlpl-probe"
+commits = []

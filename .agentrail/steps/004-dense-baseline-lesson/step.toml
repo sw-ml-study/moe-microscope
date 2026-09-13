@@ -1,0 +1,9 @@
+number = 4
+slug = "dense-baseline-lesson"
+status = "pending"
+description = "Implement DN01, the dense tiny transformer baseline at microscope scale (voca..."
+role = "production"
+context_files = []
+created_at = "2026-09-12T17:13:14"
+task_type = "mlpl-lesson"
+commits = []

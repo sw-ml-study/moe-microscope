@@ -1,0 +1,926 @@
+describe all the techniques that Freetoken uses to run MoE models on smaller GPUs.  Consider the latest MoE models that run well on Freetoken.  After that, consider small LLMs, like Hierarchical Reasoning Model and Tiny Recursive Model and how we could build a tiny MoE distilled model from scratch where we could build a small Engram table, and activate a small subset of many tiny experts.  I want to be able to train and run inference on this really scaled-down approach to show step by step how each part works and get some measurable results with reasonable speed on tiny/old hardware.  Maybe even get this to work on systems with 256M RAM and a 0.5 TOPS NPU.
+
+You want to combine three ideas that normally live at very different scales:
+
+FreeToken-style heterogeneous MoE execution — treat RAM, accelerator memory, CPU, and interconnect as a hierarchy rather than requiring all experts to fit on the accelerator.
+HRM/TRM-style recursive computation — reuse a very small amount of neural machinery repeatedly instead of buying reasoning depth with many unique layers.
+Engram-style conditional memory — move simple memorization/pattern lookup out of the neural network and into a cheap deterministic lookup structure.
+
+I think that combination is unusually well suited to an educational/research system because you can make total parameters, active parameters, active experts, memory traffic, recursion depth, Engram size, and cache size independently adjustable.
+
+1. What FreeToken is really doing
+
+FreeToken's starting observation is straightforward: MoE solves the compute problem but does not automatically solve the storage problem. DeepSeek-V4-Flash, for example, routes each token through only 6 of 256 routed experts in each of 43 layers; roughly 13B of its 284B parameters participate in a token even though the complete expert pool is vastly larger.
+
+So FreeToken does not treat VRAM as "where the model lives."
+
+It treats the machine approximately as:
+
+             FAST / SMALL
+       ┌────────────────────┐
+       │ GPU VRAM           │
+       │                    │
+       │ dense/shared       │
+       │ model weights      │
+       │ KV/state cache     │
+       │ HOT EXPERT CACHE   │
+       └─────────┬──────────┘
+                 │ PCIe
+       ┌─────────▼──────────┐
+       │ Host RAM           │
+       │                    │
+       │ COMPLETE EXPERT    │
+       │ POOL               │
+       └─────────┬──────────┘
+                 │
+       ┌─────────▼──────────┐
+       │ SSD / checkpoint   │
+       └────────────────────┘
+             SLOW / LARGE
+
+Non-expert weights normally remain GPU resident, while host RAM is the authoritative copy of the routed experts. Everything left in VRAM becomes an elastic expert cache shared across layers. A cache entry represents a complete (layer, expert) rather than independent tensor fragments.
+
+That separation is the fundamental trick.
+
+The FreeToken techniques
+Technique	What it accomplishes	Tiny-model analogue
+Sparse MoE routing	Only k << E experts execute	32–64 experts, top-1/top-2
+Host-resident expert pool	Total model can exceed VRAM	Flash/DRAM holds all experts
+Global GPU expert cache	Hot experts execute locally	SRAM/NPU memory expert cache
+Routing-aware LRU	Cache follows actual workload	Measure/cache recent experts
+Full-layer prefill streaming	Hides bulk weight movement	DMA next expert bank
+Double buffering	Transfer N+1 while computing N	Two scratch buffers
+CPU/GPU hybrid execution	Misses can execute without transfer	CPU + NPU cooperation
+q* scheduling	Chooses transfer vs CPU dynamically	Scheduler based on measured bandwidth
+Quantized experts	Reduces RAM and transfer traffic	INT8/INT4 experts
+CUDA-graph-compatible routing	Removes host dispatch overhead	Static compiled dispatch graph
+CPU SIMD + dequantization	Makes CPU miss path bandwidth-efficient	SIMD fallback kernels
+Elastic VRAM allocation	Trades expert cache against KV memory	Dynamic SRAM allocation
+FTW expert-bank layout	Avoids runtime repacking	Native packed embedded format
+Fast bootstrap	Load directly into final representation	mmap/direct DMA packed weights
+Semantic prefix/state caching	Avoids recomputation after context edits	Recursive-state snapshots
+Radix KV prefix cache	Reuses common prefixes	Optional small prefix cache
+Hardware calibration	Measures real RAM/PCIe behavior	Benchmark flash/DRAM/NPU/CPU
+
+The especially important ones for your project are the expert hierarchy, LRU, hybrid miss handling, packed expert format, quantization, and measurement-based scheduling.
+
+2. Prefill and decode are deliberately treated differently
+
+This is one of FreeToken's more interesting decisions.
+
+During generation, MoE routing is sparse. But during a long prompt, thousands of input tokens collectively tend to touch most experts. FreeToken found that trying to fetch individual experts on demand during prefill therefore doesn't buy much.
+
+Instead it allocates two complete expert-layer buffers. While the GPU executes layer L, it streams the experts for layer L+1. The buffers swap roles.
+
+Conceptually:
+
+time ─────────────────────────────────────────────>
+
+GPU:     compute L0 | compute L1 | compute L2 | compute L3
+PCIe:       load L1 |    load L2 |    load L3 | load L4
+             ^ overlap ^
+
+buffer A:     L0          L2          L4
+buffer B:          L1          L3
+
+On an RTX 5090 the paper reports streaming a 64.4-GB expert pool at roughly 52.7 GB/s during an 8192-token prefill; removing the second buffer reduced throughput materially as prompt size increased.
+
+Your tiny implementation should reproduce this experiment even if the buffers contain only tens or hundreds of KB.
+
+That makes the effect visible rather than merely theoretical.
+
+3. Decode becomes an expert-cache problem
+
+Decode is the opposite.
+
+For one token:
+
+router
+   |
+   +---- expert 3  ---- cache hit
+   +---- expert 17 ---- cache hit
+   +---- expert 41 ---- MISS
+
+FreeToken uses temporal locality: adjacent tokens frequently select overlapping experts.
+
+So instead of deciding at startup that "experts 0–31 belong on the GPU," it uses an LRU cache whose contents continuously follow actual routing decisions.
+
+That sounds obvious in hindsight, but it is fundamentally different from static offload.
+
+Your demonstration should expose this explicitly:
+
+Token    Selected experts    cache hit/miss
+-----    ----------------    --------------
+102        3,17                 H,H
+103        3,22                 H,M
+104       17,22                 H,H
+105        3,41                 H,M
+
+Then graph:
+
+cache hit rate
+bytes transferred/token
+tokens/sec
+
+against cache capacity.
+
+This could become one of the best demonstrations in the project.
+
+4. FreeToken's cleverest mechanism: q*
+
+Suppose a layer needs four experts that aren't in VRAM.
+
+A simplistic system has two choices:
+
+A: transfer all four → GPU
+B: execute all four → CPU
+
+FreeToken instead does both simultaneously.
+
+It measures:
+
+B_P: pinned host→GPU transfer bandwidth
+B_H: host-memory expert processing bandwidth
+
+and approximately chooses
+
+$$ q^* = m {B_P \over B_H} $$
+
+where m is the number of missing experts.
+
+So:
+
+               4 missing experts
+                      |
+          ┌───────────┴──────────┐
+          │                      │
+    transfer/cache           CPU execute
+       expert 41             expert 52
+                             expert 59
+                             expert 63
+          │                      │
+        GPU                    CPU
+          └───────────┬──────────┘
+                      │
+                  sum output
+
+Both outputs are exact partial MoE outputs; this is not an approximation of the model.
+
+That distinction is important.
+
+The scheduler is approximating the best resource allocation, not the neural computation.
+
+FreeToken now provides ft bench bw specifically to measure these characteristics on the target machine rather than guessing them from specifications.
+
+For your system I'd generalize this to:
+
+$$ q^* = f(B_\text{flash},B_\text{RAM},B_\text{DMA}, B_\text{CPU},B_\text{NPU}) $$
+
+That might actually become a genuinely interesting embedded-systems research result.
+
+5. FreeToken also removes the scheduler from the critical path
+
+There is a less glamorous but important implementation trick.
+
+FreeToken keeps routing/cache decisions compatible with CUDA graph execution. Routing-dependent work—deduplicating experts, determining hits/misses, choosing LRU victims and translating logical expert numbers into physical slots—runs inside fixed graph machinery rather than bouncing repeatedly through Python/host scheduling.
+
+Its CPU side likewise uses persistent native worker threads pinned to physical cores, SIMD kernels, and in-kernel dequantization.
+
+For a 0.5-TOPS NPU, this lesson may matter even more than on CUDA:
+
+Do not make tiny expert dispatches expensive.
+
+A 30-µs neural expert isn't useful if selecting and launching it costs 100 µs.
+
+That argues strongly for a restricted routing scheme that can be ahead-of-time compiled.
+
+6. Quantization helps twice
+
+FreeToken currently supports combinations including BF16, FP8, NVFP4 and MXFP4 depending on model/backend.
+
+For an offloaded MoE model quantization gives two benefits:
+
+$$ \text{smaller weights} \Rightarrow \begin{cases} \text{more experts fit in cache}\\ \text{less data crosses PCIe} \end{cases} $$
+
+That second property is particularly important.
+
+For your embedded system, INT4 expert weights may therefore be more useful than INT4 dense weights.
+
+The shared network can initially remain INT8 while experts become INT4.
+
+7. FTW is also worth copying conceptually
+
+FreeToken normalizes architecture-specific experts into expert banks keyed by something equivalent to:
+
+expert_id = layer * experts_per_layer + expert
+
+and FTW stores the checkpoint already arranged that way. Loading can therefore read aligned blocks directly into their runtime host representation rather than loading a generic checkpoint and rearranging hundreds of GB afterward.
+
+It also populates host memory before pinning it, avoiding needless zero/fault work on enormous pinned allocations.
+
+Your format might deliberately be extremely simple:
+
+TinyMoE file
+├── header
+├── tokenizer
+├── shared weights
+├── routers
+├── engram
+├── expert-index
+├── expert-0000
+├── expert-0001
+├── ...
+└── expert-N
+
+Each expert should be independently DMA-able.
+
+That would make experiments with HDD/SSD/SPI-flash/RAM/external SRAM unusually straightforward.
+
+8. The currently interesting FreeToken models
+
+FreeToken's current known-good model list has moved beyond its original three headline models. The documentation now lists DeepSeek-V4, GLM-5.2, GLM-4.7, Qwen3.8-Flash-Next, Qwen3.6/3.5 MoE, Qwen3-MoE, GPT-OSS, Gemma-4, MiniMax-M2.5 and Muse-Glimmer variants.
+
+The headline results from the paper remain particularly informative:
+
+Model	Why interesting
+Qwen3.6-35B-A3B	Small active footprint; FreeToken reports 77–83 tok/s on RTX 5090
+DeepSeek-V4-Flash	284B total, ~13B active; 22–25 tok/s on RTX 5090
+GLM-5.2	753B total; demonstrated on a single workstation GPU
+Qwen3.8-Flash-Next	Newer architecture, particularly interesting for your memory idea
+
+Those headline performance results come from the FreeToken evaluation.
+
+And there is a rather striking connection to your Engram idea: FreeToken's current model documentation says Qwen3.8-Flash-Next uses a 47.7-GiB PLE n-gram table pinned in host RAM.
+
+That is almost a giant-scale version of one component we're proposing to miniaturize.
+
+9. Now combine this with HRM/TRM
+
+There is an important distinction first:
+
+HRM and TRM are not tiny general-purpose LLMs.
+
+HRM's original model was 27M parameters and obtained striking results on structured reasoning tasks using recurrence and two interacting modules operating at different timescales rather than a deep stack of unique layers.
+
+TRM simplifies the concept dramatically: essentially a tiny recurrent network repeatedly updates a latent state and candidate answer. The original TRM work uses about 7M parameters and only two neural layers.
+
+Some follow-up results also suggest caution about interpreting the headline ARC numbers: performance depends substantially on task conditioning, augmentation, sampling/voting and test-time compute.
+
+But that doesn't weaken the architectural lesson relevant here:
+
+Reasoning depth does not necessarily require parameter depth.
+
+That is exactly what we want.
+
+10. I would build a Recursive Tiny MoE
+
+Rather than:
+
+Transformer layer 0
+Transformer layer 1
+Transformer layer 2
+...
+Transformer layer 24
+
+I'd build:
+
+             ┌───────────────────────┐
+tokens ─────►│ embedding + Engram    │
+             └──────────┬────────────┘
+                        ▼
+              ┌───────────────────┐
+              │ shared recurrent  │◄──────────────┐
+              │ reasoning block   │               │
+              └───────┬───────────┘               │
+                      │                           │
+                  router                          │
+                 /  |  \                          │
+                /   |   \                         │
+            expert expert expert                  │
+                \   |   /                         │
+                 combine                          │
+                      │                           │
+                update state ─────────────────────┘
+                      │
+                after R cycles
+                      ▼
+                    LM head
+
+Unique parameter count stays tiny.
+
+Effective computational depth becomes adjustable.
+
+11. A concrete first architecture
+
+I'd start approximately here:
+
+Component	V0
+Vocabulary	4,096
+d_model	256
+Physical recurrent blocks	4
+Recurrences	1–8 selectable
+Experts/block	32
+Active experts	top-2
+Expert hidden width	128
+Attention	GQA or very small causal attention
+Engram	hashed 2/3/4-gram
+Engram slots	65,536
+Engram value width	32
+Training precision	BF16/FP16
+Deployment shared weights	INT8
+Deployment experts	INT8 → INT4
+Engram	INT8
+
+A gated expert roughly needs:
+
+$$ 3\times256\times128 \approx 98K $$
+
+parameters.
+
+Therefore:
+
+$$ 98K\times32\times4 \approx 12.6M $$
+
+expert parameters total.
+
+Add embeddings, attention, routers and projections and you're probably still around 15–20M parameters.
+
+At INT4:
+
+20M parameters × 0.5 byte ≈ 10 MB
+
+before scales and metadata.
+
+That is almost comically small relative to 256 MB.
+
+So we can afford to increase the experiment substantially later.
+
+12. And this is where "many experts" becomes interesting
+
+Suppose instead we have:
+
+4 blocks
+64 experts/block
+top-2
+
+We have:
+
+256 experts physically present
+  8 expert executions per recurrent sweep
+
+So only:
+
+$$ 8/256 = 3.1\% $$
+
+of the expert population is active during one pass.
+
+If we perform four recurrent iterations:
+
+iteration 0 → experts {7,19,...}
+iteration 1 → experts {7,22,...}
+iteration 2 → experts {4,22,...}
+iteration 3 → experts {4,31,...}
+
+we get something especially interesting:
+
+expert routing over reasoning time
+
+not merely routing over transformer depth.
+
+That could show genuine emergent specialization.
+
+For example:
+
+expert 7   → syntax
+expert 12  → arithmetic
+expert 22  → identifier relationships
+expert 31  → answer refinement
+
+We should not force those meanings.
+
+We should instrument the model and discover whether such specialization develops.
+
+13. Add the Engram as another sparse axis
+
+DeepSeek describes Engram as complementary to MoE:
+
+MoE = conditional computation
+Engram = conditional memory
+
+Engram performs deterministic N-gram addressing and retrieves learned memory values in essentially O(1), avoiding the need for neural layers to repeatedly reconstruct common token patterns. DeepSeek also emphasizes that deterministic addressing makes very large tables naturally offloadable.
+
+Our tiny version could be delightfully simple.
+
+For recent tokens:
+
+"for" "(" "i"
+
+compute:
+
+h2 = hash("(" ,"i")       % table_size
+h3 = hash("for","(","i")  % table_size
+
+lookup:
+
+E2[h2]
+E3[h3]
+
+then:
+
+engram = projection(E2 + E3)
+
+and combine:
+
+$$ h'_t = h_t + g_t\cdot E_\text{ngram} $$
+
+where g is a learned gate.
+
+Initially:
+
+65536 entries
+× 32 dimensions
+× INT8
+≈ 2 MB
+
+Beautifully manageable.
+
+14. There is a useful negative result to keep in mind
+
+A recent independent experiment applying Engram-like tables to small 0.5B–4B models found substantial perplexity improvements but essentially no consistent gain on HellaSwag, PIQA or ARC-Challenge.
+
+That makes your experiment more interesting, not less.
+
+We can directly measure:
+
+                         Perplexity    reasoning    memory      speed
+Dense baseline
++ recurrence
++ MoE
++ Engram
++ recurrence + MoE
++ MoE + Engram
++ all three
+
+Instead of assuming that Engram must help.
+
+15. The experimental progression I would use
+
+This is where I think your project can become much more valuable than simply "another tiny LLM."
+
+Stage	Architecture	Question
+0	dense tiny transformer	Baseline
+1	recurrent shared layers	Does repeated compute replace parameters?
+2	dense + Engram	Does external memory improve PPL/tasks?
+3	top-1 MoE	Can experts specialize?
+4	top-2 MoE	Is quality worth doubled active compute?
+5	recurrent MoE	Does expert selection change during reasoning?
+6	recurrent MoE + Engram	Do memory and compute sparsity complement each other?
+7	quantized	What quality is lost at INT8/INT4?
+8	constrained expert cache	What does cache size do?
+9	CPU/NPU hybrid	Can FreeToken-style scheduling help?
+10	256-MB target	Can the complete architecture survive embedded deployment?
+
+Every stage produces a measurable result.
+
+That is considerably better pedagogically than starting with the final architecture.
+
+16. Distillation: "from scratch" still makes sense
+
+I would interpret "distilled from scratch" as:
+
+Initialize the tiny model randomly, but train it partly from targets produced by a capable teacher.
+
+We're not pruning or compressing an existing network.
+
+We create our own:
+
+tokenizer
+architecture
+router
+experts
+Engram
+recursive computation
+
+from scratch.
+
+Then a larger teacher generates:
+
+input → teacher output
+
+and, where practical:
+
+teacher token probability distribution
+
+Student objective:
+
+$$ L = \alpha L_\text{token} +\beta L_\text{KD} +\gamma L_\text{router} +\delta L_\text{balance} $$
+
+Potentially later:
+
+$$ +\epsilon L_\text{recurrence} $$
+
+where intermediate recursive states are rewarded for progressively improving the answer.
+
+We don't need a frontier teacher. A modest local 1B–7B model can generate vastly better training labels than our ~20M student.
+
+17. Start with a constrained domain
+
+I would not initially train it to be a general chatbot.
+
+That confounds too many things.
+
+I'd use a mixture like:
+
+natural language
+simple code
+arithmetic
+sequence transformations
+logic puzzles
+small algorithms
+structured text
+
+with synthetic data heavily represented.
+
+Why?
+
+Because then we can actually see whether experts specialize.
+
+Imagine a router eventually producing:
+
+arithmetic → experts 3,17
+Rust syntax → experts 8,26
+English prose → experts 2,14
+sequence reasoning → experts 21,31
+
+That's an educational result you can inspect.
+
+18. Metrics should go far beyond perplexity
+
+For every run I'd record:
+
+Neural	Systems
+validation loss	tokens/sec
+perplexity	bytes/token
+task accuracy	RAM peak
+teacher/student KL	accelerator RAM
+active params/token	expert cache hit rate
+router entropy	expert transfers/token
+expert load balance	CPU vs NPU work
+expert specialization	energy/token
+accuracy vs recursion	latency/token
+Engram contribution	Engram collisions
+Engram gate magnitude	cache reuse distance
+
+FreeToken demonstrates why this matters: systems characteristics can dominate performance even when the mathematical model remains identical.
+
+19. Your 256-MB / 0.5-TOPS target is plausible — with qualifications
+
+Inference: absolutely plausible for this tiny architecture.
+
+Training the complete system on-device: much less attractive.
+
+A 20M-parameter model may require only about:
+
+INT8   ~20 MB
+INT4   ~10 MB
+
+for deployed weights.
+
+But Adam-style training might require roughly:
+
+weights
+gradients
+master weights
+first moment
+second moment
+activations
+
+and quickly exceed 256 MB.
+
+So I'd separate:
+
+training machine
+    ↓
+quantized packed checkpoint
+    ↓
+256-MB inference device
+
+and then optionally support limited on-device learning:
+
+router adaptation
+Engram updates
+small expert fine-tuning
+last-layer training
+
+That would itself be an interesting experiment.
+
+20. 0.5 TOPS probably isn't the real limit
+
+For this design the limiting resource may be:
+
+memory bandwidth and dispatch latency, not TOPS.
+
+Suppose a token touches only ~1–3M parameters through recurrent sparse execution.
+
+Even at several recurrent steps that's nowhere near a 0.5-TOPS theoretical arithmetic ceiling.
+
+But if each tiny expert causes:
+
+flash read
+DMA setup
+NPU submission
+synchronization
+
+the accelerator may spend more time launching experts than multiplying matrices.
+
+Therefore I would design the NPU architecture around expert bundles rather than arbitrary individual networks.
+
+For example:
+
+expert-bank-0 = experts 0..7
+expert-bank-1 = experts 8..15
+...
+
+and make the router's scheduling granular enough to suit the actual NPU compiler.
+
+21. A more radical option: experts as low-rank deltas
+
+For the smallest machine, I'd also test:
+
+            shared FFN
+                +
+       selected expert delta
+
+rather than completely separate FFNs.
+
+Each expert becomes:
+
+$$ \Delta W_e = A_eB_e $$
+
+with rank perhaps 4 or 8.
+
+Then you can afford hundreds of experts.
+
+Example:
+
+d = 256
+rank = 8
+
+expert parameters
+≈ 2 × 256 × 8
+= 4096
+
+So:
+
+256 experts ≈ 1M parameters
+
+per expert location.
+
+That gives you genuinely large expert populations while remaining tiny.
+
+This may actually be a better fit for the 0.5-TOPS NPU because the big shared matrix remains static and accelerator-friendly.
+
+22. My preferred eventual architecture
+
+I would call the conceptual design something like µMoE-RM for now:
+
+                   token IDs
+                      │
+            ┌─────────▼────────┐
+            │ token embedding  │
+            └─────────┬────────┘
+                      │
+       recent tokens ─┼─────────────┐
+                      │             │
+                      │       ┌─────▼─────┐
+                      │       │  Engram   │
+                      │       │ 2/3/4gram │
+                      │       └─────┬─────┘
+                      │             │
+                 ┌────▼─────────────▼──┐
+                 │ recurrent core      │◄──────┐
+                 │ attention/state     │       │
+                 └────────┬────────────┘       │
+                          │                    │
+                    ┌─────▼─────┐              │
+                    │  router   │              │
+                    └─────┬─────┘              │
+                          │ top-k               │
+                    ┌─────▼─────┐              │
+             RAM/   │ expert    │              │
+             flash──┤ cache     │              │
+                    └─────┬─────┘              │
+                          │                    │
+             ┌────────────┼────────────┐       │
+             │            │            │       │
+          expert       expert       expert     │
+             │            │            │       │
+             └────────────┼────────────┘       │
+                          │                    │
+                     combine                   │
+                          │                    │
+                     state update ─────────────┘
+                          │
+                      LM head
+
+It has three independent kinds of sparsity:
+
+$$ \boxed{ \text{parameter sharing} + \text{conditional compute} + \text{conditional memory} } $$
+
+namely:
+
+recurrence → temporal parameter reuse
+
+MoE       → compute sparsity
+
+Engram    → memory lookup sparsity
+
+FreeToken then adds a fourth:
+
+expert cache → residency sparsity
+
+That is a remarkably elegant little research system.
+
+23. It also fits your older hardware progression unusually well
+
+I would actually develop it downward:
+
+RTX 3090 / 5060
+       │
+       ▼
+normal training + profiling
+       │
+       ▼
+RTX 3060 / P40
+       │
+       ▼
+CPU-only old Xeon
+       │
+       ▼
+small SBC
+       │
+       ▼
+LicheeRV/SG2002-class
+256 MB + ~0.5 TOPS NPU
+
+At every step, constrain the previous system artificially:
+
+64 MB expert cache
+32 MB
+16 MB
+8 MB
+...
+
+before moving to the real hardware.
+
+Then an embedded failure isn't mysterious—you already know approximately where the knee in the curve should occur.
+
+The experiment I would build first
+
+I would resist starting with language generation.
+
+Build a ~5–10M parameter recurrent MoE, perhaps 16 experts with top-2, and train it on synthetic transformations plus tiny text.
+
+Give it a 64K × 32 ≈ 2-MB Engram.
+
+Then build a visual/instrumented runtime showing:
+
+current token
+↓
+Engram addresses + retrieved values
+↓
+recursive iteration 1
+    router → experts 3,7
+recursive iteration 2
+    router → experts 3,12
+recursive iteration 3
+    router → experts 9,12
+↓
+prediction
+
+alongside:
+
+expert cache
+┌────┬────┬────┬────┬────┐
+│ E3 │ E7 │E12 │ E9 │... │
+└────┴────┴────┴────┴────┘
+
+hits     7
+misses   2
+loads    1
+CPU      1
+NPU      8
+
+Once that works, scale the number of experts upward while keeping active parameters nearly constant.
+
+That gives you a very clean experimental question:
+
+$$ \textbf{How much model capacity can we add without adding proportional compute?} $$
+
+Then add the second question:
+
+$$ \textbf{How much of that capacity actually needs to reside near the accelerator?} $$
+
+And finally the Engram question:
+
+$$ \textbf{How much memorization can be removed from neural computation altogether?} $$
+
+Those three questions connect TRM/HRM → MoE → Engram → FreeToken → your 256-MB NPU target much more coherently than simply trying to shrink an existing LLM.
+
+I think this is strong enough to justify its own experimental repo rather than being merely another sw-mlpl demonstration: the repo could progressively implement Dense → Recursive → MoE → Engram → Cached MoE → Hybrid CPU/NPU, with every stage retaining comparable benchmarks and trace visualizations.
+
+what would we call this new repo?
+
+Given the repo's purpose—a small, inspectable experimental model that combines recursive reasoning, sparse MoE, Engram memory, and FreeToken-inspired memory hierarchy—I'd avoid naming it after any one of those techniques. The interesting thing is the combination.
+
+My strongest candidates:
+
+Name	Why it works
+tiny-moe-lab	Immediately understandable; emphasizes experimentation
+micro-moe	Short, memorable, emphasizes extreme scaling-down
+recursive-moe	Captures perhaps the most novel architectural combination
+sparse-reasoner	Describes the goal rather than implementation
+tiny-sparse-reasoner	More explicit about scale
+micro-reasoner	Nice if MoE/Engram are implementation details
+tiny-conditional-model	Captures conditional compute + memory
+micro-moe-reasoner	Descriptive without being too long
+tiny-moe-research	Serious/academic sounding, but generic
+moe-microscope	Excellent if education/visualization is central
+I particularly like moe-microscope
+
+It fits what we're actually proposing better than tiny-moe-lab.
+
+The project isn't merely trying to create the smallest useful MoE. It's intended to let someone look inside one:
+
+token
+  ↓
+Engram lookup ─────────► inspect
+  ↓
+recurrent state ───────► inspect
+  ↓
+router ────────────────► inspect
+  ↓
+expert selection ──────► inspect
+  ↓
+expert cache ──────────► inspect
+  ↓
+CPU/NPU scheduling ────► inspect
+  ↓
+prediction
+
+And experiments can progressively turn mechanisms on:
+
+dense
+  → recursive
+  → MoE
+  → recursive MoE
+  → + Engram
+  → + quantization
+  → + expert caching
+  → + heterogeneous execution
+  → tiny hardware
+
+That makes moe-microscope a good description of the project's educational purpose rather than just its architecture.
+
+It also connects nicely with the "ML microscope" concept we've discussed for your visualization work without tying the repository to sw-MLPL itself.
+
+Another direction: micro-moe
+
+If you expect this to become more serious model research than educational visualization, I'd choose:
+
+micro-moe
+
+It gives you room for:
+
+Micro-MoE is an experimental framework for training and deploying extremely small mixture-of-experts models using recursive computation, sparse learned experts, associative Engram memory, quantization, and hierarchical expert storage.
+
+Then the project's named model could be something different:
+
+µMoE-R — recursive Micro-MoE
+µMoE-E — + Engram
+µMoE-X — heterogeneous/offloaded version
+
+That gives you clean experimental nomenclature:
+
+µMoE-D    dense baseline
+µMoE-R    recursive
+µMoE-S    sparse experts
+µMoE-RE   recursive + Engram
+µMoE-RSE  recursive + sparse + Engram
+
+Though I'd probably avoid getting too acronym-heavy until experiments justify the distinctions.
+
+My preference
+
+I'd use:
+
+Repo: moe-microscope
+Building mixture-of-experts models small enough to understand.
+
+with the first actual architecture called:
+
+MicroMoE
+
+That separates the research/teaching environment from the model being studied.
+
+It also leaves moe-microscope free to compare MicroMoE against dense, recurrent, TRM-like, Engram, cached/offloaded, and other architectures rather than prematurely defining the repo as one particular model.

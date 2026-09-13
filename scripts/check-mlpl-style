@@ -1,0 +1,28 @@
+#!/bin/sh
+set -eu
+
+repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+files=$(find "$repo_dir" -type f -name '*.mlpl' \
+    -not -path "$repo_dir/.git/*" -not -path "$repo_dir/out/*" \
+    -not -path "$repo_dir/tmp/*" | sort)
+
+if [ -z "$files" ]; then
+    echo "MLPL style: no source files yet"
+    exit 0
+fi
+
+formatter="$repo_dir/../sw-mlpl/scripts/mlpl-fmt.sh"
+if [ ! -x "$formatter" ]; then
+    echo "missing adjacent canonical formatter: $formatter" >&2
+    exit 1
+fi
+
+for file in $files; do
+    first=$(sed -n '/^[[:space:]]*$/d; p; q' "$file")
+    case "$first" in
+        \#*) ;;
+        *) echo "missing module-purpose comment: ${file#"$repo_dir/"}" >&2; exit 1 ;;
+    esac
+    "$formatter" --check "$file"
+done
+echo "PASS MLPL style"

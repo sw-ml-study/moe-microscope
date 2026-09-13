@@ -1,0 +1,11 @@
+# Generated lesson output and local tool artifacts.
+/out/
+/target/
+/tmp/
+*.tmp
+*.log
+
+# Platform/editor metadata.
+.DS_Store
+*~
+*.swp
