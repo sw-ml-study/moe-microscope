@@ -2,7 +2,15 @@
 
 ## Governing principle
 
-MLPL owns the model and its meaning. Hosts render recorded observations.
+MLPL owns the model and its meaning. Hosts render recorded observations. Both
+halves are dogfooded: the model side proves sw-MLPL as a language for runtimes
+and open weights, and the host side proves sw-MLPL plus `../demo-extensions`
+as the toolchain for the educational visualization itself.
+
+Prefer a shipped sw-MLPL feature over an equivalent built here. Build from
+scratch only where watching the mechanism is the lesson, and then show both
+forms with a parity check. Every gap becomes a reproducer, a pinned probe,
+and an upstream work order in [`sw-mlpl-findings.md`](sw-mlpl-findings.md).
 
 MicroMoE is written as readable MLPL: an embedding, an Engram lookup, one
 shared recurrent block containing causal attention and a router over a bank of
@@ -78,11 +86,27 @@ static SVG + numeric tables   generic Rust/Yew/WASM host (optional)
 canonical committed evidence  optional native graphics host
 ```
 
-Observation names are stable slash-separated paths grouped by mechanism, for
-example `moe/router/logits`, `moe/router/mask`, `moe/dispatch/expert-load`,
+Observation names are literal strings (finding F8: `emit_frame` rejects a
+name held in a variable), stable, slash-separated, and grouped by the
+mechanism prefixes listed in `lib/observe.mlpl`, for example `moe/router/logits`, `moe/router/mask`, `moe/dispatch/expert-load`,
 `engram/address/2gram`, `engram/gate`, `recur/state/2`, `cache/hit-miss`,
 `cache/bytes-per-token`, `hybrid/q-star`. A host groups by prefix and chooses a
 presentation from shape; it never learns what a router is.
+
+## Source conventions forced by the language today
+
+- Losses are user functions or expressions, never pre-evaluated variables
+  (D1: a variable is a constant on the tape).
+- Experts, routers, and blocks are module-level globals that user functions
+  refer to by name (F7: models cannot be arguments).
+- The top-k mask is computed eagerly each training step and passed into the
+  loss as a constant; the gate is `softmax(logits) * mask` (F5, and a
+  renormalized top-1 gate has no router gradient).
+- Recurrence depth is spelled as nested `apply` in one user function per
+  depth (F6: `repeat` is not traced).
+
+Each convention is pinned by a probe and disappears when the upstream fix
+lands.
 
 ## Two execution paths, one semantics
 

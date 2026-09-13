@@ -1,0 +1,5 @@
+# F5 reproducer: one_hot and argmax are rejected inside grad; expected error text is checked by scripts/run-probes.
+W = param[3, 2]
+W = randn(1, [3, 2])
+x = randn(2, [4, 3])
+grad(reduce_add(softmax(matmul(x, W)) * one_hot(argmax(matmul(x, W), 1), 2)), W)

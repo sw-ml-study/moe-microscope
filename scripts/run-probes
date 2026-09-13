@@ -1,0 +1,28 @@
+#!/bin/sh
+# Run each upstream-finding reproducer and require the documented outcome, so an upstream fix is noticed here.
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+mlpl=$("$repo_root/scripts/select-mlpl")
+
+expect_error() {
+    name=$1
+    pattern=$2
+    output=$("$mlpl" --source-dir "$repo_root" "$repo_root/probes/$name.mlpl" 2>&1 || true)
+    printf '%s\n' "$output" | grep -q -- "$pattern" || {
+        echo "probe $name: expected '$pattern'; upstream behavior changed, update docs/sw-mlpl-findings.md" >&2
+        printf '%s\n' "$output" | tail -3 >&2
+        exit 1
+    }
+    echo "PASS probe $name still reproduces: $pattern"
+}
+
+expect_error f5_one_hot_in_grad "not supported inside grad"
+expect_error f6_repeat_in_grad "not supported inside grad"
+expect_error f7_model_argument "must be an array, Result, string"
+expect_error f8_emit_frame_name "name must be a string literal"
+
+output=$("$mlpl" --source-dir "$repo_root" "$repo_root/probes/d1_silent_zero_grad.mlpl" 2>&1)
+printf '%s\n' "$output" | grep -q '^pre-evaluated 0 0$' || { echo "probe d1: silent zero gradient no longer reproduces" >&2; exit 1; }
+printf '%s\n' "$output" | grep -q '^expression 2 4$' || { echo "probe d1: expression gradient wrong" >&2; exit 1; }
+echo "PASS probe d1_silent_zero_grad still reproduces: pre-evaluated loss gives zeros"

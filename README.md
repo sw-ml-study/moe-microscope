@@ -42,6 +42,15 @@ start from task tags, low-rank expert deltas fitted to a dense teacher, and
 deep supervision across recurrences, each measured alone against the baseline.
 The [delivery plan](docs/plan.md) explains both choices in detail.
 
+The repository dogfoods sw-MLPL twice: as the language for building the model
+and its runtime pieces, and, together with `../demo-extensions`, as the
+toolchain for the educational visualization itself. Shipped features are
+preferred over rebuilt ones; a mechanism is built from scratch only where
+watching it is the lesson, and then both forms are shown with a parity check.
+Every gap becomes a reproducer, a pinned probe, and an upstream work order in
+[`docs/sw-mlpl-findings.md`](docs/sw-mlpl-findings.md); the first four were
+fixed upstream the day they were filed.
+
 The microscope scale (CPU, seconds, tens of thousands of parameters) is the
 acceptance scale for every lesson. The same source runs at a lab scale under
 `device("mlx") { }`. The 256 MB, 0.5 TOPS device is an inference target for
@@ -53,11 +62,13 @@ the packed file, not a training target.
 docs/plan.md                 Delivery plan, sagas, the distillation and domain answers
 docs/sagas.md                Saga queue (active and future)
 docs/architecture.md         Ownership, layering, the model under the lens
-docs/sw-mlpl-blockers.md     Capability ledger: supported, awkward, to be probed
+docs/sw-mlpl-blockers.md     Capability ledger: supported, awkward, blocked
+docs/sw-mlpl-findings.md     Upstream work orders with reproducers and status
 docs/cross-repo-handoffs.md  Read-only work orders for sibling repositories
 docs/results.md              Memory/speed/quality rows, one per lesson run
 docs/research.txt            The original design discussion
 lib/  demos/  tests/         MLPL model code, lessons, and native mlplunit tests
+probes/                      Standalone reproducers re-checked by the gate
 fixtures/  assets/previews/  Bounded fixtures and committed diagrams
 catalog/                     Machine-readable lesson inventory
 scripts/  justfile           Thin gate and tool-selection scripts
@@ -83,16 +94,19 @@ The scripts only select existing tools; they never install or overwrite them.
 just                 # list recipes
 just check           # the complete pre-commit gate
 just tests           # native mlplunit tests (arguments filter paths or tags)
+just probes          # re-run the upstream-finding reproducers
 just mlpl-style      # canonical formatting and docstring checks
 ```
 
-`just check` currently validates repository structure, documentation links,
-peer-identical license files, the generated Agentrail briefing, and MLPL style.
-Each lesson extends the gate with its own demo run, preview freshness check,
-recording check, and catalog check.
+`just check` validates repository structure, documentation links,
+peer-identical license files, the generated Agentrail briefing, MLPL style,
+the native probe suites, and the pinned reproducers. Each lesson extends the
+gate with its own demo run, preview freshness check, recording check, and
+catalog check.
 
-A Rust/Yew/WASM live demo is optional and, if it is ever built, is the only
-code in this effort subject to `sw-checklist`.
+The interactive host is the generic Rust/Yew/WASM microscope and MLPL web
+framework in `../demo-extensions`; that Rust code is the only part of this
+effort subject to `sw-checklist`.
 
 ## Development process
 

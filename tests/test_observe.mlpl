@@ -1,0 +1,37 @@
+# Observation naming contract and the literal-name rule of emit_frame.
+include "lib/observe.mlpl";
+
+@test {name: "observe_path joins prefix and leaf with one slash", tags: ["observe", "naming"]}
+def u:test_observe_path() {
+  "Names group by mechanism prefix in a generic host.";
+  u:assert_text_eq(u:observe_path("moe/router", "logits"), "moe/router/logits", "joined name")
+}
+
+@test {name: "documented mechanism prefixes are recognized", tags: ["observe", "naming"]}
+def u:test_observe_prefixes() {
+  "Only documented prefixes may head an observation name.";
+  u:assert_eq(u:observe_prefix_known("moe"), 1, "moe is documented")?;
+  u:assert_eq(u:observe_prefix_known("router"), 0, "router is a leaf, not a prefix")
+}
+
+@test {name: "emit_frame with a literal name returns the value unchanged", tags: ["observe", "supported"]}
+def u:test_emit_frame_identity() {
+  "The assembly primitive is an identity when disconnected.";
+  u:assert_eq(emit_frame("probe/scalar", 0, 7), 7, "scalar identity")?;
+  u:assert_eq(emit_frame("probe/matrix", 1, [[1, 2], [3, 4]]), [[1, 2], [3, 4]], "matrix identity")
+}
+
+@test {name: "emit_frame rejects a name held in a variable (F8 blocked)", tags: ["observe", "blocked"]}
+def u:test_emit_frame_name_must_be_literal() {
+  "Pins current behavior: a forwarding facade over emit_frame cannot exist until names may be values.";
+  name = u:observe_path("probe", "dynamic");
+  outcome = try {
+    emit_frame(name, 0, 1);
+    "accepted"
+  } catch e {
+    e.kind
+  };
+  u:assert_true(1 - u:text_equal(outcome, "accepted"), "expected a hard error; if this fails, F8 was fixed upstream and u:observe can forward names")
+}
+
+u:run_registered_tests()

@@ -13,10 +13,43 @@ The model under the lens is called MicroMoE. The repository is the microscope.
 The microscope compares MicroMoE against dense, recurrent, Engram, quantized,
 cached, and hybrid-execution variants; it is not defined by one architecture.
 
-This is primarily an sw-MLPL project. MLPL owns the model, the training loops,
-the data generators, the evaluation, the systems simulators, and the lesson
-text. Visual hosts render recorded observations. A Rust/Yew/WASM live demo is
-an optional later layer; only that Rust code is subject to `sw-checklist`.
+This is primarily an sw-MLPL project, and it dogfoods two things at once:
+sw-MLPL as the language for building the model, its runtime pieces, and open
+weights (MoE, Engram, quantization, packed files), and sw-MLPL plus
+`../demo-extensions` as the toolchain for building the educational
+visualization itself. Proving that the model trains and that the techniques
+have value is necessary but not sufficient; the microscope's diagrams,
+recordings, and interactive host are deliverables of the same standing.
+
+MLPL owns the model, the training loops, the data generators, the evaluation,
+the systems simulators, and the lesson text. Every lesson produces a recording
+that the generic Rust/Yew/WASM microscope in `../demo-extensions` must render
+without lesson-specific Rust, and the interactive live demo uses the MLPL web
+framework proven there. Only Rust code is subject to `sw-checklist`.
+
+Every gap met on the way is a finding. It gets a reproducer, a pinned probe,
+a workaround, and an upstream work order in
+[`sw-mlpl-findings.md`](sw-mlpl-findings.md). The first four findings were
+fixed upstream the same day they were filed; that loop is part of the product.
+
+## Builtin first, from scratch where it teaches
+
+Prefer an existing sw-MLPL feature over an equivalent built here. Build a
+mechanism from scratch only when watching it work is the lesson, and then
+show both: the detailed version that exposes every intermediate value and the
+pragmatic version that calls the builtin, with a parity check between them.
+The catalog records each lesson as `builtin`, `from-scratch`, or `both`.
+
+| Mechanism | Builtin exists | Lesson form | Why |
+|---|---|---|---|
+| Embedding, attention, RMS norm, cross-entropy, perplexity, BPE, sampling, KV cache | yes | builtin | no educational reason to rewrite them |
+| Engram addressing, retrieval, gate | yes (`ngram_hash`, `engram`, `apply_engram`, `engram_stats`) | both | the detailed version shows hashing, gathering, and gating row by row; the builtin is the trained, deployable form; parity is asserted |
+| Router, top-k, dispatch, combine, load balance | no | from scratch | this is the subject of the repository |
+| Recurrence, deep supervision | no (nested `apply`) | from scratch | reuse of one block is the point |
+| KL divergence | no builtin, documented composition | builtin idiom | one line |
+| Quantization | no | from scratch, by handoff | reuse the INT8/Q4 arithmetic proven in `../demo-ml-utils` through `../demo-mlpl-libraries` rather than a third copy |
+| Expert cache, q-star scheduler, packed file | no | from scratch | systems lessons; byte I/O builtins underneath |
+| Observation, SVG, recording, playback | yes (`emit_frame`, `svg`, peer schema, Yew host) | builtin | the host is dogfooded, not rebuilt |
 
 The source discussion is retained in [`research.txt`](research.txt).
 
@@ -134,12 +167,16 @@ language reference. Nothing here is an upstream request yet.
   quantized weights are simulated as integer-valued f64 arrays plus packed
   byte files, which is what the byte-accounting lessons need.
 
-Items that must be probed before the lessons that depend on them (recorded in
-the [capability ledger](sw-mlpl-blockers.md)): `adam` over a list of models
-plus raw params in one call; gradient flow through the same model applied
-repeatedly inside `repeat`; differentiability of `gather_rows` and of masked
-softmax used as a top-k gate; availability and signature of a KL-divergence
-builtin; cost of per-token routing loops in the interpreter.
+The capability probes in Saga 1 step 2 settled the open questions. Supported:
+`adam` over a mixed list of models and params with the loss written as user
+functions, recurrence by nested `apply`, `gather_rows` on the tape, KL as a
+composition, one-argument `softmax` everywhere, packed byte round trips.
+Blocked with workarounds, pinned by probes and queued upstream: index and mask
+builtins inside `grad` (eager mask passed as a constant), `repeat` inside a
+traced function (nested `apply`), models as user-function arguments
+(globals), and `emit_frame` names that are not literals (naming helpers
+only). Details are in the [capability ledger](sw-mlpl-blockers.md) and
+[findings](sw-mlpl-findings.md).
 
 ## Architecture rule
 
@@ -239,6 +276,22 @@ research (dense, +recurrence, +MoE, +Engram, combinations, +quantization,
 | 10 | HY01 | CPU/NPU hybrid with q-star | can FreeToken-style scheduling help? |
 | 11 | PK01 | packed TinyMoE file and 256 MB budget | can the whole thing survive an embedded budget? |
 
+## Visualization track, every saga
+
+The host is dogfooded from the first lesson, not after the last one:
+
+- Every lesson emits a recording under the peer version-zero schema from
+  `../demo-ml-microscope`, pinned by hash in `fixtures/recordings/`.
+- Every saga ends with a host step: vendor the new recordings into the
+  generic Rust/Yew/WASM microscope in `../demo-extensions` through a written
+  handoff, prove that the existing shape-directed renderer presents them, and
+  report any shape or budget finding the way language findings are reported.
+- The interactive live demo (edit the lesson, rerun, watch the timeline) is
+  built on the MLPL web framework and `mlpl-serve` SSE path already proven in
+  `../demo-extensions`, starting once three recordings exist.
+- Committed SVG diagrams remain the canonical README evidence; the host adds
+  playback and selection, never a second implementation of the lesson.
+
 ## Saga 1: foundation, probes, domain, and dense baseline
 
 1. **foundation-contract.** Install the generated Agentrail briefing and
@@ -260,13 +313,18 @@ research (dense, +recurrence, +MoE, +Engram, combinations, +quantization,
    the memory/speed/quality triple, the first results row, and a freshness-
    checked preview SVG. DN01 is also the in-repo teacher's little sibling: the
    same source at a larger configuration is trained in step 5.
-5. **in-repo-teacher-fixture.** Train the larger dense model once, export its
+5. **dn01-recording-and-host-handoff.** Record DN01 over live SSE under the
+   peer schema, pin it by hash, probe `emit_frame` inside `train { }` on the
+   connect path, and write the `../demo-extensions` handoff for rendering the
+   recording in the generic microscope.
+6. **in-repo-teacher-fixture.** Train the larger dense model once, export its
    next-token distributions over the training split as a bounded fixture with
    a documented schema, and check the fixture's hash and size in the gate.
 
 Exit: `just check` passes from a clean checkout; the ledger distinguishes
-supported, awkward, and blocked behavior by executable evidence; DN01 has a
-diagram set, a measured triple, and a results row; the teacher fixture exists.
+supported, awkward, and blocked behavior by executable evidence; findings
+carry reproducers and pinned probes; DN01 has a diagram set, a measured
+triple, a results row, and a pinned recording; the teacher fixture exists.
 
 ## Saga 2: mixture of experts from scratch
 
@@ -286,6 +344,9 @@ diagram set, a measured triple, and a results row; the teacher fixture exists.
 5. **low-rank-delta-experts.** Experts as shared FFN plus `A_e B_e` deltas,
    allowing 16 to 32 experts at microscope scale; byte accounting per expert;
    quality comparison with full experts.
+6. **moe-recordings-and-host-handoff.** MX01 and MX02 recordings pinned; the
+   router mask, dispatch table, and specialization map proven in the generic
+   host.
 
 Exit: a learner can watch one token be routed, dispatched, and combined; the
 specialization map is a checked artifact; MoE rows exist in the results table.
@@ -303,8 +364,13 @@ specialization map is a checked artifact; MoE rows exist in the results table.
    observations; Engram table diagram with bytes.
 4. **recurrent-moe-engram (RE01).** All three sparsities together and the
    ablation table filled for the seven research combinations.
+5. **live-demo-foundation.** With DN01, MX02, and RM01 recordings pinned,
+   hand off the interactive live demo: MLPL web framework pages that submit
+   an editable lesson to `mlpl-serve`, stream frames, and drive the generic
+   Yew timeline.
 
-Exit: the ablation matrix rows through RE01 exist with diagrams and triples.
+Exit: the ablation matrix rows through RE01 exist with diagrams and triples;
+the live demo has a written, implementation-ready handoff.
 
 ## Saga 4: distillation
 
@@ -360,21 +426,20 @@ with a checked curve of hit rate and bytes per token versus capacity.
 Exit: HY01 and PK01 rows exist; the embedded gap is a written handoff, not a
 claim.
 
-## Saga 7: interactive microscope host
+## Saga 7: interactive microscope host, complete
 
-1. **recording-fixtures.** Version-pinned recordings for DN01, MX02, RM01,
-   RE01, and XC01 under the peer recording schema; hash-checked index.
-2. **yew-viewer-handoff.** Implementation-ready handoff to `../demo-extensions`
-   for the generic Rust/Yew/WASM host to vendor these recordings, with
-   `sw-checklist` required for that Rust work. If the host is instead built
-   here, it lives in its own `crates/` directory and is the only code in this
-   repository subject to `sw-checklist`.
-3. **live-session-option.** Optional `mlpl-serve` live path for editing the
-   lesson and re-running it from the browser, reusing the measured SSE
-   contract from `../demo-ml-microscope`.
+1. **systems-recordings.** Pinned recordings for QZ01, XC01, HY01, and PK01;
+   cache traces and q-star splits proven in the generic host.
+2. **live-demo-acceptance.** The interactive live demo renders every lesson
+   from an editable source with playback, selection, and the measured triple
+   visible; `sw-checklist` passes on the Rust host crates in
+   `../demo-extensions` (or under `crates/` here if the host is built here).
+3. **pocket-helper-demo.** The value demonstration: the packed MicroMoE
+   answering arithmetic, sequence, and MLPL prompts from the browser with the
+   routing, Engram, and cache panels live.
 
-Exit: the same recorded data renders in the generic host without lesson-
-specific Rust.
+Exit: every recorded lesson renders in the generic host without lesson-
+specific Rust, and the pocket helper runs end to end.
 
 ## Cross-cutting gates
 
@@ -385,7 +450,11 @@ specific Rust.
   first-expression docstring, and canonical formatting is checked before commit
   and push with `scripts/check-mlpl-style`.
 - Every lesson satisfies the visual and measurement contract above and adds a
-  catalog entry naming its source, test, previews, recording, and triple.
+  catalog entry naming its source, test, previews, recording, triple, and
+  implementation form (`builtin`, `from-scratch`, or `both`).
+- Every language or host gap gets a reproducer under `probes/`, a pinned
+  mlplunit probe, a workaround, and an entry in the findings document in the
+  same step it is met.
 - Lessons are deterministic, bounded, standalone, and honest about which work
   runs in MLPL, in a builtin, or in a simulator.
 - Sibling repositories remain read-only. Their work is written as a handoff.

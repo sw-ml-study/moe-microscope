@@ -301,6 +301,15 @@ it with duplicated content or edit it independently.
 
 ## MoE microscope contract
 
+- Prefer an existing sw-MLPL feature over an equivalent built here. Build a
+  mechanism from scratch only when watching it work is the lesson, and then
+  show both the detailed and the pragmatic (builtin) form with a parity
+  check; record the form in the catalog.
+- This repository dogfoods sw-MLPL and `../demo-extensions` to build the
+  visualization itself, not only the model. Every lesson emits a recording
+  for the generic host, and every saga ends with a host step. Every language
+  or host gap gets a reproducer under `probes/`, a pinned mlplunit probe, a
+  workaround, and an entry in `docs/sw-mlpl-findings.md` in the same step.
 - This is primarily an sw-MLPL project. MLPL owns the model (MicroMoE), the
   training loops, data generators, evaluation oracles, quantizers, packed-file
   reader/writer, expert-cache simulator, hybrid scheduler, lesson order,
@@ -357,5 +366,5 @@ it with duplicated content or edit it independently.
   blockers or limitations (`none` when there are none).
 
 Planning references: `docs/research.txt`, `docs/plan.md`, `docs/sagas.md`,
-`docs/architecture.md`, `docs/sw-mlpl-blockers.md`,
+`docs/architecture.md`, `docs/sw-mlpl-blockers.md`, `docs/sw-mlpl-findings.md`,
 `docs/cross-repo-handoffs.md`, and `docs/results.md`.

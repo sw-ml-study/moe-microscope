@@ -4,6 +4,7 @@
 /tmp/
 *.tmp
 *.log
+/tests/fixtures/probe-expert.bin
 
 # Platform/editor metadata.
 .DS_Store

@@ -12,6 +12,10 @@ mlpl-style:
 tests *args:
     ./scripts/run-tests {{args}}
 
+# Re-run the upstream-finding reproducers and require the documented outcome.
+probes:
+    ./scripts/run-probes
+
 # Print the selected sw-MLPL executable.
 mlpl-path:
     ./scripts/select-mlpl

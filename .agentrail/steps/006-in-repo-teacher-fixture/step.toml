@@ -1,4 +1,4 @@
-number = 5
+number = 6
 slug = "in-repo-teacher-fixture"
 status = "pending"
 description = "Train the larger in-repo dense teacher (same DN01 source at a larger configur..."

@@ -1,0 +1,23 @@
+# Observation naming helpers; emit_frame itself must be called with a literal name (finding F8).
+
+def u:observe_path(prefix, leaf) {
+  "Join a mechanism prefix and a leaf into one stable slash-separated observation name.";
+  str_concat(str_concat(prefix, "/"), leaf)
+}
+
+def u:observe_prefixes() {
+  "The mechanism prefixes lessons group observations under in a generic host.";
+  ["data", "dense", "recur", "moe", "engram", "distill", "quant", "cache", "hybrid", "packed"]
+}
+
+def u:observe_prefix_known(prefix) {
+  "Return 1 when prefix is one of the documented mechanism prefixes, else 0.";
+  known = u:observe_prefixes();
+  hits = 0;
+  i = 0;
+  while lt(i, list_len(known)) {
+    hits = hits + str_eq(unwrap(list_get(known, i)), prefix);
+    i = i + 1
+  };
+  hits
+}

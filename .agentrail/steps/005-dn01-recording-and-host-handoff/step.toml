@@ -1,0 +1,9 @@
+number = 5
+slug = "dn01-recording-and-host-handoff"
+status = "pending"
+description = "Record DN01 over the live mlpl-serve SSE path under the peer version-zero rec..."
+role = "production"
+context_files = []
+created_at = "2026-09-12T20:27:28"
+task_type = "mlpl-recording"
+commits = []

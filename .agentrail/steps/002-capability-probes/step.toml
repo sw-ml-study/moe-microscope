@@ -1,6 +1,6 @@
 number = 2
 slug = "capability-probes"
-status = "pending"
+status = "in-progress"
 description = "Write native mlplunit probes for the items listed under 'To be probed' in doc..."
 role = "production"
 context_files = []

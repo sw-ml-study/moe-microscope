@@ -6,8 +6,10 @@ revalidated against artifacts produced here before its own saga begins.
 
 ## `../demo-extensions`: generic Rust/Yew/WASM microscope host
 
-Trigger: Saga 7 step 1 has produced version-pinned recordings for DN01, MX02,
-RM01, RE01, and XC01 under the peer recording schema with a hash-checked index.
+Trigger: the end of each saga, starting with Saga 1 step 5 (DN01), produces
+version-pinned recordings under the peer recording schema with a hash-checked
+index. The live demo (editable lesson, `mlpl-serve` SSE, generic timeline)
+is handed off after Saga 3 on the MLPL web framework proven there.
 
 The extension agent should:
 
@@ -46,7 +48,12 @@ the capability is unavailable.
 
 ## `../sw-mlpl`: language and generic host
 
-No request is open. A request requires a confirmed blocker in the
-[capability ledger](sw-mlpl-blockers.md) with a minimal reproducer. Likely
-candidates if the probes fail: a differentiable batched gather across a bank
-of experts, and a KL-divergence builtin with a frozen signature.
+Open work orders, each with a reproducer under `probes/` and a pinned probe,
+are in [`sw-mlpl-findings.md`](sw-mlpl-findings.md): F5 (index and mask
+builtins as stop-gradient constants on the tape), F6 (`repeat` inside a
+traced function), F7 (models as user-function arguments), F8 (`emit_frame`
+with a non-literal name), and D1 (a loud error for an untracked `wrt` leaf).
+Upstream has queued them as `moe-microscope-followups`; the recommended order
+is F5, F8, F7, F6, D1, because F5 and F8 change what the lessons and the
+observation facade can express. F1 to F4 were fixed upstream in
+`moe-microscope-findings` and are verified here.

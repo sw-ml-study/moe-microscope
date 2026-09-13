@@ -1,0 +1,194 @@
+# Executable capability probes behind docs/sw-mlpl-blockers.md and docs/sw-mlpl-findings.md.
+
+def u:mse(a, b) {
+  "Mean squared error between two same-shaped arrays.";
+  mean((a - b) * (a - b))
+}
+
+probe_d = 4;
+probe_e0 = chain(linear(probe_d, 8, 10), relu_layer(), linear(8, probe_d, 11));
+probe_e1 = chain(linear(probe_d, 8, 12), relu_layer(), linear(8, probe_d, 13));
+probe_router = param[4, 2];
+probe_router = randn(3, [4, 2]) * 0.5;
+probe_block = residual(chain(rms_norm(probe_d), linear(probe_d, probe_d, 7)));
+
+def u:two_expert_moe(x, mask) {
+  "Switch-style top-1 mixture over the global expert and router values (models cannot be arguments, F7).";
+  g = softmax(matmul(x, probe_router)) * mask;
+  reshape(take(g, 1, 0), [6, 1]) * apply(probe_e0, x) + reshape(take(g, 1, 1), [6, 1]) * apply(probe_e1, x)
+}
+
+def u:recur3(x0) {
+  "The global shared block applied three times by nested apply; the tape accumulates its gradient.";
+  apply(probe_block, apply(probe_block, apply(probe_block, x0)))
+}
+
+def u:apply_twice(block, x0) {
+  "Apply a block argument twice; used only by the F7 probe.";
+  apply(block, apply(block, x0))
+}
+
+def u:kl(p, q) {
+  "Kullback-Leibler divergence KL(p || q) composed from log and reduce_add.";
+  reduce_add(p * (log(p) - log(q)))
+}
+
+@test {name: "softmax takes one argument in eager and tape evaluation (F1 resolved)", tags: ["probe", "supported"]}
+def u:test_softmax_arity() {
+  "One softmax spelling must evaluate and differentiate.";
+  W = param[2, 3];
+  W = [[1, 2, 3], [3, 2, 1]];
+  eager = softmax(W);
+  u:assert_approx(reduce_add(take(eager, 0, 0)), 1, 0.000001, "eager rows sum to one")?;
+  u:assert_eq(eager, softmax(W, 1), "one-argument form equals last-axis form")?;
+  g = grad(reduce_add(softmax(W) * [[1, 0, 0], [0, 1, 0]]), W);
+  u:assert_shape(g, [2, 3], "tape softmax gradient shape")
+}
+
+@test {name: "adam trains a list of expert models plus a router param through a user function (F2 resolved)", tags: ["probe", "supported", "moe"]}
+def u:test_adam_mixed_list_user_function() {
+  "Dense-masked MoE written as reusable source must train every part.";
+  h = randn(1, [6, probe_d]);
+  target = randn(2, [6, probe_d]);
+  router0 = probe_router;
+  mask = one_hot(argmax(matmul(h, probe_router), 1), 2);
+  before = u:mse(u:two_expert_moe(h, mask), target);
+  train 20 {
+    adam(u:mse(u:two_expert_moe(h, mask), target), [probe_e0, probe_e1, probe_router], 0.05, 0.9, 0.999, 0.00000001);
+    0
+  };
+  after = u:mse(u:two_expert_moe(h, mask), target);
+  u:assert_lt(after, before * 0.5, "loss at least halves")?;
+  u:assert_gt(reduce_add(abs(probe_router - router0)), 0.1, "router parameter moved")
+}
+
+@test {name: "one shared block applied R times trains through nested apply (F3 documented)", tags: ["probe", "supported", "recurrence"]}
+def u:test_shared_block_recurrence() {
+  "Weight sharing is spelled by reusing one block, not by chain.";
+  x = randn(1, [5, probe_d]);
+  target = randn(2, [5, probe_d]);
+  u:assert_eq(param_count(chain(probe_block, probe_block, probe_block)), 3 * param_count(probe_block), "chain copies, it does not share")?;
+  before = u:mse(u:recur3(x), target);
+  train 15 {
+    adam(u:mse(u:recur3(x), target), probe_block, 0.05, 0.9, 0.999, 0.00000001);
+    0
+  };
+  u:assert_lt(u:mse(u:recur3(x), target), before * 0.5, "recurrent loss at least halves")
+}
+
+@test {name: "gather_rows scatter-adds gradient into addressed rows only (F4 resolved)", tags: ["probe", "supported", "engram"]}
+def u:test_gather_rows_backward() {
+  "A from-scratch addressing table must be trainable.";
+  M = param[3, 2];
+  M = [[1, 2], [3, 4], [5, 6]];
+  u:assert_eq(grad(reduce_add(gather_rows(M, [0, 0, 2])), M), [[2, 2], [0, 0], [1, 1]], "duplicates accumulate, unaddressed rows stay zero")
+}
+
+@test {name: "KL divergence is a composition of shipped builtins, eager and on the tape (F4 documented)", tags: ["probe", "supported", "distillation"]}
+def u:test_kl_composition() {
+  "No kl_divergence builtin exists; the composition is the pragmatic spelling.";
+  p = softmax([1, 2, 3]);
+  q = softmax([1.5, 1.5, 3]);
+  u:assert_gt(u:kl(p, q), 0, "KL of distinct distributions is positive")?;
+  u:assert_approx(u:kl(p, p), 0, 0.000000001, "KL of identical distributions is zero")?;
+  L = param[3];
+  L = [1.5, 1.5, 3];
+  u:assert_shape(grad(u:kl(p, softmax(L)), L), [3], "KL differentiates through softmax logits")
+}
+
+@test {name: "Engram builtins address, gather, gate, and report stats (supported)", tags: ["probe", "supported", "engram"]}
+def u:test_engram_builtins() {
+  "The pragmatic Engram is a builtin call; the from-scratch lesson checks parity against it.";
+  ids = [3, 7, 3, 7, 9];
+  u:assert_shape(ngram_hash(ids, [2, 3], 2, 64, 1), [5, 2, 2], "hash indices are [T, order, head]")?;
+  e = engram(8, [2, 3], 2, 64, 4, 1);
+  h = randn(1, [5, 8]);
+  u:assert_approx(reduce_add(abs(apply_engram(e, h, ids) - h)), 0, 0.000000001, "fresh engram is an exact no-op")?;
+  s = engram_stats(e, h, ids);
+  u:assert_eq(s.rows_addressed, 20, "five tokens times two orders times two heads")
+}
+
+@test {name: "packed INT8 expert bytes round-trip through a bounded range read (supported)", tags: ["probe", "supported", "packed"]}
+def u:test_packed_bytes_round_trip() {
+  "Per-expert byte records are independently readable without loading the file.";
+  w = round(randn(1, [4, 4]) * 40);
+  w = w * lt(abs(w), 127);
+  u:assert_ok(write_bytes("tests/fixtures/probe-expert.bin", reshape(w + 128, [16])), "write packed bytes")?;
+  u:assert_eq(unwrap(file_size("tests/fixtures/probe-expert.bin")), 16, "sixteen bytes")?;
+  row1 = unwrap(read_bytes("tests/fixtures/probe-expert.bin", 4, 4)) - 128;
+  u:assert_eq(row1, take(w, 0, 1), "bounded read returns exactly row one")
+}
+
+@test {name: "per-token routing loop over T=16 E=8 completes with bounded cost (awkward)", tags: ["probe", "awkward", "speed"]}
+def u:test_routing_loop_cost() {
+  "Counted cost is the primary metric; wall-clock is machine dependent and only bounded here.";
+  h = randn(1, [16, 16]);
+  Wr = randn(2, [16, 8]);
+  t0 = clock_ms();
+  for row in matmul(h, Wr) {
+    argtop_k(row, 2)
+  };
+  elapsed = clock_ms() - t0;
+  u:assert_shape(last_rows, [16, 2], "two experts selected per token")?;
+  u:assert_lt(elapsed, 1000, "sixteen routing decisions take under one second")
+}
+
+@test {name: "a model value cannot be a user-function argument (F7 blocked)", tags: ["probe", "blocked", "model-dsl"]}
+def u:test_model_argument_blocked() {
+  "Pins current behavior: models are reached as globals inside user functions, never passed in.";
+  x = randn(1, [3, probe_d]);
+  outcome = try { u:apply_twice(probe_block, x); "accepted" } catch e {
+    e.kind
+  };
+  u:assert_true(1 - u:text_equal(outcome, "accepted"), "expected a hard error; if this fails, F7 was fixed upstream and blocks can be parameters")
+}
+
+@test {name: "one_hot and argmax are rejected inside a traced function (F5 blocked)", tags: ["probe", "blocked", "moe"]}
+def u:test_one_hot_inside_grad_blocked() {
+  "Pins current behavior: index and mask builtins are not stop-gradient constants on the tape.";
+  W = param[3, 2];
+  W = randn(1, [3, 2]);
+  x = randn(2, [4, 3]);
+  outcome = try {
+    grad(reduce_add(softmax(matmul(x, W)) * one_hot(argmax(matmul(x, W), 1), 2)), W);
+    "traced"
+  } catch e {
+    e.kind
+  };
+  u:assert_true(1 - u:text_equal(outcome, "traced"), "expected a hard error; if this fails, F5 was fixed upstream and the mask can move inside the loss")
+}
+
+@test {name: "repeat inside a traced function is rejected (F6 blocked)", tags: ["probe", "blocked", "recurrence"]}
+def u:test_repeat_inside_grad_blocked() {
+  "Pins current behavior: recurrence depth is a source-level unroll, not a runtime argument.";
+  W = param[2, 2];
+  W = [[0.5, 0], [0, 0.5]];
+  outcome = try {
+    grad(reduce_add(u:recurn(W, [[1, 1], [1, 1]], 3)), W);
+    "traced"
+  } catch e {
+    e.kind
+  };
+  u:assert_true(1 - u:text_equal(outcome, "traced"), "expected a hard error; if this fails, F6 was fixed upstream and repeat can express depth")
+}
+
+def u:recurn(W, x0, r) {
+  "Apply a matrix r times using repeat; used only by the F6 probe.";
+  s = x0;
+  repeat r {
+    s = matmul(s, W)
+  };
+  s
+}
+
+@test {name: "grad of a pre-evaluated loss variable is silently zero (documentation note)", tags: ["probe", "awkward", "autograd"]}
+def u:test_pre_evaluated_loss_is_constant() {
+  "A variable assigned eagerly is a constant on the tape; write the loss as an expression.";
+  W = param[2];
+  W = [1, 2];
+  l = reduce_add(W * W);
+  u:assert_eq(grad(l, W), [0, 0], "pre-evaluated variable gives zero gradient")?;
+  u:assert_eq(grad(reduce_add(W * W), W), [2, 4], "expression form gives the true gradient")
+}
+
+u:run_registered_tests()

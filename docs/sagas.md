@@ -30,20 +30,34 @@ in-repo teacher fixture that later distillation lessons consume.
 4. `dense-baseline-lesson` - DN01 with recorded observations, annotated step
    strip, memory/speed/quality triple, results row, and freshness-checked
    preview.
-5. `in-repo-teacher-fixture` - the larger dense teacher trained once, its
+5. `dn01-recording-and-host-handoff` - DN01 recorded over live SSE under the
+   peer schema, pinned by hash; `emit_frame` inside `train` probed on the
+   connect path; `../demo-extensions` handoff written.
+6. `in-repo-teacher-fixture` - the larger dense teacher trained once, its
    next-token distributions exported as a bounded, hash-checked fixture.
+
+Step 2 status: complete. Sixteen native probes and five standalone
+reproducers; F1 to F4 verified fixed upstream, F5 to F8 and D1 pinned and
+queued upstream as `moe-microscope-followups`. See
+[`sw-mlpl-findings.md`](sw-mlpl-findings.md).
 
 Acceptance: `just check` passes from a clean checkout; the ledger classifies
 every probed capability with executable evidence; DN01 satisfies the visual
-and measurement contract; the teacher fixture is checked in with its schema.
+and measurement contract and has a pinned recording; the teacher fixture is
+checked in with its schema.
 
 ## Future
 
+Every saga from here ends with a host step that pins its recordings and hands
+them to the generic `../demo-extensions` microscope; see the visualization
+track in [`plan.md`](plan.md).
+
 - Saga 2 `mixture-of-experts-from-scratch`: router and top-k, dense-masked
   training with load balance, sparse dispatch with parity, top-2 and the
-  specialization map (MX01, MX02), low-rank delta experts.
-- Saga 3 `recurrence-and-engram`: RC01, RM01, EG01 (from scratch, checked
-  against the builtin), RE01, and the seven-row ablation table.
+  specialization map (MX01, MX02), low-rank delta experts, MoE recordings.
+- Saga 3 `recurrence-and-engram`: RC01, RM01, EG01 (both forms: from scratch
+  and builtin, with parity), RE01, the seven-row ablation table, and the
+  live-demo foundation handoff.
 - Saga 4 `distillation`: token KD against the in-repo teacher, router warm
   start, expert-delta distillation, and the gated external-teacher export.
 - Saga 5 `quantization-packing-and-cache`: INT8 and INT4 experts, the packed
@@ -51,5 +65,5 @@ and measurement contract; the teacher fixture is checked in with its schema.
   prefill double buffering.
 - Saga 6 `hybrid-execution-and-embedded-budget`: bandwidth calibration, the
   q-star transfer/compute split, expert banks, and the 256 MB budget report.
-- Saga 7 `interactive-microscope-host`: pinned recordings, the Rust/Yew/WASM
-  handoff (the only `sw-checklist` scope), and the optional live session.
+- Saga 7 `interactive-microscope-host`: systems recordings, live-demo
+  acceptance (the only `sw-checklist` scope), and the pocket-helper demo.

@@ -1,0 +1,3 @@
+# F8 reproducer: emit_frame requires a literal name, so a forwarding facade cannot exist; checked by scripts/run-probes.
+name = str_concat("probe/", "dynamic")
+emit_frame(name, 0, [1, 2, 3])

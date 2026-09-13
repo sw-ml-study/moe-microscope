@@ -1,0 +1,7 @@
+# F7 reproducer: a model value cannot be passed as a user-function argument; expected error text is checked by scripts/run-probes.
+block = linear(2, 2, 1)
+def u:apply_twice(b, x0) {
+  "Apply a block argument twice.";
+  apply(b, apply(b, x0))
+}
+u:apply_twice(block, [[1, 1]])
