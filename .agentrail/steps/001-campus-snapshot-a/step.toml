@@ -1,0 +1,9 @@
+number = 1
+slug = "campus-snapshot-a"
+status = "pending"
+description = "CD00 campus snapshot A and the docent corpus. Author fixtures/campus/snapshot..."
+role = "production"
+context_files = []
+created_at = "2026-09-13T13:46:51"
+task_type = "mlpl-lesson"
+commits = []

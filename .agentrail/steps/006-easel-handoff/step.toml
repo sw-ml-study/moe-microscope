@@ -1,0 +1,9 @@
+number = 6
+slug = "easel-handoff"
+status = "pending"
+description = "Easel handoff and saga close. Write docs/implementation/easel-handoff.md, the..."
+role = "production"
+context_files = []
+created_at = "2026-09-13T13:46:51"
+task_type = "documentation"
+commits = []

@@ -1,0 +1,9 @@
+number = 3
+slug = "docent-moe"
+status = "pending"
+description = "CD02 to CD04 routed docent and specialization. Reuse lib/moe.mlpl: the same e..."
+role = "production"
+context_files = []
+created_at = "2026-09-13T13:46:51"
+task_type = "mlpl-lesson"
+commits = []

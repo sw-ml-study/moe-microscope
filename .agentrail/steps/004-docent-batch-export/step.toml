@@ -1,0 +1,9 @@
+number = 4
+slug = "docent-batch-export"
+status = "pending"
+description = "Docent batch export. Choose the configuration that meets the usefulness bar a..."
+role = "production"
+context_files = []
+created_at = "2026-09-13T13:46:51"
+task_type = "mlpl-lesson"
+commits = []

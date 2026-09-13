@@ -1,0 +1,9 @@
+number = 2
+slug = "docent-dense"
+status = "pending"
+description = "CD01 docent dense classifier. In lib/docent.mlpl: the hashed feature encoder ..."
+role = "production"
+context_files = []
+created_at = "2026-09-13T13:46:51"
+task_type = "mlpl-lesson"
+commits = []

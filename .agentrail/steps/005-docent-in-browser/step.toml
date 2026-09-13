@@ -1,0 +1,9 @@
+number = 5
+slug = "docent-in-browser"
+status = "pending"
+description = "CD05 and CD06 docent in the browser. Build the docent page under learn/ (inde..."
+role = "production"
+context_files = []
+created_at = "2026-09-13T13:46:51"
+task_type = "browser-lesson"
+commits = []
