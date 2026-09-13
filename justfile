@@ -28,13 +28,13 @@ dense mode="check":
 emit-frame-loops:
     ./scripts/run-emit-frame-loops
 
-# Validate the committed DN01 recording and its pinned index.
+# Validate every committed recording and the pinned index.
 recording-check:
-    ./scripts/check-dense-recording
+    ./scripts/check-recordings
 
-# Prove that a live mlpl-serve run of DN01 equals the committed recording; `just dense-recording write` recaptures it.
-dense-recording mode="check":
-    ./scripts/run-dense-recording {{mode}}
+# Prove that live mlpl-serve runs equal the committed recordings; `just recordings write MX01` recaptures one (or all).
+recordings mode="check" *ids:
+    ./scripts/run-recording-parity {{mode}} {{ids}}
 
 # Build a current mlpl-serve from the adjacent source into tmp/ (the sibling is never modified).
 build-local-serve:

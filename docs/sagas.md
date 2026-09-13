@@ -10,7 +10,7 @@ The mandatory checklist in `AGENTS.md` applies to every step: focused tests,
 tracked-file audit, named-file staging, a detailed commit on `main`,
 Agentrail completion metadata, and a verified `git push origin main`.
 
-## Active: `mixture-of-experts-from-scratch` (Saga 2)
+## Completed: `mixture-of-experts-from-scratch` (Saga 2)
 
 Purpose: the router, top-k masks, dense-masked training with load balance,
 sparse dispatch with parity, top-2 and the specialization map, low-rank delta
@@ -33,6 +33,12 @@ experts, and the MoE recordings for the generic host.
    experts; byte accounting; quality comparison.
 7. `moe-recordings-and-host-handoff` - MX01 and MX02 recorded over live SSE,
    pinned, and handed to the generic host.
+
+Step 7 status: complete. MX01 and MX02 recorded over live SSE (MX02 made
+tolerant of the sandbox-less server surface), the recording scripts
+generalized over `scripts/recordings.conf`, the index re-pinned with three
+fixtures, the host handoff extended. Saga 2 is complete; Saga 3 (resource
+budget and documentation restructure) is next.
 
 Step 6 status: complete. LD01 low-rank delta experts: sixteen rank-4
 experts packed in two matrices (exact parity with a per-expert loop, tested),
@@ -95,11 +101,23 @@ in-repo teacher fixture that later distillation lessons consume.
 6. `in-repo-teacher-fixture` - the larger dense teacher trained once, its
    next-token distributions exported as a bounded, hash-checked fixture.
 
+Step 7 status: complete. MX01 and MX02 recorded over live SSE (MX02 made
+tolerant of the sandbox-less server surface), the recording scripts
+generalized over `scripts/recordings.conf`, the index re-pinned with three
+fixtures, the host handoff extended. Saga 2 is complete; Saga 3 (resource
+budget and documentation restructure) is next.
+
 Step 6 status: complete. TE01 (`demos/teacher.mlpl`) trained once and
 exported to `fixtures/teacher/teacher-v0.json` with a hash-pinned index, a
 schema document for the Saga 4 external exporter, a fixture diagram, a
 results row, and a no-training gate check. Saga 1 is complete; Saga 2
 (mixture of experts from scratch) is next.
+
+Step 7 status: complete. MX01 and MX02 recorded over live SSE (MX02 made
+tolerant of the sandbox-less server surface), the recording scripts
+generalized over `scripts/recordings.conf`, the index re-pinned with three
+fixtures, the host handoff extended. Saga 2 is complete; Saga 3 (resource
+budget and documentation restructure) is next.
 
 Step 6 status: complete. LD01 low-rank delta experts: sixteen rank-4
 experts packed in two matrices (exact parity with a per-expert loop, tested),
@@ -112,6 +130,12 @@ Step 5 status: complete. DN01 recorded over live `mlpl-serve` SSE into
 `scripts/bundle-program` works around the server's missing source provider
 (F16); loop streaming proven; `docs/host-handoff.md` written for
 `../demo-extensions`; D1 and F10 verified fixed upstream.
+
+Step 7 status: complete. MX01 and MX02 recorded over live SSE (MX02 made
+tolerant of the sandbox-less server surface), the recording scripts
+generalized over `scripts/recordings.conf`, the index re-pinned with three
+fixtures, the host handoff extended. Saga 2 is complete; Saga 3 (resource
+budget and documentation restructure) is next.
 
 Step 6 status: complete. LD01 low-rank delta experts: sixteen rank-4
 experts packed in two matrices (exact parity with a per-expert loop, tested),
@@ -129,6 +153,12 @@ Step 4 status: complete. DN01 (`demos/dense_baseline.mlpl`) with
 `lib/dense.mlpl` and `lib/svg.mlpl`; two annotated diagrams; the first
 results row; catalog entry; seven more findings (F9 to F15) filed with
 reproducers, two of which (F5, F6) upstream fixed the same evening.
+
+Step 7 status: complete. MX01 and MX02 recorded over live SSE (MX02 made
+tolerant of the sandbox-less server surface), the recording scripts
+generalized over `scripts/recordings.conf`, the index re-pinned with three
+fixtures, the host handoff extended. Saga 2 is complete; Saga 3 (resource
+budget and documentation restructure) is next.
 
 Step 6 status: complete. LD01 low-rank delta experts: sixteen rank-4
 experts packed in two matrices (exact parity with a per-expert loop, tested),
@@ -153,6 +183,12 @@ Step 3 status: complete. `lib/domain.mlpl`, `lib/evaluate.mlpl`, and
 `lib/results.mlpl` with 28 native tests; the 120-example mixture fixture;
 the DM01 domain microscope with three annotated diagrams (window, tags,
 split) freshness-checked by `just check`; catalog entry DM01.
+
+Step 7 status: complete. MX01 and MX02 recorded over live SSE (MX02 made
+tolerant of the sandbox-less server surface), the recording scripts
+generalized over `scripts/recordings.conf`, the index re-pinned with three
+fixtures, the host handoff extended. Saga 2 is complete; Saga 3 (resource
+budget and documentation restructure) is next.
 
 Step 6 status: complete. LD01 low-rank delta experts: sixteen rank-4
 experts packed in two matrices (exact parity with a per-expert loop, tested),

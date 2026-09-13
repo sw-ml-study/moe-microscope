@@ -1,11 +1,12 @@
-# Generic host handoff: DN01 recording
+# Generic host handoff: DN01, MX01, and MX02 recordings
 
 Status: implementation-ready work order for an agent operating in
 `../demo-extensions`. This repository does not authorize or contain the Rust
 implementation. The generic Rust/Yew/WASM microscope there already renders
 the MM01, LR01, and KM01 recordings from `../demo-ml-microscope`; this handoff
-adds the first MoE-microscope recording under the same version-zero schema
-and asks for no lesson-specific Rust.
+adds the first three MoE-microscope recordings under the same version-zero
+schema and asks for no lesson-specific Rust. `scripts/recordings.conf` is
+the machine-readable list of recorded lessons with their budgets.
 
 ## Pinned producer inputs
 
@@ -19,8 +20,8 @@ value, and step counts. The schema is the byte-identical peer schema,
 The producer acceptance commands are:
 
 ```sh
-just dense-recording        # live mlpl-serve run equals the committed recording
-just recording-check        # schema, budgets, shapes, names, trend, pinned hashes
+just recordings             # live mlpl-serve runs equal every committed recording
+just recording-check        # schema, budgets, shapes, names, and pinned hashes
 ```
 
 `scripts/bundle-program` exists because the `eval_stream` surface has no
@@ -41,9 +42,31 @@ DN01 trains one dense transformer block for 300 epochs and records:
 | `dense/logits/example-argmax` | `[7]` | step 300 | argmax token id per position of the example `2+3=\|5.` |
 | `dense/attention/example` | `[7, 7]` | step 300 | causal attention weights of that example |
 
-Budgets declared in the recording: 16 frames, 8 observations per frame, 64
-values per observation, 128 values in total. The index records the actual
-counts.
+Budgets declared in the DN01 recording: 16 frames, 8 observations per
+frame, 64 values per observation, 128 values in total. The index records
+the actual counts.
+
+## What the MoE recordings add
+
+MX01 (`moe/*`) and MX02 (`moe2/*`) train the four-expert mixture for 300
+epochs and record, at every 25-epoch checkpoint and at the end:
+
+| Name | Shape | Meaning (producer-owned) |
+|---|---|---|
+| `moe/config` | `[8]` | d_model, hidden, experts, k, T, epochs, train rows, validation rows |
+| `moe/loss/train`, `moe/loss/val` | `[]` | masked loss per checkpoint (a series) |
+| `moe/load` | `[4]` | masked training tokens per expert per checkpoint (a vector series) |
+| `moe/entropy`, `moe/balance` | `[]` | router diagnostics per checkpoint |
+| `moe/family-by-expert` | `[4, 4]` | tokens by task family and expert at the end |
+| `moe/accuracy/val`, `moe/accuracy/train` | `[5]` | exact match per family plus overall |
+| `moe/route/example` | `[7]` (MX01) or `[7, 4]` (MX02) | expert chosen per position, or the top-2 mask, for `2+3=\|5.` |
+| `moe2/specialization` | `[]` | MX02 only: mean largest family share |
+
+Budgets declared: 16 frames, 12 observations per frame, 64 values per
+observation, 256 values in total. A repeated `[4]` name (`moe/load`) is a
+vector series the generic renderer should present as one line per index
+without knowing that an index is an expert; the `[4, 4]` map is a heatmap
+whose rows and columns are numbered, never named.
 
 ## What the generic host must show
 

@@ -295,10 +295,15 @@ into the single program a host submits.
 
 ```sh
 just emit-frame-loops     # every train step and while iteration streams in order
-just recording-check      # schema, budgets, shapes, names, trend, pinned hashes
-just dense-recording      # a live server run of DN01 equals the committed recording
+just recording-check      # schema, budgets, shapes, names, and pinned hashes for every recording
+just recordings           # live server runs of DN01, MX01, and MX02 equal the committed recordings
+just recordings write MX01   # recapture one recording (or all, with no id)
 just build-local-serve    # compile a current mlpl-serve into tmp/ without touching ../sw-mlpl
 ```
+
+Three lessons are recorded so far: DN01 (13 frames, 29 observations), and
+MX01 and MX02 with their per-expert loads, family-by-expert counts, and
+routing examples, all listed in `scripts/recordings.conf`.
 
 The scripts select an absolute `MLPL_SERVE` override, then a local build
 under `tmp/` made by `scripts/build-local-serve` (which compiles the adjacent

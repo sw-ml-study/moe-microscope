@@ -1,10 +1,13 @@
 #!/bin/sh
-# Run the bundled DN01 program through a loopback mlpl-serve session and print its recording under the peer version-zero schema.
+# Run a bundled lesson through a loopback mlpl-serve session and print its recording under the peer version-zero schema.
+# usage: capture-recording <demo.mlpl> <lesson-slug> <max_frames> <max_observations_per_frame> <max_values_per_observation> <max_total_values>
 set -eu
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+[ "$#" -eq 6 ] || { echo "usage: capture-recording <demo> <lesson> <frames> <obs/frame> <values/obs> <total values>" >&2; exit 1; }
+demo=$1; lesson=$2; max_frames=$3; max_obs=$4; max_values=$5; max_total=$6
 server=$("$repo_root/scripts/select-mlpl-serve")
-port=${MOE_DENSE_PORT:-16491}
+port=${MOE_RECORD_PORT:-16493}
 base_url="http://127.0.0.1:$port"
 log_file=$(mktemp)
 response_file=$(mktemp)
@@ -22,7 +25,7 @@ trap cleanup EXIT HUP INT TERM
 command -v curl >/dev/null 2>&1 || { echo "curl is required" >&2; exit 1; }
 command -v jq >/dev/null 2>&1 || { echo "jq is required" >&2; exit 1; }
 
-"$repo_root/scripts/bundle-program" "$repo_root/demos/dense_baseline.mlpl" > "$program_file"
+"$repo_root/scripts/bundle-program" "$repo_root/$demo" > "$program_file"
 
 "$server" --bind "127.0.0.1:$port" --auth disabled >"$log_file" 2>&1 &
 server_pid=$!
@@ -48,25 +51,21 @@ curl --fail --silent --no-buffer \
     --data "$body" \
     "$base_url/v1/sessions/$session_id/eval_stream" >"$response_file"
 
-events=$(sed -n 's/^event: *//p' "$response_file" | sort | uniq -c | tr -s ' ' | tr '\n' ';')
-case "$events" in
-    *error*) echo "server run reported an error: $(sed -n 's/^data: *//p' "$response_file" | tail -1)" >&2; exit 1 ;;
-esac
+if sed -n 's/^event: *//p' "$response_file" | grep -q '^error$'; then
+    echo "server run reported an error: $(sed -n 's/^data: *//p' "$response_file" | tail -1)" >&2
+    exit 1
+fi
 
-sed -n 's/^data: *//p' "$response_file" | jq -s '
+sed -n 's/^data: *//p' "$response_file" | jq -s \
+    --arg lesson "$lesson" --argjson f "$max_frames" --argjson o "$max_obs" --argjson v "$max_values" --argjson t "$max_total" '
   [ .[] | select(.name != null and .shape != null) | {step, observation: {name, shape, values}} ]
   | group_by(.step)
   | map({step: .[0].step, observations: map(.observation)})
   | {
       schema: "sw-ml-study.ml-microscope-recording",
       version: 0,
-      lesson: "dense-baseline",
-      budgets: {
-        max_frames: 16,
-        max_observations_per_frame: 8,
-        max_values_per_observation: 64,
-        max_total_values: 128
-      },
+      lesson: $lesson,
+      budgets: {max_frames: $f, max_observations_per_frame: $o, max_values_per_observation: $v, max_total_values: $t},
       frames: .
     }
 '

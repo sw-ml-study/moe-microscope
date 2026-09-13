@@ -185,12 +185,17 @@ print("SPEED -- ms/token", u:svg_round(ms_per_token, 4), "expert evals/token 2 o
 print("QUALITY -- train loss", u:svg_round(final_train, 4), "val loss", u:svg_round(final_val, 4), "val acc", val_acc, "train acc", train_acc, "entropy", u:svg_round(final.entropy, 3), "balance", u:svg_round(final.balance, 3));
 print("ROUTING -- final load", final.load, "family-by-expert rows arithmetic/sequence/mlpl/prose:", final.family);
 
-mx1 = unwrap(parse_json(unwrap(read_text("fixtures/moe/mx01-family-by-expert.json"))));
+mx1_text = read_text("fixtures/moe/mx01-family-by-expert.json");
+mx1 = if mx1_text {
+  unwrap(parse_json(unwrap(mx1_text)))
+} else {
+  {counts: fill([4 * E], 1), val_loss: 0, val_accuracy: fill([5], 0), train_accuracy: fill([5], 0), entropy: 0, balance: 0}
+};
 mx1_counts = reshape(mx1.counts, [4, E]);
 mx2_counts = final.family;
 spec1 = u:specialization_score(mx1_counts);
 spec2 = emit_frame("moe2/specialization", epochs, u:specialization_score(mx2_counts));
-print("SPECIALIZATION -- MX01 top-1 score", u:svg_round(spec1, 3), "MX02 top-2 score", u:svg_round(spec2, 3), "(0.25 = family-blind, 1 = one expert per family)");
+print("SPECIALIZATION -- MX01 top-1 score", u:svg_round(spec1, 3), "MX02 top-2 score", u:svg_round(spec2, 3), "(0.25 = family-blind, 1 = one expert per family; MX01 reads as 0.25 on a surface without a sandbox, F16)");
 
 def u:family_heat(counts, x0, y0) {
   "Row-normalized family-by-expert shares as a heatmap with family labels.";

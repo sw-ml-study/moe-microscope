@@ -1,0 +1,28 @@
+#!/bin/sh
+# Prove that live mlpl-serve runs reproduce the committed recordings exactly. usage: run-recording-parity [check|write] [ID ...] (default: every configured lesson)
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+mode=${1:-check}
+[ "$#" -gt 0 ] && shift
+wanted="$*"
+
+while IFS='|' read -r id lesson demo recording preview mf mo mv mt first last; do
+    case "$id" in ''|\#*) continue ;; esac
+    if [ -n "$wanted" ]; then
+        case " $wanted " in *" $id "*) ;; *) continue ;; esac
+    fi
+    actual=$("$repo_root/scripts/capture-recording" "$demo" "$lesson" "$mf" "$mo" "$mv" "$mt")
+    if [ "$mode" = "write" ]; then
+        printf '%s\n' "$actual" > "$repo_root/$recording"
+        echo "wrote $recording"
+    elif [ "$(printf '%s' "$actual" | jq -S -c .)" != "$(jq -S -c . "$repo_root/$recording")" ]; then
+        echo "live $id recording differs from the committed fixture; run scripts/run-recording-parity write $id" >&2
+        exit 1
+    else
+        echo "PASS live $id SSE recording matches the committed fixture"
+    fi
+done < "$repo_root/scripts/recordings.conf"
+if [ "$mode" = "write" ]; then
+    "$repo_root/scripts/make-recording-index"
+fi

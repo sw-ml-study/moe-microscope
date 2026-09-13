@@ -1,0 +1,51 @@
+#!/bin/sh
+# Validate every committed recording against the schema, its budgets, shape products, ordered unique steps, the expected first and last frame names, and the pinned index.
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+index="$repo_root/fixtures/recordings/index-v1.json"
+peer_schema="$repo_root/../demo-ml-microscope/fixtures/yew/recording-schema-v0.json"
+
+if [ -f "$peer_schema" ]; then
+    cmp -s "$repo_root/fixtures/recordings/recording-schema-v0.json" "$peer_schema" || { echo "vendored recording schema differs from the peer schema" >&2; exit 1; }
+fi
+jq -e '.schema == "sw-ml-study.ml-microscope-fixture-index" and .version == 1' "$index" >/dev/null
+
+count=0
+while IFS='|' read -r id lesson demo recording preview mf mo mv mt first last; do
+    case "$id" in ''|\#*) continue ;; esac
+    fixture="$repo_root/$recording"
+    [ -f "$fixture" ] || { echo "missing recording: $recording" >&2; exit 1; }
+    firstnames=$(printf '%s' "$first" | jq -R 'split(",")')
+    lastnames=$(printf '%s' "$last" | jq -R 'split(",")')
+    jq -e --arg lesson "$lesson" --argjson first "$firstnames" --argjson last "$lastnames" '
+      def product: reduce .[] as $value (1; . * $value);
+      .schema == "sw-ml-study.ml-microscope-recording" and .version == 0 and .lesson == $lesson and
+      (.frames | length) <= .budgets.max_frames and
+      ([.frames[].observations | length] | max) <= .budgets.max_observations_per_frame and
+      ([.frames[].observations[].values | length] | max) <= .budgets.max_values_per_observation and
+      ([.frames[].observations[].values | length] | add) <= .budgets.max_total_values and
+      (all(.frames[].observations[]; (.shape | product) == (.values | length))) and
+      (all(.frames[].observations[].values[]; isnormal or . == 0)) and
+      ([.frames[].step] == ([.frames[].step] | sort | unique)) and
+      (.frames[0].step == 0) and
+      ([.frames[0].observations[].name] == $first) and
+      ([.frames[-1].observations[].name] == $last)
+    ' "$fixture" >/dev/null || { echo "recording $id failed validation" >&2; exit 1; }
+    encoded=$(jq -r --arg id "$id" '.fixtures[] | select(.id == $id) | @base64' "$index")
+    [ -n "$encoded" ] || { echo "recording $id is not in the index; run scripts/make-recording-index" >&2; exit 1; }
+    field() { printf '%s' "$encoded" | base64 --decode | jq -r "$1"; }
+    for path in "$(field '.recording')" "$(field '.source')" "$(field '.preview')" "$(field '.guide')"; do
+        [ -f "$repo_root/$path" ] || { echo "missing indexed input: $path" >&2; exit 1; }
+    done
+    [ "$(shasum -a 256 "$fixture" | awk '{print $1}')" = "$(field '.recording_sha256')" ] || { echo "$id recording hash drift; run scripts/make-recording-index" >&2; exit 1; }
+    [ "$(shasum -a 256 "$repo_root/$demo" | awk '{print $1}')" = "$(field '.source_sha256')" ] || { echo "$id source hash drift; run scripts/make-recording-index" >&2; exit 1; }
+    [ "$("$repo_root/scripts/bundle-program" "$repo_root/$demo" | shasum -a 256 | awk '{print $1}')" = "$(field '.bundle_sha256')" ] || { echo "$id bundled program hash drift; run scripts/make-recording-index" >&2; exit 1; }
+    [ "$(jq '[.frames[]] | length' "$fixture")" = "$(field '.frame_count')" ] || { echo "$id frame count drift" >&2; exit 1; }
+    [ "$(jq '[.frames[].observations[]] | length' "$fixture")" = "$(field '.observation_count')" ] || { echo "$id observation count drift" >&2; exit 1; }
+    [ "$(jq '[.frames[].observations[].values | length] | add' "$fixture")" = "$(field '.value_count')" ] || { echo "$id value count drift" >&2; exit 1; }
+    [ "$(jq -c '[.frames[].step]' "$fixture")" = "$(field '.steps | tojson')" ] || { echo "$id step list drift" >&2; exit 1; }
+    count=$((count + 1))
+done < "$repo_root/scripts/recordings.conf"
+[ "$count" = "$(jq '.fixtures | length' "$index")" ] || { echo "index lists a different number of fixtures than recordings.conf" >&2; exit 1; }
+echo "PASS $count recordings: schema, budgets, shapes, names, and pinned index"

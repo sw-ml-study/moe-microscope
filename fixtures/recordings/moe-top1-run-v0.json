@@ -1,0 +1,640 @@
+{
+  "schema": "sw-ml-study.ml-microscope-recording",
+  "version": 0,
+  "lesson": "moe-top1",
+  "budgets": {
+    "max_frames": 16,
+    "max_observations_per_frame": 12,
+    "max_values_per_observation": 64,
+    "max_total_values": 256
+  },
+  "frames": [
+    {
+      "step": 0,
+      "observations": [
+        {
+          "name": "moe/config",
+          "shape": [
+            8
+          ],
+          "values": [
+            16.0,
+            32.0,
+            4.0,
+            1.0,
+            28.0,
+            300.0,
+            90.0,
+            30.0
+          ]
+        }
+      ]
+    },
+    {
+      "step": 25,
+      "observations": [
+        {
+          "name": "moe/loss/train",
+          "shape": [],
+          "values": [
+            0.909783836216244
+          ]
+        },
+        {
+          "name": "moe/loss/val",
+          "shape": [],
+          "values": [
+            1.916179974181064
+          ]
+        },
+        {
+          "name": "moe/load",
+          "shape": [
+            4
+          ],
+          "values": [
+            221.0,
+            16.0,
+            39.0,
+            130.0
+          ]
+        },
+        {
+          "name": "moe/entropy",
+          "shape": [],
+          "values": [
+            0.7964729175912405
+          ]
+        },
+        {
+          "name": "moe/balance",
+          "shape": [],
+          "values": [
+            1.227270294826987
+          ]
+        }
+      ]
+    },
+    {
+      "step": 50,
+      "observations": [
+        {
+          "name": "moe/loss/train",
+          "shape": [],
+          "values": [
+            0.6868825464572631
+          ]
+        },
+        {
+          "name": "moe/loss/val",
+          "shape": [],
+          "values": [
+            2.4032351031855934
+          ]
+        },
+        {
+          "name": "moe/load",
+          "shape": [
+            4
+          ],
+          "values": [
+            237.0,
+            21.0,
+            29.0,
+            119.0
+          ]
+        },
+        {
+          "name": "moe/entropy",
+          "shape": [],
+          "values": [
+            0.6742293892116435
+          ]
+        },
+        {
+          "name": "moe/balance",
+          "shape": [],
+          "values": [
+            1.2120383328852096
+          ]
+        }
+      ]
+    },
+    {
+      "step": 75,
+      "observations": [
+        {
+          "name": "moe/loss/train",
+          "shape": [],
+          "values": [
+            0.9295986984946092
+          ]
+        },
+        {
+          "name": "moe/loss/val",
+          "shape": [],
+          "values": [
+            2.6329869161003696
+          ]
+        },
+        {
+          "name": "moe/load",
+          "shape": [
+            4
+          ],
+          "values": [
+            219.0,
+            30.0,
+            38.0,
+            119.0
+          ]
+        },
+        {
+          "name": "moe/entropy",
+          "shape": [],
+          "values": [
+            0.7554493706666866
+          ]
+        },
+        {
+          "name": "moe/balance",
+          "shape": [],
+          "values": [
+            1.162832481937396
+          ]
+        }
+      ]
+    },
+    {
+      "step": 100,
+      "observations": [
+        {
+          "name": "moe/loss/train",
+          "shape": [],
+          "values": [
+            0.48312238971797505
+          ]
+        },
+        {
+          "name": "moe/loss/val",
+          "shape": [],
+          "values": [
+            2.7895074930716293
+          ]
+        },
+        {
+          "name": "moe/load",
+          "shape": [
+            4
+          ],
+          "values": [
+            197.0,
+            53.0,
+            61.0,
+            95.0
+          ]
+        },
+        {
+          "name": "moe/entropy",
+          "shape": [],
+          "values": [
+            0.7693368499594502
+          ]
+        },
+        {
+          "name": "moe/balance",
+          "shape": [],
+          "values": [
+            1.1204811603669729
+          ]
+        }
+      ]
+    },
+    {
+      "step": 125,
+      "observations": [
+        {
+          "name": "moe/loss/train",
+          "shape": [],
+          "values": [
+            0.4781893976150008
+          ]
+        },
+        {
+          "name": "moe/loss/val",
+          "shape": [],
+          "values": [
+            3.097398011860113
+          ]
+        },
+        {
+          "name": "moe/load",
+          "shape": [
+            4
+          ],
+          "values": [
+            211.0,
+            35.0,
+            63.0,
+            97.0
+          ]
+        },
+        {
+          "name": "moe/entropy",
+          "shape": [],
+          "values": [
+            0.7165871483760281
+          ]
+        },
+        {
+          "name": "moe/balance",
+          "shape": [],
+          "values": [
+            1.1060468743985052
+          ]
+        }
+      ]
+    },
+    {
+      "step": 150,
+      "observations": [
+        {
+          "name": "moe/loss/train",
+          "shape": [],
+          "values": [
+            0.34761876657175766
+          ]
+        },
+        {
+          "name": "moe/loss/val",
+          "shape": [],
+          "values": [
+            2.9954071710986985
+          ]
+        },
+        {
+          "name": "moe/load",
+          "shape": [
+            4
+          ],
+          "values": [
+            214.0,
+            39.0,
+            34.0,
+            119.0
+          ]
+        },
+        {
+          "name": "moe/entropy",
+          "shape": [],
+          "values": [
+            0.7313582018072015
+          ]
+        },
+        {
+          "name": "moe/balance",
+          "shape": [],
+          "values": [
+            1.1383183641200432
+          ]
+        }
+      ]
+    },
+    {
+      "step": 175,
+      "observations": [
+        {
+          "name": "moe/loss/train",
+          "shape": [],
+          "values": [
+            0.25395902051919794
+          ]
+        },
+        {
+          "name": "moe/loss/val",
+          "shape": [],
+          "values": [
+            3.332982840245716
+          ]
+        },
+        {
+          "name": "moe/load",
+          "shape": [
+            4
+          ],
+          "values": [
+            230.0,
+            29.0,
+            23.0,
+            124.0
+          ]
+        },
+        {
+          "name": "moe/entropy",
+          "shape": [],
+          "values": [
+            0.7419766738903932
+          ]
+        },
+        {
+          "name": "moe/balance",
+          "shape": [],
+          "values": [
+            1.1360760892046493
+          ]
+        }
+      ]
+    },
+    {
+      "step": 200,
+      "observations": [
+        {
+          "name": "moe/loss/train",
+          "shape": [],
+          "values": [
+            0.3395143845677847
+          ]
+        },
+        {
+          "name": "moe/loss/val",
+          "shape": [],
+          "values": [
+            3.4864187689186514
+          ]
+        },
+        {
+          "name": "moe/load",
+          "shape": [
+            4
+          ],
+          "values": [
+            197.0,
+            30.0,
+            64.0,
+            115.0
+          ]
+        },
+        {
+          "name": "moe/entropy",
+          "shape": [],
+          "values": [
+            0.7208494744604793
+          ]
+        },
+        {
+          "name": "moe/balance",
+          "shape": [],
+          "values": [
+            1.120417621570362
+          ]
+        }
+      ]
+    },
+    {
+      "step": 225,
+      "observations": [
+        {
+          "name": "moe/loss/train",
+          "shape": [],
+          "values": [
+            0.2632451239645868
+          ]
+        },
+        {
+          "name": "moe/loss/val",
+          "shape": [],
+          "values": [
+            3.311139476332208
+          ]
+        },
+        {
+          "name": "moe/load",
+          "shape": [
+            4
+          ],
+          "values": [
+            197.0,
+            33.0,
+            39.0,
+            137.0
+          ]
+        },
+        {
+          "name": "moe/entropy",
+          "shape": [],
+          "values": [
+            0.6868981981418271
+          ]
+        },
+        {
+          "name": "moe/balance",
+          "shape": [],
+          "values": [
+            1.1430939861718166
+          ]
+        }
+      ]
+    },
+    {
+      "step": 250,
+      "observations": [
+        {
+          "name": "moe/loss/train",
+          "shape": [],
+          "values": [
+            0.20085598887593148
+          ]
+        },
+        {
+          "name": "moe/loss/val",
+          "shape": [],
+          "values": [
+            3.4643082535230154
+          ]
+        },
+        {
+          "name": "moe/load",
+          "shape": [
+            4
+          ],
+          "values": [
+            216.0,
+            35.0,
+            21.0,
+            134.0
+          ]
+        },
+        {
+          "name": "moe/entropy",
+          "shape": [],
+          "values": [
+            0.6632450263899166
+          ]
+        },
+        {
+          "name": "moe/balance",
+          "shape": [],
+          "values": [
+            1.146323813905264
+          ]
+        }
+      ]
+    },
+    {
+      "step": 275,
+      "observations": [
+        {
+          "name": "moe/loss/train",
+          "shape": [],
+          "values": [
+            0.123051225414945
+          ]
+        },
+        {
+          "name": "moe/loss/val",
+          "shape": [],
+          "values": [
+            3.731826624724534
+          ]
+        },
+        {
+          "name": "moe/load",
+          "shape": [
+            4
+          ],
+          "values": [
+            214.0,
+            29.0,
+            24.0,
+            139.0
+          ]
+        },
+        {
+          "name": "moe/entropy",
+          "shape": [],
+          "values": [
+            0.6356850257599644
+          ]
+        },
+        {
+          "name": "moe/balance",
+          "shape": [],
+          "values": [
+            1.1265027021313043
+          ]
+        }
+      ]
+    },
+    {
+      "step": 300,
+      "observations": [
+        {
+          "name": "moe/loss/train",
+          "shape": [],
+          "values": [
+            0.2170759463218978
+          ]
+        },
+        {
+          "name": "moe/loss/val",
+          "shape": [],
+          "values": [
+            3.764095524956848
+          ]
+        },
+        {
+          "name": "moe/load",
+          "shape": [
+            4
+          ],
+          "values": [
+            208.0,
+            30.0,
+            47.0,
+            121.0
+          ]
+        },
+        {
+          "name": "moe/entropy",
+          "shape": [],
+          "values": [
+            0.6231167073740688
+          ]
+        },
+        {
+          "name": "moe/balance",
+          "shape": [],
+          "values": [
+            1.166168458371962
+          ]
+        },
+        {
+          "name": "moe/family-by-expert",
+          "shape": [
+            4,
+            4
+          ],
+          "values": [
+            26.0,
+            3.0,
+            12.0,
+            46.0,
+            130.0,
+            11.0,
+            25.0,
+            46.0,
+            18.0,
+            16.0,
+            5.0,
+            29.0,
+            34.0,
+            0.0,
+            5.0,
+            0.0
+          ]
+        },
+        {
+          "name": "moe/accuracy/val",
+          "shape": [
+            5
+          ],
+          "values": [
+            0.0,
+            0.0,
+            0.0,
+            0.6666666666666666,
+            0.06666666666666667
+          ]
+        },
+        {
+          "name": "moe/accuracy/train",
+          "shape": [
+            5
+          ],
+          "values": [
+            0.8709677419354839,
+            0.37037037037037035,
+            0.43478260869565216,
+            1.0,
+            0.6222222222222222
+          ]
+        },
+        {
+          "name": "moe/route/example",
+          "shape": [
+            7
+          ],
+          "values": [
+            3.0,
+            2.0,
+            2.0,
+            0.0,
+            3.0,
+            2.0,
+            2.0
+          ]
+        }
+      ]
+    }
+  ]
+}
