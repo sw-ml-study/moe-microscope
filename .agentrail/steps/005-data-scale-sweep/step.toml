@@ -1,9 +1,10 @@
 number = 5
 slug = "data-scale-sweep"
-status = "in-progress"
+status = "completed"
 description = "DS01 data-scale sweep, opt-in and never in the gate: train DN01 and MX01 at 1..."
 role = "production"
 context_files = []
 created_at = "2026-09-12T23:24:47"
+completed_at = "2026-09-13T08:17:07"
 task_type = "mlpl-lesson"
-commits = []
+commits = ["1da1c77b163ce249705791337c1e919bd5c594a6"]
