@@ -1,0 +1,9 @@
+number = 4
+slug = "top2-and-specialization-map"
+status = "pending"
+description = "MX02: top-2 routing with renormalized gates, the task-family-by-expert routin..."
+role = "production"
+context_files = []
+created_at = "2026-09-12T22:36:21"
+task_type = "mlpl-lesson"
+commits = []

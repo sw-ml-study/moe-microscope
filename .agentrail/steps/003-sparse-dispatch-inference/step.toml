@@ -1,0 +1,9 @@
+number = 3
+slug = "sparse-dispatch-inference"
+status = "pending"
+description = "Forward-only sparse dispatch: evaluate only the selected experts per token, a..."
+role = "production"
+context_files = []
+created_at = "2026-09-12T22:36:21"
+task_type = "mlpl-lesson"
+commits = []

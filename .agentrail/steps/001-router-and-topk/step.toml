@@ -1,0 +1,9 @@
+number = 1
+slug = "router-and-topk"
+status = "pending"
+description = "MX01 part 1: implement the router in lib/moe.mlpl as readable MLPL: router li..."
+role = "production"
+context_files = []
+created_at = "2026-09-12T22:36:21"
+task_type = "mlpl-lesson"
+commits = []

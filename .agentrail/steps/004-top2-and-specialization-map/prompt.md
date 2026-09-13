@@ -1,0 +1,1 @@
+MX02: top-2 routing with renormalized gates, the task-family-by-expert routing heatmap, and a specialization score. Results rows for MX01 and MX02 next to DN01; annotated diagrams of the specialization map and of top-1 versus top-2 cost. Tests first; extend just check.

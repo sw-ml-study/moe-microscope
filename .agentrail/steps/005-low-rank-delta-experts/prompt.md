@@ -1,0 +1,1 @@
+Experts as a shared FFN plus low-rank deltas A_e B_e (rank 4 to 8), allowing 16 to 32 experts at microscope scale; byte accounting per expert; quality comparison with full experts; results rows; diagram of the delta-expert data structure. Tests first; extend just check.

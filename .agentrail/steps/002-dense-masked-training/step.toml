@@ -1,0 +1,9 @@
+number = 2
+slug = "dense-masked-training"
+status = "pending"
+description = "MX01 part 2: train the MoE on the synthetic domain with the dense-masked form..."
+role = "production"
+context_files = []
+created_at = "2026-09-12T22:36:21"
+task_type = "mlpl-lesson"
+commits = []

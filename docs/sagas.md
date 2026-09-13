@@ -10,6 +10,26 @@ The mandatory checklist in `AGENTS.md` applies to every step: focused tests,
 tracked-file audit, named-file staging, a detailed commit on `main`,
 Agentrail completion metadata, and a verified `git push origin main`.
 
+## Active: `mixture-of-experts-from-scratch` (Saga 2)
+
+Purpose: the router, top-k masks, dense-masked training with load balance,
+sparse dispatch with parity, top-2 and the specialization map, low-rank delta
+experts, and the MoE recordings for the generic host.
+
+1. `router-and-topk` - router linear, softmax, top-1 mask inside the loss,
+   Switch-style gate, dispatch table; observations and routing diagrams.
+2. `dense-masked-training` - MX01 trained with every expert evaluated and
+   masked gates; load-balance loss, router entropy, per-expert load; triple
+   and results row.
+3. `sparse-dispatch-inference` - forward-only sparse dispatch with parity
+   against the dense-masked path; expert evaluations and bytes per token.
+4. `top2-and-specialization-map` - MX02 top-2 routing, the family-by-expert
+   heatmap, and the specialization score.
+5. `low-rank-delta-experts` - shared FFN plus low-rank deltas for 16 to 32
+   experts; byte accounting; quality comparison.
+6. `moe-recordings-and-host-handoff` - MX01 and MX02 recorded over live SSE,
+   pinned, and handed to the generic host.
+
 ## Completed: `moe-microscope-foundation` (Saga 1)
 
 Purpose: repository foundation, executable capability probes, the synthetic
@@ -74,9 +94,6 @@ Every saga from here ends with a host step that pins its recordings and hands
 them to the generic `../demo-extensions` microscope; see the visualization
 track in [`plan.md`](plan.md).
 
-- Saga 2 `mixture-of-experts-from-scratch`: router and top-k, dense-masked
-  training with load balance, sparse dispatch with parity, top-2 and the
-  specialization map (MX01, MX02), low-rank delta experts, MoE recordings.
 - Saga 3 `recurrence-and-engram`: RC01, RM01, EG01 (both forms: from scratch
   and builtin, with parity), RE01, the seven-row ablation table, and the
   live-demo foundation handoff.

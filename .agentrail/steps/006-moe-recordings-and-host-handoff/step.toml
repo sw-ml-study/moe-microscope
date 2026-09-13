@@ -1,0 +1,9 @@
+number = 6
+slug = "moe-recordings-and-host-handoff"
+status = "pending"
+description = "Record MX01 and MX02 over live mlpl-serve SSE under the peer schema through s..."
+role = "production"
+context_files = []
+created_at = "2026-09-12T22:36:21"
+task_type = "mlpl-recording"
+commits = []
