@@ -1,9 +1,10 @@
 number = 1
 slug = "foundation-contract"
-status = "in-progress"
+status = "completed"
 description = "Establish this repository foundation only: install the generated Agentrail br..."
 role = "meta"
 context_files = []
 created_at = "2026-09-12T17:13:14"
+completed_at = "2026-09-12T17:14:18"
 task_type = "repository-foundation"
-commits = []
+commits = ["8775d0ef46e8ade58a07b96b1b9f69144ea887a9"]

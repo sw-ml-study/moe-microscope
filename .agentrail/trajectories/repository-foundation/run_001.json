@@ -1,0 +1,11 @@
+{
+  "task_type": "repository-foundation",
+  "state": {
+    "number": 1,
+    "step": "foundation-contract"
+  },
+  "action": "Read agentrail and sw-checklist help; audited demo-ml-microscope, demo-ml-utils, demo-extensions, demo-mlpl-libraries, and sw-mlpl for AGENTS/CLAUDE, license, README, gate, Engram, Model DSL, and LM builtin conventions; wrote docs and scripts; agentrail init/instructions apply/add x5/begin; just check; git diff --check; commit by named file; push.",
+  "result": "success",
+  "reward": 1,
+  "timestamp": "2026-09-12T17:14:18"
+}
