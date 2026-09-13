@@ -10,6 +10,32 @@ The mandatory checklist in `AGENTS.md` applies to every step: focused tests,
 tracked-file audit, named-file staging, a detailed commit on `main`,
 Agentrail completion metadata, and a verified `git push origin main`.
 
+## Active: `campus-docent-v0` (Saga 4)
+
+Purpose: a second training area whose domain is the live campus site: a
+tiny MoE trained in batch here, run in the browser, that predicts intent
+and destination while the catalog stays the authority for facts and
+stories. Source: [`research3.txt`](../research/research3.txt); design
+decisions and the usefulness bar are in [`plan.md`](plan.md), Saga 4.
+
+1. `campus-snapshot-a` - CD00: the catalog snapshot with docent blocks and
+   canned stories, the deterministic corpus and split, the story policy.
+2. `docent-dense` - CD01: hashed features, pooled embedding, intent and
+   destination heads; the flat classifier baseline.
+3. `docent-moe` - CD02 to CD04: routed delta experts (4 and 8), the
+   specialization map and expert annotations, the ambiguity panel.
+4. `docent-batch-export` - `just docent`: the chosen configuration exported
+   with labels and manifest, INT8 sizes, replay recording, parity twin.
+5. `docent-in-browser` - CD05, CD06: inference-first page on the
+   `mlpl-wasm` bridge, measured latency, the budgeted live-training probe.
+6. `easel-handoff` - the sw-campus work order, recordings, docs and wiki.
+
+Step 1 status: complete. Snapshot A (9 places, 21 stories, 12,868 bytes)
+from the live catalog; `lib/campus.mlpl` derives paths and URLs, a content
+hash, a 563-row corpus (422 train, 141 validation) over 5 intents and 10
+destinations, and the story policy; four diagrams, seven tests, the CD00
+row and report.
+
 ## Completed: `resource-budget-and-documentation` (Saga 3)
 
 Purpose: give the project one quantitative vocabulary (stored, resident,
@@ -314,14 +340,11 @@ checked in with its schema.
 
 ## Future
 
-Next up is the campus docent (Saga 4); the mechanism sagas follow in their
-original order.
-
 Every saga from here ends with a host step that pins its recordings and hands
 them to the generic `../demo-extensions` microscope; see the visualization
 track in [`plan.md`](plan.md).
 
-- Saga 4 `campus-docent-v0` (next): the second training area, from
+- Saga 4 `campus-docent-v0` (active, above): the second training area, from
   [`research3.txt`](../research/research3.txt). A tiny MoE trained in batch
   here and run in the browser to direct visitors of the sw-campus site:
   snapshot A of the campus catalog (IBM 1130, APL, RCA 1802) with canned

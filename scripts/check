@@ -9,6 +9,7 @@ repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 "$repo_dir/scripts/run-tests"
 "$repo_dir/scripts/run-probes"
 "$repo_dir/scripts/run-domain-demo"
+"$repo_dir/scripts/run-campus-demo"
 "$repo_dir/scripts/run-dense-demo"
 "$repo_dir/scripts/run-router-demo"
 "$repo_dir/scripts/run-moe-demo"

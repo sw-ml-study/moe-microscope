@@ -168,3 +168,19 @@ memory = "freshly built DN01, MX01, MX02, LD01 models; no training; peak memory 
 speed = "measured: build, cold and warm time to first token, prefill tokens/s (derived), generation tokens/s over 60 greedy tokens, p50/p95/max token latency; opt-in `just benchmark write` (seconds), gate validates the fixture and rendered document"
 quality = "not applicable; latency does not depend on weight values"
 status = "accepted"
+
+[[lesson]]
+id = "CD00"
+slug = "campus-snapshot-a"
+title = "The campus catalog becomes a docent corpus with canned stories"
+source = "demos/campus_corpus.mlpl"
+library = ["lib/campus.mlpl", "lib/domain.mlpl"]
+test = ["tests/test_campus.mlpl"]
+previews = ["assets/previews/campus-snapshot.svg", "assets/previews/campus-corpus.svg", "assets/previews/campus-split.svg", "assets/previews/campus-stories.svg"]
+fixture = "fixtures/campus/snapshot-a.json"
+implementation = "from-scratch"
+observations = ["campus/intent-counts", "campus/dest-counts", "campus/split/member", "campus/visit/told"]
+memory = "snapshot A is 9 places and 21 stories in 12,868 bytes; the generated corpus is 563 rows (422 train, 141 validation) of parallel string lists"
+speed = "corpus generation and split run in about 0.1 s in the interpreter; the content hash walks every byte once"
+quality = "labels by construction: 5 intents, 9 places plus none; 9 authored ambiguous rows carry an expected top-2 set; the story policy is asserted on a scripted visit"
+status = "accepted"

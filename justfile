@@ -20,6 +20,10 @@ probes:
 domain mode="check":
     ./scripts/run-domain-demo {{mode}}
 
+# Run CD00, the campus snapshot and docent corpus microscope, and check its diagrams, fixture, and row; `just campus write` regenerates them.
+campus mode="check":
+    ./scripts/run-campus-demo {{mode}}
+
 # Run the DN01 dense baseline (about 16 seconds) and check its diagrams and results row; `just dense write` regenerates them.
 dense mode="check":
     ./scripts/run-dense-demo {{mode}}

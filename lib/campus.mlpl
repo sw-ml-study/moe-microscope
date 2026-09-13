@@ -1,0 +1,495 @@
+# Campus docent domain: the catalog snapshot, place URLs and hash, the deterministic query corpus, its split, and the story-selection policy.
+include "domain.mlpl";
+
+def u:lg(l, i) {
+  "Element i of a string list.";
+  unwrap(list_get(l, i))
+}
+
+def u:field_count(s) {
+  "Number of pipe-separated items in a field; an empty field has zero.";
+  if str_len(s) {
+    list_len(str_split(s, "|"))
+  } else {
+    0
+  }
+}
+
+def u:field_get(s, i) {
+  "Item i of a pipe-separated field.";
+  u:lg(str_split(s, "|"), i)
+}
+
+def u:campus_load(path) {
+  "Read a campus snapshot fixture (flat parallel string lists) from a JSON file.";
+  unwrap(parse_json(unwrap(read_text(path))))
+}
+
+def u:campus_count(c) {
+  "Number of places in the snapshot.";
+  list_len(c.ids)
+}
+
+def u:campus_index(c, id) {
+  "Index of a place id in the snapshot, or -1 when absent.";
+  n = list_len(c.ids);
+  found = -1;
+  i = 0;
+  while lt(i, n) {
+    found = if str_eq(u:lg(c.ids, i), id) {
+      i
+    } else {
+      found
+    };
+    i = i + 1
+  };
+  found
+}
+
+def u:campus_parent(c, id) {
+  "Parent id of a place; the campus root has an empty parent.";
+  u:lg(c.parents, u:campus_index(c, id))
+}
+
+def u:campus_path(c, id) {
+  "Slash-separated path of a place below the campus root, derived from the ancestor chain (the root's path is empty).";
+  path = "";
+  cur = id;
+  while gt(str_len(u:campus_parent(c, cur)), 0) {
+    path = if str_len(path) {
+      str_concat(str_concat(cur, "/"), path)
+    } else {
+      cur
+    };
+    cur = u:campus_parent(c, cur)
+  };
+  path
+}
+
+def u:campus_url(c, id) {
+  "URL of a place: the fixture's base plus the derived path, so a rename never leaves a stale link.";
+  path = u:campus_path(c, id);
+  if str_len(path) {
+    str_concat(str_concat(c.url_base, "/"), path)
+  } else {
+    c.url_base
+  }
+}
+
+def u:campus_depth(c, id) {
+  "Number of ancestors above a place (campus root is 0).";
+  d = 0;
+  cur = id;
+  while gt(str_len(u:campus_parent(c, cur)), 0) {
+    d = d + 1;
+    cur = u:campus_parent(c, cur)
+  };
+  d
+}
+
+def u:campus_hash(text) {
+  "Deterministic content id of a text: a base-31 rolling checksum over its UTF-8 bytes modulo 2147483647 (exact in f64), rendered as a decimal string.";
+  bytes = tokenize_bytes(text);
+  n = reduce_mul(shape(bytes));
+  h = 7;
+  i = 0;
+  while lt(i, n) {
+    h = mod(h * 31 + take(bytes, 0, i), 2147483647);
+    i = i + 1
+  };
+  to_string(h)
+}
+
+def u:intent_names() {
+  "Intent labels in label order.";
+  ["navigate", "explain", "recommend", "story", "unsupported"]
+}
+
+def u:intent_index(name) {
+  "Label index of an intent name, or -1.";
+  names = u:intent_names();
+  found = -1;
+  i = 0;
+  while lt(i, 5) {
+    found = if str_eq(u:lg(names, i), name) {
+      i
+    } else {
+      found
+    };
+    i = i + 1
+  };
+  found
+}
+
+def u:dest_names(c) {
+  "Destination labels: every place id in snapshot order, then none.";
+  str_split(str_concat(str_join(c.ids, "|"), "|none"), "|")
+}
+
+def u:dest_index(c, id) {
+  "Label index of a destination id (none is the last label), or -1.";
+  if str_eq(id, "none") {
+    list_len(c.ids)
+  } else {
+    u:campus_index(c, id)
+  }
+}
+
+def u:navigate_templates() {
+  "Navigate query templates over an alias (A).";
+  ["where is A", "take me to A", "show me A", "how do i get to A"]
+}
+
+def u:explain_templates() {
+  "Explain query templates over an alias (A).";
+  ["what is A", "tell me about A", "explain A"]
+}
+
+def u:story_templates() {
+  "Story query templates over an alias (A).";
+  ["tell me a story about A", "any anecdotes about A"]
+}
+
+def u:recommend_templates() {
+  "Recommend query templates over a concept (C).";
+  ["i am interested in C", "something about C", "what should i see if i like C"]
+}
+
+def u:fill_template(t, marker, value) {
+  "Replace the single-letter marker at the end or middle of a template with a value.";
+  i = str_find(t, marker);
+  before = str_slice(t, 0, i);
+  after = str_slice(t, i + 1, str_len(t) - i - 1);
+  str_concat(str_concat(before, value), after)
+}
+
+def u:concept_owners(c, concept) {
+  "How many places list a concept; rows are generated only for concepts owned by exactly one place.";
+  n = u:campus_count(c);
+  owners = 0;
+  i = 0;
+  while lt(i, n) {
+    field = u:lg(c.concepts, i);
+    m = u:field_count(field);
+    j = 0;
+    while lt(j, m) {
+      owners = owners + str_eq(u:field_get(field, j), concept);
+      j = j + 1
+    };
+    i = i + 1
+  };
+  owners
+}
+
+def u:row_join(acc, row) {
+  "Append a row to a newline-joined accumulator.";
+  if str_len(acc) {
+    str_concat(str_concat(acc, "\n"), row)
+  } else {
+    row
+  }
+}
+
+def u:campus_corpus(c) {
+  "Deterministic corpus: for each place in snapshot order, navigate, explain, and story rows per alias, recommend rows per uniquely owned concept, then the authored queries; then the ambiguous, generic story, and unsupported rows. Parallel lists of queries, intents, destinations, kinds, and source places.";
+  n = u:campus_count(c);
+  q = "";
+  it = "";
+  ds = "";
+  kd = "";
+  pl = "";
+  i = 0;
+  while lt(i, n) {
+    id = u:lg(c.ids, i);
+    aliases = u:lg(c.aliases, i);
+    na = u:field_count(aliases);
+    a = 0;
+    while lt(a, na) {
+      alias = u:field_get(aliases, a);
+      t = 0;
+      while lt(t, 4) {
+        q = u:row_join(q, u:fill_template(u:lg(u:navigate_templates(), t), "A", alias));
+        it = u:row_join(it, "navigate");
+        ds = u:row_join(ds, id);
+        kd = u:row_join(kd, "alias");
+        pl = u:row_join(pl, id);
+        t = t + 1
+      };
+      t = 0;
+      while lt(t, 3) {
+        q = u:row_join(q, u:fill_template(u:lg(u:explain_templates(), t), "A", alias));
+        it = u:row_join(it, "explain");
+        ds = u:row_join(ds, id);
+        kd = u:row_join(kd, "alias");
+        pl = u:row_join(pl, id);
+        t = t + 1
+      };
+      t = 0;
+      while lt(t, 2) {
+        q = u:row_join(q, u:fill_template(u:lg(u:story_templates(), t), "A", alias));
+        it = u:row_join(it, "story");
+        ds = u:row_join(ds, id);
+        kd = u:row_join(kd, "alias");
+        pl = u:row_join(pl, id);
+        t = t + 1
+      };
+      a = a + 1
+    };
+    concepts = u:lg(c.concepts, i);
+    nc = u:field_count(concepts);
+    k = 0;
+    while lt(k, nc) {
+      concept = u:field_get(concepts, k);
+      unique = eq(u:concept_owners(c, concept), 1);
+      t = 0;
+      while lt(t, 3 * unique) {
+        q = u:row_join(q, u:fill_template(u:lg(u:recommend_templates(), t), "C", concept));
+        it = u:row_join(it, "recommend");
+        ds = u:row_join(ds, id);
+        kd = u:row_join(kd, "concept");
+        pl = u:row_join(pl, id);
+        t = t + 1
+      };
+      k = k + 1
+    };
+    authored = u:lg(c.queries, i);
+    nq = u:field_count(authored);
+    k = 0;
+    while lt(k, nq) {
+      entry = u:field_get(authored, k);
+      colon = str_find(entry, ":");
+      q = u:row_join(q, str_slice(entry, colon + 1, str_len(entry) - colon - 1));
+      it = u:row_join(it, str_slice(entry, 0, colon));
+      ds = u:row_join(ds, id);
+      kd = u:row_join(kd, "authored");
+      pl = u:row_join(pl, id);
+      k = k + 1
+    };
+    i = i + 1
+  };
+  na = list_len(c.ambiguous_queries);
+  k = 0;
+  while lt(k, na) {
+    dests = u:lg(c.ambiguous_dests, k);
+    q = u:row_join(q, u:lg(c.ambiguous_queries, k));
+    it = u:row_join(it, "recommend");
+    ds = u:row_join(ds, u:lg(str_split(dests, ","), 0));
+    kd = u:row_join(kd, "ambiguous");
+    pl = u:row_join(pl, "");
+    k = k + 1
+  };
+  ng = list_len(c.generic_story_queries);
+  k = 0;
+  while lt(k, ng) {
+    q = u:row_join(q, u:lg(c.generic_story_queries, k));
+    it = u:row_join(it, "story");
+    ds = u:row_join(ds, "none");
+    kd = u:row_join(kd, "generic");
+    pl = u:row_join(pl, "");
+    k = k + 1
+  };
+  nu = list_len(c.unsupported_queries);
+  k = 0;
+  while lt(k, nu) {
+    q = u:row_join(q, u:lg(c.unsupported_queries, k));
+    it = u:row_join(it, "unsupported");
+    ds = u:row_join(ds, "none");
+    kd = u:row_join(kd, "unsupported");
+    pl = u:row_join(pl, "");
+    k = k + 1
+  };
+  queries = str_split(q, "\n");
+  {queries: queries, intents: str_split(it, "\n"), dests: str_split(ds, "\n"), kinds: str_split(kd, "\n"), places: str_split(pl, "\n"), n: list_len(queries)}
+}
+
+def u:corpus_split(n, seed) {
+  "Membership vector [n]: one for training rows, zero for validation rows, from the seeded 0.75 split shared with the language domain.";
+  s = u:domain_split(n, 0.75, seed);
+  member = fill([n], 0);
+  k = reduce_mul(shape(s.train));
+  i = 0;
+  while lt(i, k) {
+    member = scatter(member, take(s.train, 0, i), 1);
+    i = i + 1
+  };
+  member
+}
+
+def u:count_label(labels, name) {
+  "How many entries of a string list equal a name.";
+  n = list_len(labels);
+  total = 0;
+  i = 0;
+  while lt(i, n) {
+    total = total + str_eq(u:lg(labels, i), name);
+    i = i + 1
+  };
+  total
+}
+
+def u:count_masked(labels, name, member) {
+  "How many entries of a string list equal a name where the membership vector is one.";
+  n = list_len(labels);
+  total = 0;
+  i = 0;
+  while lt(i, n) {
+    total = total + str_eq(u:lg(labels, i), name) * take(member, 0, i);
+    i = i + 1
+  };
+  total
+}
+
+def u:story_count(c) {
+  "Number of stories in the snapshot.";
+  list_len(c.story_ids)
+}
+
+def u:story_index(c, id) {
+  "Index of a story id, or -1.";
+  n = u:story_count(c);
+  found = -1;
+  i = 0;
+  while lt(i, n) {
+    found = if str_eq(u:lg(c.story_ids, i), id) {
+      i
+    } else {
+      found
+    };
+    i = i + 1
+  };
+  found
+}
+
+def u:told_has(told, id) {
+  "Whether a story id is in the told record (a string of the form |a|b|).";
+  gt(str_find(told, str_concat(str_concat("|", id), "|")), -1)
+}
+
+def u:told_mark(told, id) {
+  "Append a story id to the told record.";
+  if str_len(told) {
+    str_concat(str_concat(told, id), "|")
+  } else {
+    str_concat(str_concat("|", id), "|")
+  }
+}
+
+def u:told_last(told) {
+  "The most recently told story id, or empty.";
+  if str_len(told) {
+    parts = str_split(told, "|");
+    u:lg(parts, list_len(parts) - 2)
+  } else {
+    ""
+  }
+}
+
+def u:told_clear() {
+  "An empty told record.";
+  ""
+}
+
+def u:story_has_concept(c, i, concept) {
+  "Whether story i lists a concept (an empty concept matches every story).";
+  if str_len(concept) {
+    field = u:lg(c.story_concepts, i);
+    m = u:field_count(field);
+    hit = 0;
+    j = 0;
+    while lt(j, m) {
+      hit = hit + str_eq(u:field_get(field, j), concept);
+      j = j + 1
+    };
+    gt(hit, 0)
+  } else {
+    1
+  }
+}
+
+def u:story_untold(c, place_id, concept, told) {
+  "First untold story of a place in fixture order that lists the concept (empty concept: any), or empty.";
+  n = u:story_count(c);
+  found = "";
+  i = 0;
+  while lt(i, n) {
+    id = u:lg(c.story_ids, i);
+    fits = str_eq(u:lg(c.story_places, i), place_id) * u:story_has_concept(c, i, concept) * (1 - u:told_has(told, id));
+    found = if fits * eq(str_len(found), 0) {
+      id
+    } else {
+      found
+    };
+    i = i + 1
+  };
+  found
+}
+
+def u:story_remaining(c, place_id, told) {
+  "How many stories of a place are still untold.";
+  n = u:story_count(c);
+  total = 0;
+  i = 0;
+  while lt(i, n) {
+    total = total + str_eq(u:lg(c.story_places, i), place_id) * (1 - u:told_has(told, u:lg(c.story_ids, i)));
+    i = i + 1
+  };
+  total
+}
+
+def u:story_arrival(c, place_id, told) {
+  "The place's untold arrival story to volunteer once on entering, or empty.";
+  n = u:story_count(c);
+  found = "";
+  i = 0;
+  while lt(i, n) {
+    id = u:lg(c.story_ids, i);
+    fits = str_eq(u:lg(c.story_places, i), place_id) * str_eq(u:lg(c.story_kinds, i), "arrival") * (1 - u:told_has(told, id));
+    found = if fits * eq(str_len(found), 0) {
+      id
+    } else {
+      found
+    };
+    i = i + 1
+  };
+  found
+}
+
+def u:story_pick(c, place_id, dest_id, concept, told, again) {
+  "Story policy: again repeats the last told story; otherwise the first untold story for the predicted destination (concept match first), then for the current place, then for its ancestors; empty when nothing untold fits.";
+  if again {
+    u:told_last(told)
+  } else {
+    has_dest = gt(str_len(dest_id), 0) * (1 - str_eq(dest_id, "none"));
+    pick = if has_dest {
+      u:story_untold(c, dest_id, concept, told)
+    } else {
+      ""
+    };
+    pick = if has_dest * eq(str_len(pick), 0) {
+      u:story_untold(c, dest_id, "", told)
+    } else {
+      pick
+    };
+    cur = place_id;
+    while eq(str_len(pick), 0) * gt(str_len(cur), 0) {
+      pick = u:story_untold(c, cur, concept, told);
+      pick = if eq(str_len(pick), 0) {
+        u:story_untold(c, cur, "", told)
+      } else {
+        pick
+      };
+      cur = u:campus_parent(c, cur)
+    };
+    pick
+  }
+}
+
+def u:story_title(c, id) {
+  "Title of a story id.";
+  u:lg(c.story_titles, u:story_index(c, id))
+}
+
+def u:story_text(c, id) {
+  "Text of a story id.";
+  u:lg(c.story_texts, u:story_index(c, id))
+}

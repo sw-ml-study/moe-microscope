@@ -1,0 +1,140 @@
+# Campus docent domain contract: snapshot loading, paths and URLs, the content hash, the deterministic corpus and split, and the story policy.
+include "lib/campus.mlpl";
+
+def u:snap() {
+  "The committed snapshot A.";
+  u:campus_load("fixtures/campus/snapshot-a.json")
+}
+
+@test {name: "snapshot A has nine places with parents, three exhibits, and twenty-one stories", tags: ["campus", "snapshot"]}
+def u:test_snapshot_shape() {
+  "Parallel lists agree in length; every parent exists; exhibits are the destinations that exist today.";
+  c = u:snap();
+  u:assert_eq(u:campus_count(c), 9, "places")?;
+  u:assert_eq(list_len(c.titles), 9, "titles")?;
+  u:assert_eq(list_len(c.aliases), 9, "aliases")?;
+  u:assert_eq(u:story_count(c), 21, "stories")?;
+  u:assert_eq(list_len(c.story_texts), 21, "story texts")?;
+  u:assert_eq(u:count_label(c.kinds, "exhibit"), 3, "three exhibits")?;
+  u:assert_eq(u:campus_index(c, "rca-1802"), 5, "rca-1802 position")?;
+  u:assert_eq(u:campus_index(c, "ibm-1442"), -1, "1442 is reserved for snapshot B")?;
+  u:assert_text_eq(u:campus_parent(c, "apl"), "language-experiments", "apl parent")?;
+  u:assert_text_eq(u:campus_parent(c, "campus"), "", "root has no parent")
+}
+
+@test {name: "place paths and URLs derive from the ancestor chain", tags: ["campus", "url"]}
+def u:test_paths() {
+  "A URL is the base plus the derived path; the root is the base itself.";
+  c = u:snap();
+  u:assert_text_eq(u:campus_path(c, "rca-1802"), "computer-history/processors/rca-1802", "exhibit path")?;
+  u:assert_text_eq(u:campus_path(c, "campus"), "", "root path")?;
+  u:assert_text_eq(u:campus_url(c, "ibm-1130"), "https://software-wrighter-lab.github.io/sw-campus/#/campus/computer-history/ibm-1130", "wing url")?;
+  u:assert_text_eq(u:campus_url(c, "campus"), "https://software-wrighter-lab.github.io/sw-campus/#/campus", "root url")?;
+  u:assert_eq(u:campus_depth(c, "apl"), 3, "exhibit depth")?;
+  u:assert_eq(u:campus_depth(c, "campus"), 0, "root depth")
+}
+
+@test {name: "the catalog hash is deterministic and sensitive to one byte", tags: ["campus", "hash"]}
+def u:test_hash() {
+  "Same text, same id; a one-character change moves it.";
+  text = unwrap(read_text("fixtures/campus/snapshot-a.json"));
+  h1 = u:campus_hash(text);
+  h2 = u:campus_hash(text);
+  u:assert_text_eq(h1, h2, "deterministic")?;
+  u:assert_eq(str_eq(u:campus_hash(str_concat(text, " ")), h1), 0, "one byte changes the id")?;
+  u:assert_text_eq(u:campus_hash("a"), to_string(mod(7 * 31 + 97, 2147483647)), "definition on one byte")
+}
+
+@test {name: "the corpus is deterministic with valid labels and a row for every alias, concept, and authored query", tags: ["campus", "corpus"]}
+def u:test_corpus() {
+  "Every intent and destination is a known label; the counts follow from the snapshot.";
+  c = u:snap();
+  k = u:campus_corpus(c);
+  k2 = u:campus_corpus(c);
+  u:assert_eq(k.n, 563, "row count")?;
+  u:assert_eq(list_len(k.intents), k.n, "intents parallel")?;
+  u:assert_eq(list_len(k.dests), k.n, "dests parallel")?;
+  u:assert_text_eq(u:lg(k.queries, 17), u:lg(k2.queries, 17), "deterministic")?;
+  u:assert_eq(u:count_label(k.intents, "navigate"), 187, "navigate rows")?;
+  u:assert_eq(u:count_label(k.intents, "explain"), 141, "explain rows")?;
+  u:assert_eq(u:count_label(k.intents, "recommend"), 129, "recommend rows")?;
+  u:assert_eq(u:count_label(k.intents, "story"), 96, "story rows")?;
+  u:assert_eq(u:count_label(k.intents, "unsupported"), 10, "unsupported rows")?;
+  u:assert_eq(u:count_label(k.kinds, "ambiguous"), 9, "ambiguous rows")?;
+  u:assert_eq(u:count_label(k.kinds, "generic"), 7, "generic story rows")?;
+  u:assert_eq(u:count_label(k.dests, "none"), 17, "none destinations are the generic and unsupported rows")?;
+  bad = 0;
+  i = 0;
+  while lt(i, k.n) {
+    bad = bad + lt(u:intent_index(u:lg(k.intents, i)), 0) + lt(u:dest_index(c, u:lg(k.dests, i)), 0);
+    i = i + 1
+  };
+  u:assert_eq(bad, 0, "every label is known")?;
+  u:assert_text_eq(u:lg(k.queries, 0), "where is the campus", "first row from the first alias and template")?;
+  u:assert_text_eq(u:lg(k.dests, k.n - 1), "none", "unsupported rows have no destination")
+}
+
+@test {name: "shared concepts generate no rows and ambiguous rows keep their first destination", tags: ["campus", "corpus"]}
+def u:test_concepts() {
+  "A concept owned by two places would give one text two labels, so it is skipped; ambiguity is authored explicitly.";
+  c = u:snap();
+  u:assert_eq(u:concept_owners(c, "array programming"), 1, "apl owns array programming")?;
+  u:assert_eq(u:concept_owners(c, "instruction sets"), 1, "processors owns instruction sets")?;
+  u:assert_eq(u:concept_owners(c, "nonexistent"), 0, "unknown concept")?;
+  k = u:campus_corpus(c);
+  i = 0;
+  found = -1;
+  while lt(i, k.n) {
+    found = if str_eq(u:lg(k.queries, i), "show me an old computer") {
+      i
+    } else {
+      found
+    };
+    i = i + 1
+  };
+  u:assert_gt(found, -1, "ambiguous row present")?;
+  u:assert_text_eq(u:lg(k.intents, found), "recommend", "ambiguous intent")?;
+  u:assert_text_eq(u:lg(k.dests, found), "ibm-1130-emulator", "first listed destination is the label")?;
+  u:assert_text_eq(u:lg(k.kinds, found), "ambiguous", "kind")
+}
+
+@test {name: "the split is seeded, three quarters training, and stable", tags: ["campus", "split"]}
+def u:test_split() {
+  "Membership vector from the shared seeded split.";
+  m = u:corpus_split(563, 0);
+  u:assert_shape(m, [563], "one flag per row")?;
+  u:assert_eq(reduce_add(m), 422, "training rows")?;
+  u:assert_eq(reduce_add(u:corpus_split(563, 0) - m), 0, "stable")?;
+  u:assert_eq(take(m, 0, 0), take(u:corpus_split(563, 0), 0, 0), "same first flag")
+}
+
+@test {name: "story policy: arrival once, no repeat unless asked, another while untold remain, cleared context starts over", tags: ["campus", "stories"]}
+def u:test_story_policy() {
+  "A scripted visit through the museum and the APL exhibit.";
+  c = u:snap();
+  told = u:told_clear();
+  a = u:story_arrival(c, "computer-history", told);
+  u:assert_text_eq(a, "museum-arrival", "arrival story volunteered")?;
+  told = u:told_mark(told, a);
+  u:assert_text_eq(u:story_arrival(c, "computer-history", told), "", "arrival is volunteered once")?;
+  u:assert_eq(u:story_remaining(c, "computer-history", told), 1, "one museum story left")?;
+  p1 = u:story_pick(c, "computer-history", "", "", told, 0);
+  u:assert_text_eq(p1, "museum-emulation", "asked for a story: the untold one")?;
+  told = u:told_mark(told, p1);
+  u:assert_eq(u:story_remaining(c, "computer-history", told), 0, "museum exhausted")?;
+  p2 = u:story_pick(c, "computer-history", "", "", told, 0);
+  u:assert_text_eq(p2, "campus-arrival", "another: falls back to the ancestor")?;
+  told = u:told_mark(told, p2);
+  u:assert_text_eq(u:story_pick(c, "computer-history", "", "", told, 1), "campus-arrival", "again repeats the last told")?;
+  u:assert_text_eq(u:story_pick(c, "computer-history", "apl", "glyphs", told, 0), "apl-glyphs", "destination and concept pick the matching story")?;
+  u:assert_text_eq(u:story_pick(c, "computer-history", "apl", "unknown", told, 0), "apl-arrival", "unknown concept: first untold of the destination")?;
+  u:assert_text_eq(u:story_pick(c, "computer-history", "none", "", told, 0), "campus-map", "none destination: current place then ancestors")?;
+  told = u:told_mark(told, "campus-map");
+  u:assert_text_eq(u:story_pick(c, "computer-history", "", "", told, 0), "", "nothing untold fits")?;
+  told = u:told_clear();
+  u:assert_text_eq(u:story_arrival(c, "computer-history", told), "museum-arrival", "cleared context starts over")?;
+  u:assert_text_eq(u:told_last(told), "", "no last story after clearing")?;
+  u:assert_text_eq(u:story_title(c, "1802-elf"), "The ELF on the kitchen table", "story title lookup")
+}
+
+u:run_registered_tests()

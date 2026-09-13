@@ -21,6 +21,7 @@ was not proved, and where the raw evidence lives. Numbers cite a row of the
 | 10 | [RB01 resource budget](RB01.md) | How big is MicroMoE? |
 | 11 | [GB01 generation benchmark](GB01.md) | How fast is it? |
 | 12 | [Recordings and host handoff](recordings.md) | What does the generic host render? |
+| 13 | [CD00 campus snapshot A](CD00.md) | What does the campus docent see, and is its corpus honest? |
 
 The machine-readable inventory is [`catalog/lessons.toml`](../../catalog/lessons.toml).
 Experiments planned for later sagas (RC01, RM01, EG01, RE01, KD01, RW01,

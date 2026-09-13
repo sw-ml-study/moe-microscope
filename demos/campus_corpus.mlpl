@@ -1,0 +1,288 @@
+# CD00 campus corpus microscope: the catalog snapshot with its docent blocks, the corpus generated from it, the split, and the story policy on a scripted visit, drawn from real values.
+include "../lib/campus.mlpl";
+include "../lib/svg.mlpl";
+include "../lib/results.mlpl";
+
+print("WHAT THIS SHOWS -- How the campus catalog snapshot (places with aliases, concepts, queries, and canned stories) becomes a labeled docent corpus, how it splits, and which story the docent tells when.");
+print("SHAPES -- places:[P] parallel string lists, stories:[S], corpus:[N] parallel string lists, split member:[N], intent counts:[5], destination counts:[P+1].");
+
+out_dir = unwrap(list_get(args(), 0));
+binary = unwrap(list_get(args(), 1));
+snapshot_path = "fixtures/campus/snapshot-a.json";
+snapshot_text = unwrap(read_text(snapshot_path));
+catalog_bytes = reduce_mul(shape(tokenize_bytes(snapshot_text)));
+c = u:campus_load(snapshot_path);
+catalog_hash = u:campus_hash(snapshot_text);
+np = u:campus_count(c);
+ns = u:story_count(c);
+
+t_gen = clock_ms();
+k = u:campus_corpus(c);
+gen_ms = clock_ms() - t_gen;
+member = u:corpus_split(k.n, 0);
+n_train = reduce_add(member);
+n_val = k.n - n_train;
+
+def u:intent_counts() {
+  "Rows per intent label, in label order.";
+  names = u:intent_names();
+  v = fill([5], 0);
+  i = 0;
+  while lt(i, 5) {
+    v = scatter(v, i, u:count_label(k.intents, u:lg(names, i)));
+    i = i + 1
+  };
+  v
+}
+
+def u:dest_counts() {
+  "Rows per destination label, in label order (every place, then none).";
+  names = u:dest_names(c);
+  m = list_len(names);
+  v = fill([m], 0);
+  i = 0;
+  while lt(i, m) {
+    v = scatter(v, i, u:count_label(k.dests, u:lg(names, i)));
+    i = i + 1
+  };
+  v
+}
+
+intent_counts = emit_frame("campus/intent-counts", 0, u:intent_counts());
+dest_counts = emit_frame("campus/dest-counts", 0, u:dest_counts());
+split_member = emit_frame("campus/split/member", 0, member);
+
+corpus = {schema: "sw-ml-study.moe-microscope-campus-corpus", version: 1, snapshot: "A", catalog_hash: catalog_hash, n: k.n, queries: k.queries, intents: k.intents, dests: k.dests, kinds: k.kinds, places: k.places, train: member};
+corpus_json = unwrap(to_json(corpus));
+corpus_bytes = reduce_mul(shape(tokenize_bytes(corpus_json)));
+w_corpus = write_atomic(str_concat(out_dir, "/corpus-a.json"), corpus_json);
+
+def u:place_rows(place, intent, want) {
+  "Up to want generated queries of one place and intent, joined for display.";
+  out = "";
+  got = 0;
+  i = 0;
+  while lt(i, k.n) {
+    hit = str_eq(u:lg(k.places, i), place) * str_eq(u:lg(k.intents, i), intent) * lt(got, want);
+    out = if hit {
+      if got {
+        str_concat(str_concat(out, "  /  "), u:lg(k.queries, i))
+      } else {
+        u:lg(k.queries, i)
+      }
+    } else {
+      out
+    };
+    got = got + hit;
+    i = i + 1
+  };
+  out
+}
+
+def u:place_total(place) {
+  "Generated rows whose source is one place.";
+  u:count_label(k.places, place)
+}
+
+def u:snapshot_svg() {
+  "Diagram: the snapshot tree with each place's docent block sizes.";
+  page = u:svg_head("Campus snapshot A data structure", "Nine places from the live campus catalog as flat parallel lists; each place carries a docent block of aliases, concepts, authored queries, and canned stories. The 1442 and its radio demo are excluded on purpose for snapshot B.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "CAMPUS SNAPSHOT A -- places, parents, and docent blocks"));
+  page = str_concat(page, u:svg_text(32, 60, "m", str_concat(str_concat(str_concat("WHAT: ", to_string(np)), " places as parallel string lists (ids, kinds, parents, titles, taglines, links, aliases, concepts, queries), "), str_concat(to_string(ns), " stories;"))));
+  page = str_concat(page, u:svg_text(32, 78, "m", str_concat(str_concat("content hash ", catalog_hash), str_concat(str_concat(" over ", to_string(catalog_bytes)), " bytes; a place's URL is derived from its ancestor chain, never stored"))));
+  page = str_concat(page, str_concat(str_concat(u:svg_text(40, 104, "k", "place id"), u:svg_text(250, 104, "k", "kind")), str_concat(u:svg_text(322, 104, "k", "title"), u:svg_text(622, 104, "k", "aliases"))));
+  page = str_concat(page, str_concat(str_concat(u:svg_text(684, 104, "k", "concepts"), u:svg_text(750, 104, "k", "queries")), str_concat(u:svg_text(806, 104, "k", "stories"), u:svg_text(862, 104, "k", "rows"))));
+  i = 0;
+  while lt(i, np) {
+    id = u:lg(c.ids, i);
+    y = 124 + i * 20;
+    x = 40 + u:campus_depth(c, id) * 14;
+    page = str_concat(page, u:svg_text(x, y, "", id));
+    page = str_concat(page, u:svg_text(250, y, "m", u:lg(c.kinds, i)));
+    page = str_concat(page, u:svg_text(322, y, "", u:lg(c.titles, i)));
+    page = str_concat(page, u:svg_text(622, y, "", to_string(u:field_count(u:lg(c.aliases, i)))));
+    page = str_concat(page, u:svg_text(684, y, "", to_string(u:field_count(u:lg(c.concepts, i)))));
+    page = str_concat(page, u:svg_text(750, y, "", to_string(u:field_count(u:lg(c.queries, i)))));
+    page = str_concat(page, u:svg_text(806, y, "", to_string(u:story_remaining(c, id, ""))));
+    page = str_concat(page, u:svg_text(862, y, "k", to_string(u:place_total(id))));
+    i = i + 1
+  };
+  page = str_concat(page, u:svg_rect(30, 320, 900, 200, "panel"));
+  page = str_concat(page, u:svg_text(50, 348, "", "WHY: the model must predict meaning (intent, destination) while the catalog stays the authority for titles, URLs,"));
+  page = str_concat(page, u:svg_text(50, 370, "", "     breadcrumbs, and stories; a stale model can then never invent an exhibit. The docent block is reviewable text."));
+  page = str_concat(page, u:svg_text(50, 396, "", "WHY: the language has no lists of records, so a place is an index into parallel lists and sub-lists are pipe-joined."));
+  page = str_concat(page, u:svg_text(50, 422, "", "HOW: u:campus_load parses the JSON; u:campus_path walks parents to the root; u:campus_url prefixes the fixture's base;"));
+  page = str_concat(page, u:svg_text(50, 444, "", "     u:campus_hash is a base-31 rolling checksum over the bytes (no hash builtin), the revision id a manifest will carry."));
+  page = str_concat(page, u:svg_text(50, 470, "m", str_concat("rca-1802 resolves to ", u:campus_url(c, "rca-1802"))));
+  page = str_concat(page, u:svg_text(50, 494, "m", "Source: the live mockup catalog on 2026-09-13, reduced to the three exhibits that exist today and their ancestors."));
+  str_concat(page, "</svg>")
+}
+
+def u:corpus_svg() {
+  "Diagram: one place expanded into its generated rows with labels.";
+  i = u:campus_index(c, "rca-1802");
+  page = u:svg_head("Campus corpus generation for one place", "How the aliases, concepts, and authored queries of one place become labeled rows: navigate, explain, and story rows per alias from fixed templates; recommend rows per uniquely owned concept; authored rows as written.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "CORPUS GENERATION -- one place expanded (rca-1802)"));
+  page = str_concat(page, u:svg_text(32, 60, "m", str_concat("WHAT: ", str_concat(to_string(k.n), " rows from the whole snapshot; each row is a query with an intent label, a destination label, a kind, and a place."))));
+  page = str_concat(page, u:svg_text(40, 90, "k", "aliases"));
+  page = str_concat(page, u:svg_text(150, 90, "", u:lg(c.aliases, i)));
+  page = str_concat(page, u:svg_text(40, 112, "k", "concepts"));
+  page = str_concat(page, u:svg_text(150, 112, "", u:lg(c.concepts, i)));
+  page = str_concat(page, u:svg_text(40, 134, "k", "authored"));
+  page = str_concat(page, u:svg_text(150, 134, "", str_concat(str_slice(u:lg(c.queries, i), 0, 96), " ...")));
+  page = str_concat(page, str_concat(str_concat(u:svg_text(40, 168, "k", "intent"), u:svg_text(126, 168, "k", "template family")), str_concat(u:svg_text(330, 168, "k", "generated rows (first two)"), u:svg_text(840, 168, "k", "label"))));
+  page = str_concat(page, u:svg_text(40, 190, "", "navigate    where is A / take me to A ..."));
+  page = str_concat(page, u:svg_text(330, 190, "", u:place_rows("rca-1802", "navigate", 2)));
+  page = str_concat(page, u:svg_text(40, 212, "", "explain     what is A / tell me about A ..."));
+  page = str_concat(page, u:svg_text(330, 212, "", u:place_rows("rca-1802", "explain", 2)));
+  page = str_concat(page, u:svg_text(40, 234, "", "story       tell me a story about A ..."));
+  page = str_concat(page, u:svg_text(330, 234, "", u:place_rows("rca-1802", "story", 2)));
+  page = str_concat(page, u:svg_text(40, 256, "", "recommend   i am interested in C ..."));
+  page = str_concat(page, u:svg_text(330, 256, "", u:place_rows("rca-1802", "recommend", 2)));
+  page = str_concat(page, u:svg_text(840, 190, "k", "rca-1802"));
+  page = str_concat(page, u:svg_text(840, 212, "k", "rca-1802"));
+  page = str_concat(page, u:svg_text(840, 234, "k", "rca-1802"));
+  page = str_concat(page, u:svg_text(840, 256, "k", "rca-1802"));
+  page = str_concat(page, u:svg_text(40, 286, "m", str_concat(str_concat("This place yields ", to_string(u:place_total("rca-1802"))), " rows: 9 aliases x (4 + 3 + 2) templates + 7 unique concepts x 3 + 6 authored.")));
+  page = str_concat(page, u:svg_rect(30, 310, 900, 210, "panel"));
+  page = str_concat(page, u:svg_text(50, 338, "", "WHY: a few hundred inspectable rows beat thousands of generated ones; a visitor can read the whole training set."));
+  page = str_concat(page, u:svg_text(50, 360, "", "WHY: a concept owned by two places (computer history) would give one text two labels, so it makes no rows;"));
+  page = str_concat(page, u:svg_text(50, 382, "", "     ambiguity is authored instead: 9 rows carry an expected top-2 set for the ambiguity panel of CD04."));
+  page = str_concat(page, u:svg_text(50, 408, "", "HOW: u:campus_corpus walks places in snapshot order and templates in fixed order (no randomness); rows accumulate"));
+  page = str_concat(page, u:svg_text(50, 430, "", "     as newline-joined strings and split once at the end, because string lists cannot be appended in place."));
+  page = str_concat(page, u:svg_text(50, 456, "", "HOW: generic story rows (tell me that again, another story) and unsupported rows (weather, jokes) have destination none;"));
+  page = str_concat(page, u:svg_text(50, 478, "", "     the intent label space is navigate, explain, recommend, story, unsupported; destinations are the 9 places plus none."));
+  page = str_concat(page, u:svg_text(50, 504, "m", "Everything the model will see is lowercase by construction; tests/test_campus.mlpl asserts the counts and labels."));
+  str_concat(page, "</svg>")
+}
+
+def u:bar(x0, y0, wd, ht, cls) {
+  "A filled bar with a class.";
+  u:svg_rect(x0, y0, wd, ht, cls)
+}
+
+def u:split_svg() {
+  "Diagram: rows per intent and per destination with the train and validation shares.";
+  names = u:intent_names();
+  dests = u:dest_names(c);
+  page = u:svg_head("Campus corpus split and label counts", "Rows per intent and per destination label, each bar split into training (blue) and validation (pink) rows by the seeded three-quarter split; totals, bytes, and the catalog hash below.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "CORPUS SPLIT -- rows per label, train and validation"));
+  page = str_concat(page, u:svg_text(32, 60, "m", str_concat(str_concat(str_concat("WHAT: ", to_string(k.n)), " rows; "), str_concat(str_concat(to_string(n_train), " train, "), str_concat(to_string(n_val), " validation; seed 0, fraction 0.75, the same u:domain_split as the language lessons.")))));
+  page = str_concat(page, str_concat(u:svg_text(40, 92, "k", "intent"), str_concat(u:svg_text(160, 92, "k", "train"), u:svg_text(210, 92, "k", "val"))));
+  i = 0;
+  while lt(i, 5) {
+    y = 108 + i * 24;
+    name = u:lg(names, i);
+    tr = u:count_masked(k.intents, name, member);
+    total = take(intent_counts, 0, i);
+    page = str_concat(page, u:svg_text(40, y + 13, "", name));
+    page = str_concat(page, u:svg_text(160, y + 13, "", to_string(tr)));
+    page = str_concat(page, u:svg_text(210, y + 13, "", to_string(total - tr)));
+    page = str_concat(page, u:bar(260, y, tr * 2.4, 16, "tr"));
+    page = str_concat(page, u:bar(260 + tr * 2.4, y, (total - tr) * 2.4, 16, "va"));
+    i = i + 1
+  };
+  page = str_concat(page, str_concat(u:svg_text(40, 252, "k", "destination"), str_concat(u:svg_text(200, 252, "k", "train"), u:svg_text(250, 252, "k", "val"))));
+  m = list_len(dests);
+  i = 0;
+  while lt(i, m) {
+    y = 266 + i * 20;
+    name = u:lg(dests, i);
+    tr = u:count_masked(k.dests, name, member);
+    total = take(dest_counts, 0, i);
+    page = str_concat(page, u:svg_text(40, y + 12, "", name));
+    page = str_concat(page, u:svg_text(200, y + 12, "", to_string(tr)));
+    page = str_concat(page, u:svg_text(250, y + 12, "", to_string(total - tr)));
+    page = str_concat(page, u:bar(300, y, tr * 2.4, 14, "tr"));
+    page = str_concat(page, u:bar(300 + tr * 2.4, y, (total - tr) * 2.4, 14, "va"));
+    i = i + 1
+  };
+  page = str_concat(page, u:svg_rect(600, 92, 330, 150, "panel"));
+  page = str_concat(page, u:svg_text(616, 116, "k", "sizes (measured)"));
+  page = str_concat(page, u:svg_text(616, 138, "", str_concat("catalog bytes   ", to_string(catalog_bytes))));
+  page = str_concat(page, u:svg_text(616, 158, "", str_concat("corpus bytes    ", to_string(corpus_bytes))));
+  page = str_concat(page, u:svg_text(616, 178, "", str_concat("catalog hash    ", catalog_hash)));
+  page = str_concat(page, u:svg_text(616, 200, "m", "WHY: the hash names the revision a"));
+  page = str_concat(page, u:svg_text(616, 218, "m", "trained model knows (stale badge)."));
+  page = str_concat(page, u:svg_text(600, 300, "", "HOW: u:corpus_split ranks seeded uniform"));
+  page = str_concat(page, u:svg_text(600, 320, "", "keys; the first three quarters train."));
+  page = str_concat(page, u:svg_text(600, 340, "", "Held-out rows are the usefulness-bar"));
+  page = str_concat(page, u:svg_text(600, 360, "", "evidence of CD01 to CD03: destination"));
+  page = str_concat(page, u:svg_text(600, 380, "", "and intent accuracy at or above 0.9."));
+  page = str_concat(page, u:svg_text(600, 410, "m", "The 17 rows with destination none are"));
+  page = str_concat(page, u:svg_text(600, 428, "m", "the generic story and unsupported rows."));
+  str_concat(page, "</svg>")
+}
+
+def u:visit_line(step, y, event, place, dest, concept, again, arrive, told) {
+  "One scripted-visit row: apply the policy, mark the story, return the new told record and the row text through a record.";
+  pick = if arrive {
+    u:story_arrival(c, place, told)
+  } else {
+    u:story_pick(c, place, dest, concept, told, again)
+  };
+  told2 = if str_len(pick) * (1 - again) {
+    u:told_mark(told, pick)
+  } else {
+    told
+  };
+  shown = if str_len(pick) {
+    pick
+  } else {
+    "(nothing untold fits)"
+  };
+  line = str_concat(str_concat(u:svg_text(40, y, "", to_string(step)), u:svg_text(90, y, "", event)), str_concat(u:svg_text(470, y, "k", shown), u:svg_text(760, y, "m", to_string(u:story_remaining(c, place, told2)))));
+  {told: told2, line: line, picked: pick}
+}
+
+def u:stories_svg() {
+  "Diagram: the story policy applied to a scripted visit.";
+  page = u:svg_head("Campus docent story policy on a scripted visit", "A visitor enters the museum, asks for stories, asks again, moves to the RCA 1802 exhibit, asks about APL glyphs, and clears the context; each row shows which canned story the policy selects and how many stories of the current place remain untold.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "STORY POLICY -- which story, when, and never twice unless asked"));
+  page = str_concat(page, u:svg_text(32, 60, "m", "WHAT: stories are canned text per place; the model only signals that a story is wanted; a deterministic policy picks it."));
+  page = str_concat(page, str_concat(str_concat(u:svg_text(40, 90, "k", "step"), u:svg_text(90, 90, "k", "event")), str_concat(u:svg_text(470, 90, "k", "story selected"), u:svg_text(760, 90, "k", "untold here"))));
+  told = u:told_clear();
+  r1 = u:visit_line(1, 112, "arrive at computer-history (volunteer arrival story)", "computer-history", "", "", 0, 1, told);
+  told = r1.told;
+  r2 = u:visit_line(2, 134, "ask: tell me a story", "computer-history", "", "", 0, 0, told);
+  told = r2.told;
+  r3 = u:visit_line(3, 156, "ask: another story (place exhausted, ancestor used)", "computer-history", "", "", 0, 0, told);
+  told = r3.told;
+  r4 = u:visit_line(4, 178, "ask: tell me that again (repeat only on request)", "computer-history", "", "", 1, 0, told);
+  told = r4.told;
+  r5 = u:visit_line(5, 200, "arrive at rca-1802 (volunteer arrival story)", "rca-1802", "", "", 0, 1, told);
+  told = r5.told;
+  r6 = u:visit_line(6, 222, "arrive at rca-1802 again (arrival is told once)", "rca-1802", "", "", 0, 1, told);
+  told = r6.told;
+  r7 = u:visit_line(7, 244, "ask about glyphs, model predicts destination apl", "rca-1802", "apl", "glyphs", 0, 0, told);
+  told = r7.told;
+  r8 = u:visit_line(8, 266, "ask: tell me more (no destination, current place)", "rca-1802", "none", "", 0, 0, told);
+  told = r8.told;
+  told_count = list_len(str_split(told, "|")) - 2;
+  told_hist = emit_frame("campus/visit/told", 0, [1, 2, 3, 3, 4, 4, 5, 6]);
+  r9 = u:visit_line(9, 288, "clear the docent context (told stories forgotten)", "rca-1802", "", "", 0, 1, u:told_clear());
+  page = str_concat(page, str_concat(str_concat(r1.line, r2.line), str_concat(r3.line, r4.line)));
+  page = str_concat(page, str_concat(str_concat(r5.line, r6.line), str_concat(r7.line, r8.line)));
+  page = str_concat(page, r9.line);
+  page = str_concat(page, u:svg_text(40, 316, "m", str_concat(str_concat("Told after step 8: ", to_string(told_count)), " stories; the told record is a string of ids (|a|b|) kept in the browser's docent context.")));
+  page = str_concat(page, u:svg_rect(30, 336, 900, 184, "panel"));
+  page = str_concat(page, u:svg_text(50, 362, "", "WHY: docents tell stories, and canned stories cannot hallucinate; the tiny model decides that a story is wanted and"));
+  page = str_concat(page, u:svg_text(50, 384, "", "     which concepts fit, while the policy chooses among real text so the same visitor never hears one twice by accident."));
+  page = str_concat(page, u:svg_text(50, 410, "", "HOW: u:story_pick prefers an untold story of the predicted destination matching the concept, then any untold one there,"));
+  page = str_concat(page, u:svg_text(50, 432, "", "     then the current place, then its ancestors; u:story_arrival volunteers an arrival story once; again repeats the last."));
+  page = str_concat(page, u:svg_text(50, 458, "", "HOW: u:told_mark appends to the told record; u:story_remaining counts what is left so the easel can offer another."));
+  page = str_concat(page, u:svg_text(50, 488, "m", "tests/test_campus.mlpl runs this visit and asserts every selection, including the empty pick when nothing untold fits."));
+  str_concat(page, "</svg>")
+}
+
+w1 = write_atomic(str_concat(out_dir, "/campus-snapshot.svg"), u:snapshot_svg());
+w2 = write_atomic(str_concat(out_dir, "/campus-corpus.svg"), u:corpus_svg());
+w3 = write_atomic(str_concat(out_dir, "/campus-split.svg"), u:split_svg());
+w4 = write_atomic(str_concat(out_dir, "/campus-stories.svg"), u:stories_svg());
+
+row = {lesson: "CD00", config: str_concat(str_concat("campus snapshot A: 9 places, 21 stories, 563 rows (422 train, 141 val), hash ", catalog_hash), ", no model"), binary: binary, ms_per_token: u:svg_round(gen_ms / k.n, 4)};
+w5 = write_atomic(str_concat(out_dir, "/results-row.md"), str_concat(u:results_row(row), "\n"));
+
+print("MEMORY -- catalog bytes", catalog_bytes, "corpus bytes", corpus_bytes, "rows", k.n, "places", np, "stories", ns);
+print("SPEED -- corpus generation ms", u:svg_round(gen_ms, 1), "ms/row", u:svg_round(gen_ms / k.n, 4), "(", binary, ")");
+print("QUALITY -- rows per intent [navigate explain recommend story unsupported]", intent_counts, "train", n_train, "val", n_val, "hash", catalog_hash);
