@@ -12,6 +12,11 @@ Agentrail completion metadata, and a verified `git push origin main`.
 
 ## Active: `campus-docent-v0` (Saga 4)
 
+First publication milestone: the replay page live and linked from the
+README, the campus institute lobby featuring it, and an honest blog post
+about both; the trained docent joins the campus only after the usefulness
+bar with its margin over the matcher is met.
+
 Purpose: a second training area whose domain is the live campus site: a
 tiny MoE trained in batch here, run in the browser, that predicts intent
 and destination while the catalog stays the authority for facts and
@@ -22,16 +27,22 @@ decisions and the usefulness bar are in [`plan.md`](plan.md), Saga 4.
    canned stories, the deterministic corpus and split, the story policy.
 2. `docent-dense` - CD01: hashed features, pooled embedding, intent and
    destination heads; the flat classifier baseline.
-3. `matcher-baseline` - MB01: the mockup's deterministic alias-and-concept
-   matcher in MLPL, scored on the validation rows and the held-out
-   paraphrase set; the yardstick every docent must beat.
-4. `docent-moe` - CD02 to CD04: routed delta experts (4 and 8), the
+3. `recording-replay-page` - the first live demo on GitHub Pages: the
+   pinned recordings stepped frame by frame, the dispatch walkthrough, the
+   README link, a browser verification record. First publication milestone.
+4. `matcher-baseline` - MB01: the mockup's deterministic alias-and-concept
+   matcher and a matcher over all catalog text, in MLPL, scored on the
+   validation rows and the held-out paraphrase set; the yardstick.
+5. `docent-word-vectors` - CD01b: word vectors trained on the campus's own
+   text, stored in an Engram-style hashed table, fine-tuned by the docent;
+   the fair route to a margin over the matcher.
+6. `docent-moe` - CD02 to CD04: routed delta experts (4 and 8), the
    specialization map and expert annotations, the ambiguity panel.
-5. `docent-batch-export` - `just docent`: the chosen configuration exported
+7. `docent-batch-export` - `just docent`: the chosen configuration exported
    with labels and manifest, INT8 sizes, replay recording, parity twin.
-6. `docent-in-browser` - CD05, CD06: inference-first page on the
+8. `docent-in-browser` - CD05, CD06: inference-first page on the
    `mlpl-wasm` bridge, measured latency, the budgeted live-training probe.
-7. `easel-handoff` - the sw-campus work order, recordings, docs and wiki.
+9. `easel-handoff` - the sw-campus work order, recordings, docs and wiki.
 
 Step 2 status: complete. CD01, the flat dense docent (1,024 hash slots,
 width 24, hidden 32, 26,003 parameters): held-out intent 0.938 and
@@ -386,7 +397,8 @@ track in [`plan.md`](plan.md).
   start, expert-delta distillation, and the gated external-teacher export.
 - Saga 9 `quantization-packing-and-cache`: INT8 and INT4 experts, the packed
   TinyMoE file, the LRU expert-cache simulator with capacity curves, and
-  prefill double buffering.
+  prefill double buffering, and KV01, decode-cache
+  compression measured on the generation benchmark.
 - Saga 10 `hybrid-execution-and-embedded-budget`: bandwidth calibration, the
   q-star transfer/compute split, expert banks, and the 256 MB budget report.
 - Saga 11 `interactive-microscope-host`: systems recordings, live-demo
