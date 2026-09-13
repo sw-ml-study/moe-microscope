@@ -1,0 +1,11 @@
+{
+  "task_type": "mlpl-lesson",
+  "state": {
+    "number": 2,
+    "step": "dense-masked-training"
+  },
+  "action": "Probed step cost (1.1 ms) and two balance weights over 300 epochs; hit F11 (gate-column helper) and F12 (T in balance) and inlined/parameterized; wrote padded decode helpers with tests; wrote the lesson with two diagrams and run script; fixed vector formatting; rendered and re-laid-out text; regenerated previews; gate; commit by name; push.",
+  "result": "success",
+  "reward": 1,
+  "timestamp": "2026-09-12T23:11:38"
+}
