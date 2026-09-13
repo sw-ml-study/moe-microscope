@@ -58,4 +58,28 @@ def u:test_router_gradient() {
   u:assert_gt(reduce_add(abs(g)), 0, "gradient is nonzero")
 }
 
+@test {name: "dispatch gathers routed rows and place scatters them back exactly", tags: ["moe", "dispatch"]}
+def u:test_dispatch_place() {
+  "Gather-then-place equals masking the original rows; unrouted positions are zero.";
+  x = [[1, 2], [3, 4], [5, 6], [7, 8]];
+  col = [1, 0, 1, 0];
+  rows = u:dispatch_rows(x, col);
+  u:assert_eq(rows, [[1, 2], [5, 6]], "routed rows in token order")?;
+  u:assert_eq(u:place_rows(rows, col, 4), [[1, 2], [0, 0], [5, 6], [0, 0]], "placed back at their positions")?;
+  g = u:dispatch_gate([0.9, 0.1, 0.7, 0.2], col);
+  u:assert_eq(g, [[0.9], [0.7]], "gate factors of routed rows")?;
+  u:assert_shape(u:dispatch_rows(x, [0, 0, 0, 0]), [0, 2], "an idle expert gets zero rows")
+}
+
+@test {name: "sparse dispatch touches k experts' parameters per token, dense-masked touches all", tags: ["moe", "cost"]}
+def u:test_dispatch_cost() {
+  "Top-1 over four experts: one expert per token versus four.";
+  mask = [[1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 1, 0]];
+  c = u:dispatch_cost(mask, 1000, 500);
+  u:assert_eq(c.sparse, 1500, "shared plus one expert")?;
+  u:assert_eq(c.dense, 4500, "shared plus four experts")?;
+  u:assert_eq(c.evals_sparse, 1, "one evaluation per token")?;
+  u:assert_eq(c.evals_dense, 4, "four evaluations per token")
+}
+
 u:run_registered_tests()

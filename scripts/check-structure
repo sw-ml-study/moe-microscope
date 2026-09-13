@@ -19,7 +19,8 @@ for path in AGENTS.md CLAUDE.md COPYRIGHT LICENSE README.md justfile mlplunit.co
     scripts/make-recording-index scripts/run-emit-frame-loops scripts/build-local-serve \
     demos/teacher.mlpl tests/test_teacher.mlpl docs/teacher-fixture.md fixtures/teacher/teacher-v0.json \
     fixtures/teacher/index-v1.json assets/previews/teacher-fixture.svg scripts/run-teacher \
-    lib/moe.mlpl tests/test_moe.mlpl demos/router_microscope.mlpl assets/previews/router-routing.svg scripts/run-router-demo demos/moe_baseline.mlpl scripts/run-moe-demo assets/previews/moe-run.svg assets/previews/moe-balance.svg; do
+    lib/moe.mlpl tests/test_moe.mlpl demos/router_microscope.mlpl assets/previews/router-routing.svg scripts/run-router-demo demos/moe_baseline.mlpl scripts/run-moe-demo assets/previews/moe-run.svg assets/previews/moe-balance.svg \
+    demos/dispatch_microscope.mlpl scripts/run-dispatch-demo assets/previews/dispatch-combine.svg; do
     if [ ! -e "$repo_dir/$path" ]; then
         echo "missing required file: $path" >&2
         exit 1

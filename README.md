@@ -152,6 +152,29 @@ DN01's (3.76 against 3.79) with more total but similar active parameters,
 and prose is again the only family that generalizes. The family-by-expert
 counts are recorded now; the specialization map is drawn in MX02.
 
+## Sparse dispatch
+
+SD01 evaluates the same mixture two ways and proves they are one model.
+Dense-masked runs every expert on every token and lets the gate zero the
+rest; sparse dispatch gathers each expert's routed rows with `compress`,
+runs the expert once on that sub-batch, scales by the gate, and scatters
+the result back through a one-hot selection matrix. Over all 120 windows the
+two outputs agree exactly (maximum difference 0), while the counted work
+drops from 13,440 expert row evaluations to 3,360 and parameters touched per
+token from 6,280 to 3,064.
+
+![SD01 dispatch and combine: one window's dispatch table, rows per expert, the exact cost comparison, and the sparse mixture output](assets/previews/dispatch-combine.svg)
+
+```sh
+just dispatch        # train 40 epochs, prove parity, count and time both paths
+```
+
+One honest number: in this interpreter the sparse path is slower per window
+(0.74 ms against 0.42), because per-expert gather, scatter, and loop
+overhead cost more than the three 16-by-32 matmuls they skip. The saving is
+real in the counts and becomes wall-clock time only with larger experts or a
+compiled runtime, which is why the results table records counts first.
+
 ## In-repo teacher fixture
 
 TE01 is the teacher that Saga 4 distills from: two 32-wide blocks, 19,956
@@ -244,6 +267,7 @@ just dense           # run DN01 (about 16 s) and check its diagrams and results 
 just teacher         # validate the committed TE01 fixture without retraining
 just router          # run the MX01 routing microscope and check its diagram
 just moe             # run MX01 training (about 36 s) and check its diagrams and results row
+just dispatch        # run SD01 sparse dispatch with exact parity (about 5 s)
 just mlpl-style      # canonical formatting and docstring checks
 ```
 

@@ -1,6 +1,6 @@
 number = 3
 slug = "sparse-dispatch-inference"
-status = "pending"
+status = "in-progress"
 description = "Forward-only sparse dispatch: evaluate only the selected experts per token, a..."
 role = "production"
 context_files = []

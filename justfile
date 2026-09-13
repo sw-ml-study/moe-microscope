@@ -52,6 +52,10 @@ router mode="check":
 moe mode="check":
     ./scripts/run-moe-demo {{mode}}
 
+# Run SD01, sparse dispatch with parity against the dense-masked path; `just dispatch write` regenerates its diagram and row.
+dispatch mode="check":
+    ./scripts/run-dispatch-demo {{mode}}
+
 # Print the selected sw-MLPL executable.
 mlpl-path:
     ./scripts/select-mlpl

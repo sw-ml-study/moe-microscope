@@ -60,3 +60,28 @@ def u:balance_loss(probs, mask, E, T) {
   importance = reduce_add(probs, 0) / T;
   E * reduce_add(fraction * importance)
 }
+
+def u:dispatch_rows(x, mask_col) {
+  "The rows of x [T, d] routed to one expert: those whose mask column entry is one, in token order.";
+  compress(mask_col, x)
+}
+
+def u:dispatch_gate(gate_col, mask_col) {
+  "The gate values of the routed rows as a [n_e, 1] factor.";
+  kept = compress(mask_col, gate_col);
+  reshape(kept, [reduce_mul(shape(kept)), 1])
+}
+
+def u:place_rows(rows, mask_col, T) {
+  "Scatter an expert's [n_e, d] outputs back to their token positions in a [T, d] array (zeros elsewhere) with a one-hot selection matrix.";
+  positions = compress(mask_col, range(T));
+  matmul(transpose(one_hot(positions, T)), rows)
+}
+
+def u:dispatch_cost(mask, p_expert, p_shared) {
+  "Parameters touched per token under sparse dispatch versus dense-masked evaluation: {sparse, dense, evals_sparse, evals_dense}.";
+  T = reduce_mul(shape(take(mask, 1, 0)));
+  E = reduce_mul(shape(take(mask, 0, 0)));
+  k = reduce_add(mask) / T;
+  {sparse: p_shared + k * p_expert, dense: p_shared + E * p_expert, evals_sparse: k, evals_dense: E}
+}

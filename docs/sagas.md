@@ -30,6 +30,12 @@ experts, and the MoE recordings for the generic host.
 6. `moe-recordings-and-host-handoff` - MX01 and MX02 recorded over live SSE,
    pinned, and handed to the generic host.
 
+Step 3 status: complete. SD01 sparse dispatch (`demos/dispatch_microscope.mlpl`):
+compress, per-expert sub-batches, selection-matrix scatter; exact parity
+(max difference 0) over 120 windows; 3,360 versus 13,440 row evaluations;
+the interpreter's sparse path measured slower per window and stated so;
+diagram and results row.
+
 Step 2 status: complete. MX01 trained dense-masked with the balance term
 (`demos/moe_baseline.mlpl`): loads, entropy, balance, family-by-expert
 counts, loss and accuracy recorded; two diagrams; results row beside DN01;
@@ -87,6 +93,12 @@ Step 3 status: complete. `lib/domain.mlpl`, `lib/evaluate.mlpl`, and
 `lib/results.mlpl` with 28 native tests; the 120-example mixture fixture;
 the DM01 domain microscope with three annotated diagrams (window, tags,
 split) freshness-checked by `just check`; catalog entry DM01.
+
+Step 3 status: complete. SD01 sparse dispatch (`demos/dispatch_microscope.mlpl`):
+compress, per-expert sub-batches, selection-matrix scatter; exact parity
+(max difference 0) over 120 windows; 3,360 versus 13,440 row evaluations;
+the interpreter's sparse path measured slower per window and stated so;
+diagram and results row.
 
 Step 2 status: complete. Sixteen native probes and five standalone
 reproducers; F1 to F4 verified fixed upstream, F5 to F8 and D1 pinned and

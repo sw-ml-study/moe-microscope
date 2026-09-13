@@ -1,0 +1,231 @@
+# SD01 sparse dispatch: the MX01 mixture evaluated two ways, dense-masked (every expert runs) and sparse (each expert runs only on its routed rows), with exact parity and counted plus measured cost.
+include "../lib/dense.mlpl";
+include "../lib/moe.mlpl";
+include "../lib/observe.mlpl";
+include "../lib/svg.mlpl";
+include "../lib/results.mlpl";
+
+print("WHAT THIS SHOWS -- Sparse dispatch gathers each expert's routed tokens, runs the expert once on that sub-batch, and scatters the scaled outputs back; the result equals the dense-masked forward to floating-point precision at a quarter of the expert work.");
+print("SHAPES -- window [T=28, d=16]; mask [28, 4]; per-expert sub-batches [n_e, 16] with n_0 + n_1 + n_2 + n_3 = 28; selection matrices [28, n_e].");
+
+out_dir = if list_len(args()) {
+  unwrap(list_get(args(), 0))
+} else {
+  ""
+};
+binary = if gt(list_len(args()), 1) {
+  unwrap(list_get(args(), 1))
+} else {
+  "unknown"
+};
+writing = str_len(out_dir);
+m = unwrap(u:domain_load_mixture(u:domain_mixture_path()));
+d = u:domain_build(m);
+w = unwrap(u:domain_windows(d.texts, m.window));
+s = u:domain_split(d.count, m.train_fraction, m.seed);
+V = u:domain_vocab_size();
+T = m.window;
+dm = 16;
+hidden = 32;
+E = 4;
+epochs = 40;
+lr = 0.003;
+alpha = 0.01;
+ntrain = reduce_mul(shape(s.train));
+train_x = gather_rows(w.x, s.train);
+train_y = gather_rows(w.y, s.train);
+train_m = gather_rows(w.mask, s.train);
+posT = u:positions(T, dm);
+
+emb = embed(V, dm, 0);
+att = chain(rms_norm(dm), causal_attention(dm, 1, 1));
+pre = rms_norm(dm);
+router = linear(dm, E, 9);
+ex0 = chain(linear(dm, hidden, 20), relu_layer(), linear(hidden, dm, 21));
+ex1 = chain(linear(dm, hidden, 22), relu_layer(), linear(hidden, dm, 23));
+ex2 = chain(linear(dm, hidden, 24), relu_layer(), linear(hidden, dm, 25));
+ex3 = chain(linear(dm, hidden, 26), relu_layer(), linear(hidden, dm, 27));
+norm = rms_norm(dm);
+head = linear(dm, V, 4);
+
+def u:moe_dense(h1) {
+  "Dense-masked mixture: every expert runs on every token; the Switch gate zeroes all but the chosen one.";
+  x = apply(pre, h1);
+  gate = u:switch_gate(apply(router, x), E);
+  reshape(take(gate, 1, 0), [T, 1]) * apply(ex0, x) + reshape(take(gate, 1, 1), [T, 1]) * apply(ex1, x) + reshape(take(gate, 1, 2), [T, 1]) * apply(ex2, x) + reshape(take(gate, 1, 3), [T, 1]) * apply(ex3, x)
+}
+
+def u:expert_out(e, rows) {
+  "Run expert e on its routed rows (experts are globals: F7).";
+  if eq(e, 0) {
+    apply(ex0, rows)
+  } else {
+    if eq(e, 1) {
+      apply(ex1, rows)
+    } else {
+      if eq(e, 2) {
+        apply(ex2, rows)
+      } else {
+        apply(ex3, rows)
+      }
+    }
+  }
+}
+
+def u:moe_sparse(h1) {
+  "Sparse dispatch: for each expert, gather its routed rows, run it once on that sub-batch, scale by the gate, and scatter back; idle experts are skipped.";
+  x = apply(pre, h1);
+  logits = apply(router, x);
+  mask = u:top1_mask(logits, E);
+  gate = u:router_probs(logits) * mask;
+  out = fill([T, dm], 0);
+  e = 0;
+  while lt(e, E) {
+    col = take(mask, 1, e);
+    n_e = reduce_add(col);
+    out = if n_e {
+      out + u:place_rows(u:expert_out(e, u:dispatch_rows(x, col)) * u:dispatch_gate(take(gate, 1, e), col), col, T)
+    } else {
+      out
+    };
+    e = e + 1
+  };
+  out
+}
+
+def u:body_dense(h0) {
+  "Attention, dense-masked mixture, norm, head.";
+  h1 = h0 + apply(att, h0);
+  apply(head, apply(norm, h1 + u:moe_dense(h1)))
+}
+
+def u:body_sparse(h0) {
+  "Attention, sparse-dispatch mixture, norm, head.";
+  h1 = h0 + apply(att, h0);
+  apply(head, apply(norm, h1 + u:moe_sparse(h1)))
+}
+
+def u:routing_of(x1) {
+  "Router mask [T, E] of one window, eagerly.";
+  h0 = apply(emb, x1) + posT;
+  h1 = h0 + apply(att, h0);
+  u:top1_mask(apply(router, apply(pre, h1)), E)
+}
+
+e = 0;
+while lt(e, epochs) {
+  i = 0;
+  while lt(i, ntrain) {
+    x1 = take(train_x, 0, i);
+    y1 = take(train_y, 0, i);
+    m1 = take(train_m, 0, i);
+    h0 = apply(emb, x1) + posT;
+    adam(u:masked_ce(u:body_dense(h0), y1, m1, V) + alpha * u:balance_loss(u:router_probs(apply(router, apply(pre, h0 + apply(att, h0)))), u:top1_mask(apply(router, apply(pre, h0 + apply(att, h0))), E), E, T), [emb, att, pre, router, ex0, ex1, ex2, ex3, norm, head], lr, 0.9, 0.999, 0.00000001);
+    i = i + 1
+  };
+  e = e + 1
+};
+print("TRAINED --", epochs, "epochs so routing is learned rather than arbitrary");
+
+p_expert = param_count(ex0);
+p_shared = param_count(att) + param_count(pre) + param_count(router) + param_count(norm) + param_count(head) + dm;
+max_diff = 0;
+dense_ms = 0;
+sparse_ms = 0;
+evals_dense = 0;
+evals_sparse = 0;
+rows_total = fill([E], 0);
+i = 0;
+while lt(i, d.count) {
+  x1 = take(w.x, 0, i);
+  h0 = apply(emb, x1) + posT;
+  t0 = clock_ms();
+  ld = u:body_dense(h0);
+  t1 = clock_ms();
+  ls = u:body_sparse(h0);
+  t2 = clock_ms();
+  dense_ms = dense_ms + (t1 - t0);
+  sparse_ms = sparse_ms + (t2 - t1);
+  diff = reduce(:max, abs(ld - ls));
+  max_diff = if gt(diff, max_diff) {
+    diff
+  } else {
+    max_diff
+  };
+  mask = u:routing_of(x1);
+  rows_total = rows_total + u:expert_load(mask);
+  evals_dense = evals_dense + E * T;
+  evals_sparse = evals_sparse + reduce_add(mask);
+  i = i + 1
+};
+tokens = d.count * T;
+parity = emit_frame("moe/dispatch/parity-max-abs-diff", 0, max_diff);
+evals = emit_frame("moe/dispatch/expert-row-evals", 0, [evals_dense, evals_sparse]);
+rows_by_expert = emit_frame("moe/dispatch/rows-per-expert", 0, rows_total);
+cost = u:dispatch_cost(u:routing_of(take(w.x, 0, 0)), p_expert, p_shared);
+params_per_token = emit_frame("moe/dispatch/params-per-token", 0, [cost.dense, cost.sparse]);
+ms = emit_frame("moe/dispatch/ms-per-window", 0, [dense_ms / d.count, sparse_ms / d.count]);
+print("PARITY -- max |dense - sparse| over", d.count, "windows:", max_diff);
+print("COST -- expert row evaluations dense", evals_dense, "sparse", evals_sparse, "(", tokens, "tokens); parameters touched per token dense", cost.dense, "sparse", cost.sparse);
+print("SPEED -- ms per window dense", u:svg_round(dense_ms / d.count, 3), "sparse", u:svg_round(sparse_ms / d.count, 3), "(", binary, ")");
+print("ROWS -- per expert over all windows", rows_total);
+
+example = "2+3=|5.";
+ex_ids = u:pad_to(unwrap(u:domain_encode(example)), T);
+ex_mask = emit_frame("moe/dispatch/table", 1, gather_rows(u:routing_of(ex_ids), range(7)));
+ex_h0 = apply(emb, ex_ids) + posT;
+ex_h1 = ex_h0 + apply(att, ex_h0);
+ex_x = apply(pre, ex_h1);
+ex_full = u:routing_of(ex_ids);
+ex_counts = emit_frame("moe/dispatch/example-rows", 1, u:expert_load(ex_full));
+ex_out = u:moe_sparse(ex_h1);
+ex_out_dense = u:moe_dense(ex_h1);
+
+row = {lesson: "SD01", config: "MX01 sparse dispatch, 40ep, inference over 120 windows", binary: binary, params: param_count(emb) + p_shared - dm + E * p_expert, active_params: cost.sparse, bytes_per_expert: p_expert * 8, expert_evals: 1, bytes_per_token: cost.sparse * 8, ms_per_token: u:svg_round(sparse_ms / tokens, 4)};
+r_row = if writing {
+  write_atomic(str_concat(out_dir, "/results-row.md"), str_concat(u:results_row(row), "\n"))
+} else {
+  ok(0)
+};
+
+def u:dispatch_svg() {
+  "Diagram: one window's dispatch table, the per-expert sub-batches, the selection-matrix scatter back, and the cost comparison.";
+  page = u:svg_head("SD01 dispatch and combine", "For the padded window 2+3=|5. the top-1 mask sends each of 28 tokens to one of four experts; each expert runs once on its sub-batch, the outputs are scaled by the gate and scattered back with a one-hot selection matrix, and the sum equals the dense-masked output exactly while evaluating 28 rows instead of 112.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "SD01 DISPATCH -- run each expert once on its own tokens"));
+  page = str_concat(page, u:svg_text(32, 60, "m", "WHAT: mask [T,E] -> per-expert rows via compress -> expert(rows) x gate -> place back via one_hot(positions)^T @ rows -> sum"));
+  page = str_concat(page, u:svg_text(32, 96, "k", str_concat("dispatch table, ", str_concat(example, " (7 rows)"))));
+  page = str_concat(page, u:svg_grid(ex_mask, 32, 104, 44, 0, ex_mask));
+  page = str_concat(page, u:svg_text(330, 96, "k", "rows per expert (all 28 positions)"));
+  page = str_concat(page, u:svg_cells(ex_counts, 330, 104, 44, fill([E], 0)));
+  page = str_concat(page, u:svg_text(290, 156, "k", "dense-masked: 4 experts x 28 rows = 112 row evaluations"));
+  page = str_concat(page, u:svg_text(290, 178, "k", str_concat("sparse: ", str_concat(u:svg_vec(ex_counts, 0), " = 28 row evaluations"))));
+  page = str_concat(page, u:svg_text(290, 210, "", str_concat("parameters touched per token: dense ", str_concat(u:svg_num(cost.dense), str_concat(", sparse ", u:svg_num(cost.sparse))))));
+  page = str_concat(page, u:svg_text(290, 232, "", str_concat("over 120 windows: ", str_concat(u:svg_num(evals_dense), str_concat(" vs ", str_concat(u:svg_num(evals_sparse), " row evaluations"))))));
+  page = str_concat(page, u:svg_text(290, 254, "", str_concat("max |dense - sparse| output difference: ", u:svg_num(max_diff))));
+  page = str_concat(page, u:svg_text(290, 276, "", "interpreter timing lives in the results row, not here: it varies per run"));
+  page = str_concat(page, u:svg_text(32, 320, "k", "sparse mixture output, first 4 positions x first 6 dims (equals the dense-masked output)"));
+  page = str_concat(page, u:svg_grid(transpose(gather_rows(transpose(gather_rows(ex_out, range(4))), range(6))), 32, 328, 60, 3, fill([4, 6], 0)));
+  page = str_concat(page, u:svg_text(420, 340, "", "an idle expert (0 rows) is skipped entirely;"));
+  page = str_concat(page, u:svg_text(420, 360, "", "a loaded expert runs one matmul over its rows,"));
+  page = str_concat(page, u:svg_text(420, 380, "", "so work follows the routing, not the expert count."));
+  page = str_concat(page, u:svg_rect(30, 452, 900, 84, "panel"));
+  page = str_concat(page, u:svg_text(50, 476, "", "WHY: this is where MoE saves compute: dense-masked evaluates every expert; dispatch evaluates only the routed one."));
+  page = str_concat(page, u:svg_text(50, 498, "", "WHY: exact parity proves the two paths are one model; training stays dense-masked, inference dispatches."));
+  page = str_concat(page, u:svg_text(50, 520, "m", "HOW: u:dispatch_rows (compress), u:dispatch_gate, u:place_rows (selection matmul); gather overhead beats a 16x32 matmul here."));
+  str_concat(page, "</svg>")
+}
+
+r1 = if writing {
+  write_atomic(str_concat(out_dir, "/dispatch-combine.svg"), u:dispatch_svg())
+} else {
+  ok(0)
+};
+print("NUMERICAL CONTRACT -- max |dense - sparse| below 1e-9; sparse row evaluations equal the token count; dense row evaluations equal four times the token count.");
+print("THE POINT -- The sparse path is the model; the dense-masked path is a training convenience with the same mathematics.");
+print("BOUNDARY -- In this interpreter the sparse path is slower: per-expert gather, scatter, and loop overhead cost more than the three 16x32 matmuls it skips. The saving is in the counts; it becomes wall-clock only with larger experts or a compiled runtime.");
+contract = lt(max_diff, 0.000000001) * eq(evals_sparse, tokens) * eq(evals_dense, 4 * tokens) * lt(reduce(:max, abs(ex_out - ex_out_dense)), 0.000000001);
+if contract * is_ok(r1) * is_ok(r_row) {
+  ok("dispatch microscope written")
+} else {
+  err("dispatch contract failed")
+}
