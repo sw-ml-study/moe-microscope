@@ -1,0 +1,11 @@
+{
+  "task_type": "documentation",
+  "state": {
+    "number": 3,
+    "step": "documentation-hierarchy"
+  },
+  "action": "Inventoried docs path references; git mv into the hierarchy; scripted path and relative-link rewriting; wrote the landing and index pages; regenerated the derived document and indexes; extended the gate's link, structure, and markdown checks; gate; commit by name; push.",
+  "result": "success",
+  "reward": 1,
+  "timestamp": "2026-09-13T10:40:31"
+}

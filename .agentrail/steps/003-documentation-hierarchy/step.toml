@@ -1,9 +1,10 @@
 number = 3
 slug = "documentation-hierarchy"
-status = "in-progress"
+status = "completed"
 description = "Restructure docs/ into overview, results, concepts, experiments, implementati..."
 role = "production"
 context_files = []
 created_at = "2026-09-13T09:42:19"
+completed_at = "2026-09-13T10:40:31"
 task_type = "documentation"
-commits = []
+commits = ["a7e19a1540016a5f019358ca58369d0f5a6dbcb1"]
