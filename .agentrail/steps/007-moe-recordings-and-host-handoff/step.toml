@@ -1,9 +1,10 @@
 number = 7
 slug = "moe-recordings-and-host-handoff"
-status = "in-progress"
+status = "completed"
 description = "Record MX01 and MX02 over live mlpl-serve SSE under the peer schema through s..."
 role = "production"
 context_files = []
 created_at = "2026-09-12T22:36:21"
+completed_at = "2026-09-13T09:38:12"
 task_type = "mlpl-recording"
-commits = []
+commits = ["b7ac1923e769f5a2e097b6b06f0400e0eab0f708"]
