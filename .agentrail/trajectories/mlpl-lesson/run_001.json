@@ -1,0 +1,11 @@
+{
+  "task_type": "mlpl-lesson",
+  "state": {
+    "number": 1,
+    "step": "router-and-topk"
+  },
+  "action": "Wrote lib/moe.mlpl and tests first (fixed a randn-in-grad test hygiene issue); wrote the demo and run script; added u:svg_grid; rendered and re-laid-out the diagram twice; captured the discussion document; flipped F9; regenerated the recording index; gate; commit by name; push.",
+  "result": "success",
+  "reward": 1,
+  "timestamp": "2026-09-12T22:59:03"
+}

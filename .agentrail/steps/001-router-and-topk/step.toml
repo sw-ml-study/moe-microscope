@@ -1,9 +1,10 @@
 number = 1
 slug = "router-and-topk"
-status = "in-progress"
+status = "completed"
 description = "MX01 part 1: implement the router in lib/moe.mlpl as readable MLPL: router li..."
 role = "production"
 context_files = []
 created_at = "2026-09-12T22:36:21"
+completed_at = "2026-09-12T22:59:03"
 task_type = "mlpl-lesson"
-commits = []
+commits = ["3f09abd89c0c848ba6909323e1c8b2598f5336e4"]
