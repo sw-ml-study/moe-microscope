@@ -68,6 +68,10 @@ scale mode="check":
 delta mode="check":
     ./scripts/run-delta-demo {{mode}}
 
+# Regenerate or check the RB01 resource budget (no training): docs/resource-budget.md and its storage diagram.
+budget mode="check":
+    ./scripts/run-budget-demo {{mode}}
+
 # Print the selected sw-MLPL executable.
 mlpl-path:
     ./scripts/select-mlpl

@@ -56,6 +56,31 @@ acceptance scale for every lesson. The same source runs at a lab scale under
 `device("mlx") { }`. The 256 MB, 0.5 TOPS device is an inference target for
 the packed file, not a training target.
 
+## How big is MicroMoE?
+
+RB01 answers the size question without training. Every number in
+[`docs/resource-budget.md`](docs/resource-budget.md) is labeled M
+(measured), D (derived), or E (estimate), and the calculator behind it
+(`lib/budget.mlpl`) is pinned to the measured parameter counts of every
+lesson.
+
+| Model | Params | Active per token | f64 weights | Active f64 per token |
+|---|---:|---:|---:|---:|
+| DN01 dense | 3,812 | 2,996 | 29.8 KiB | 23.4 KiB |
+| MX01 top-1 of 4 | 7,096 | 3,064 | 55.4 KiB | 23.9 KiB |
+| MX02 top-2 of 4 | 7,096 | 4,136 | 55.4 KiB | 32.3 KiB |
+| LD01 shared + 16 deltas | 6,132 | 3,396 | 47.9 KiB | 26.5 KiB |
+
+One full expert is 1,072 parameters: 8,576 bytes at f64, 536 bytes of INT4
+payload. Top-1 stores 1.86 times the dense model while touching 1.02 times
+as much per token; top-2 touches one more expert's worth.
+
+![RB01 storage: proportional bars of stored weights by component and the bytes one token touches under top-1 and top-2](assets/previews/budget-storage.svg)
+
+```sh
+just budget          # regenerate and check the resource-budget document and diagram
+```
+
 ## Synthetic domain microscope
 
 DM01 is the first executable microscope. It shows the three data structures
@@ -362,6 +387,7 @@ just dispatch        # run SD01 sparse dispatch with exact parity (about 5 s)
 just moe2            # run MX02 top-2 routing and the specialization map (about 36 s)
 just scale           # validate the DS01 data-scale points and diagram (opt-in sweep: just scale write)
 just delta           # run LD01 low-rank delta experts with a shared FFN (about 80 s)
+just budget          # RB01 resource budget: document and diagram, no training
 just mlpl-style      # canonical formatting and docstring checks
 ```
 

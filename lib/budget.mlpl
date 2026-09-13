@@ -1,0 +1,81 @@
+# Capacity calculator: stored, resident, active, and transferred parameters and bytes for a MicroMoE configuration, plus expert size statistics and dtype projections.
+
+def u:budget_config(d_model, hidden, vocab, experts, top_k, shared_experts, expert_rank, T) {
+  "A configuration record; expert_rank 0 means full FFN experts of the given hidden width, otherwise rank-r delta experts.";
+  {d_model: d_model, hidden: hidden, vocab: vocab, experts: experts, top_k: top_k, shared_experts: shared_experts, expert_rank: expert_rank, T: T}
+}
+
+def u:budget_attention_params(d) {
+  "Parameters of rms_norm plus one single-head causal attention over width d as sw-MLPL builds them: four d-by-d projections without biases; rms_norm has no parameters.";
+  4 * d * d
+}
+
+def u:budget_ffn_params(d, hidden) {
+  "Parameters of rms_norm plus a d-hidden-d feed-forward: two linear layers with biases; rms_norm has no parameters.";
+  (d * hidden + hidden) + (hidden * d + d)
+}
+
+def u:budget_expert_params(c) {
+  "Parameters of one expert: a full FFN, or a rank-r delta 2 * d * r.";
+  if c.expert_rank {
+    2 * c.d_model * c.expert_rank
+  } else { u:budget_ffn_params(c.d_model, c.hidden) }
+}
+
+def u:budget_components(c) {
+  "Parameter count by component: embedding, attention, shared experts, router, routed expert bank, norm and head.";
+  d = c.d_model;
+  shared = c.shared_experts * u:budget_ffn_params(d, c.hidden);
+  router = if c.experts {
+    d * c.experts + c.experts
+  } else {
+    0
+  };
+  bank = c.experts * u:budget_expert_params(c);
+  head = d * c.vocab + c.vocab;
+  {embedding: c.vocab * d, attention: u:budget_attention_params(d), shared: shared, router: router, bank: bank, head: head}
+}
+
+def u:budget_totals(c) {
+  "Stored parameters, parameters touched per token, and the expert bank share.";
+  p = u:budget_components(c);
+  stored = p.embedding + p.attention + p.shared + p.router + p.bank + p.head;
+  per_expert = u:budget_expert_params(c);
+  active = stored - p.embedding + c.d_model - (c.experts - c.top_k) * per_expert;
+  {stored: stored, active: active, per_expert: per_expert, bank: p.bank, shared_path: stored - p.embedding + c.d_model - p.bank}
+}
+
+def u:budget_bytes(params, bytes_per_value) {
+  "Bytes for a parameter count at a given width (8 for f64, 4 for f32, 2 for f16, 1 for int8, 0.5 for int4 payload).";
+  params * bytes_per_value
+}
+
+def u:budget_projection(params) {
+  "Projected weight bytes at FP64, FP32, FP16, INT8, and INT4 payload widths (no scales or headers).";
+  [params * 8, params * 4, params * 2, params, params / 2]
+}
+
+def u:budget_expert_stats(sizes) {
+  "Count, min, mean, median, p90, max, and total of a vector of expert sizes.";
+  n = reduce_mul(shape(sizes));
+  sorted = reshape(gather_rows(reshape(sizes, [n, 1]), grade_up(sizes)), [n]);
+  median = take(sorted, 0, floor(n / 2));
+  p90 = take(sorted, 0, reduce(:min, [n - 1, floor(0.9 * n)]));
+  {count: n, min: reduce(:min, sizes), mean: mean(sizes), median: median, p90: p90, max: reduce(:max, sizes), total: reduce_add(sizes)}
+}
+
+def u:budget_residency(c, bytes_per_value, cache_experts, engram_slots, engram_width) {
+  "Stored, resident, and active bytes with a bounded expert cache and an Engram table, and their ratios.";
+  t = u:budget_totals(c);
+  expert_bytes = u:budget_bytes(t.per_expert, bytes_per_value);
+  engram_bytes = engram_slots * engram_width * bytes_per_value;
+  stored = u:budget_bytes(t.stored, bytes_per_value) + engram_bytes;
+  resident = u:budget_bytes(t.shared_path, bytes_per_value) + reduce(:min, [cache_experts, c.experts]) * expert_bytes + engram_bytes;
+  active = u:budget_bytes(t.active, bytes_per_value) + engram_width * bytes_per_value;
+  {stored: stored, resident: resident, active: active, expert_bytes: expert_bytes, engram_bytes: engram_bytes, storage_to_resident: stored / resident, resident_to_active: resident / active}
+}
+
+def u:budget_transfer_ms(bytes, latency_us, bandwidth_mb_s) {
+  "Estimated milliseconds to fetch bytes from a device with a fixed latency and a bandwidth: latency plus bytes over bandwidth.";
+  latency_us / 1000 + bytes / (bandwidth_mb_s * 1000000) * 1000
+}

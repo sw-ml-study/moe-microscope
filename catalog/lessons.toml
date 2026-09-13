@@ -135,3 +135,19 @@ memory = "shared FFN plus 16 rank-4 delta experts packed as A_all [16, 64] and B
 speed = "two extra matmuls per window whatever E is; router cost 272 multiply-adds per token for E = 16; both variants train in under a minute"
 quality = "shared plus deltas and deltas-only compared with DN01 (shared only) and MX01 (four full experts) on validation loss and per-family accuracy; family-by-expert map over 16 experts"
 status = "accepted"
+
+[[lesson]]
+id = "RB01"
+slug = "resource-budget"
+title = "How big is MicroMoE? Stored, resident, active, transferred"
+source = "demos/resource_budget.mlpl"
+library = ["lib/budget.mlpl", "lib/results.mlpl", "lib/svg.mlpl"]
+test = ["tests/test_budget.mlpl"]
+previews = ["assets/previews/budget-storage.svg"]
+document = "docs/resource-budget.md"
+implementation = "from-scratch"
+observations = []
+memory = "no training; the calculator reproduces every measured parameter count (DN01 3,812; MX01 7,096 with 1,072 per expert; LD01 6,132 with 128 per delta) and projects FP64 to INT4 sizes and residency scenarios"
+speed = "milliseconds; transfer estimates (E) for HDD, SATA SSD, NVMe, and RAM by latency plus size over bandwidth"
+quality = "every number labeled M, D, or E; mismatches between calculator and results table fail the lesson"
+status = "accepted"

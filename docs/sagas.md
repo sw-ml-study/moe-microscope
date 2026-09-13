@@ -31,6 +31,12 @@ the hierarchy. Source: `research2.txt`.
 6. `wiki-mirror` - the peer wiki mirrors the hierarchy with verified Mermaid
    diagrams and links.
 
+Step 1 status: complete. `lib/budget.mlpl` calculator pinned to every
+measured parameter count; RB01 generates `docs/resource-budget.md` (sizes,
+expert cost and statistics, stored versus active, dtype projections,
+residency scenarios, transfer estimates, M/D/E labels) and the proportional
+storage diagram, both freshness-checked by the gate.
+
 ## Completed: `mixture-of-experts-from-scratch` (Saga 2)
 
 Purpose: the router, top-k masks, dense-masked training with load balance,

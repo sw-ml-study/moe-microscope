@@ -1,0 +1,27 @@
+#!/bin/sh
+# Run RB01 (no training) into a temporary directory; check (or write) docs/resource-budget.md and the storage diagram.
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+mlpl=$("$repo_root/scripts/select-mlpl")
+mode=${1:-check}
+tmp_rel="tmp/budget-demo"
+mkdir -p "$repo_root/$tmp_rel"
+
+"$mlpl" --source-dir "$repo_root" "$repo_root/demos/resource_budget.mlpl" -- "$tmp_rel"
+
+pair() {
+    generated="$repo_root/$tmp_rel/$1"
+    committed="$repo_root/$2"
+    [ -s "$generated" ] || { echo "budget demo did not write $1" >&2; exit 1; }
+    if [ "$mode" = "write" ]; then
+        cp "$generated" "$committed"
+    elif ! cmp -s "$generated" "$committed"; then
+        echo "$2 is stale; run scripts/run-budget-demo write" >&2
+        exit 1
+    fi
+}
+pair resource-budget.md docs/resource-budget.md
+pair budget-storage.svg assets/previews/budget-storage.svg
+rm -rf "$repo_root/$tmp_rel"
+echo "PASS resource budget document and diagram ($mode)"

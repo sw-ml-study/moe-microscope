@@ -1,6 +1,6 @@
 number = 1
 slug = "resource-budget-microscope"
-status = "pending"
+status = "in-progress"
 description = "RB01: no training. From the committed model configurations (DN01, MX01, MX02,..."
 role = "production"
 context_files = []

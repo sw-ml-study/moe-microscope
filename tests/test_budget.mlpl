@@ -1,0 +1,37 @@
+# Capacity calculator contract: component counts match the trained models, projections and residency ratios are exact.
+include "lib/budget.mlpl";
+
+@test {name: "component counts reproduce DN01 and MX01 parameter totals", tags: ["budget"]}
+def u:test_budget_matches_models() {
+  "The calculator must agree with param_count of the lessons: DN01 3,812; MX01 7,096 with 1,072 per expert; LD01 6,132 with 128 per delta.";
+  dn = u:budget_totals(u:budget_config(16, 32, 52, 0, 0, 1, 0, 28));
+  u:assert_eq(dn.stored, 3812, "DN01 stored")?;
+  u:assert_eq(dn.active, 2996, "DN01 active per token")?;
+  mx = u:budget_totals(u:budget_config(16, 32, 52, 4, 1, 0, 0, 28));
+  u:assert_eq(mx.stored, 7096, "MX01 stored")?;
+  u:assert_eq(mx.per_expert, 1072, "full expert")?;
+  u:assert_eq(mx.active, 3064, "MX01 active per token")?;
+  mx2 = u:budget_totals(u:budget_config(16, 32, 52, 4, 2, 0, 0, 28));
+  u:assert_eq(mx2.active, 4136, "MX02 active per token")?;
+  ld = u:budget_totals(u:budget_config(16, 32, 52, 16, 1, 1, 4, 28));
+  u:assert_eq(ld.stored, 6132, "LD01 stored")?;
+  u:assert_eq(ld.per_expert, 128, "rank-4 delta")?;
+  u:assert_eq(ld.active, 3396, "LD01 active per token")
+}
+
+@test {name: "projections, expert statistics, and residency ratios are exact", tags: ["budget"]}
+def u:test_budget_projection_residency() {
+  "1,072 parameters project to 8576, 4288, 2144, 1072, 536 bytes; residency with a two-expert cache halves the bank.";
+  u:assert_eq(u:budget_projection(1072), [8576, 4288, 2144, 1072, 536], "dtype projection")?;
+  st = u:budget_expert_stats([1072, 1072, 1072, 1072]);
+  u:assert_eq([st.count, st.min, st.mean, st.median, st.p90, st.max, st.total], [4, 1072, 1072, 1072, 1072, 1072, 4288], "uniform experts")?;
+  st2 = u:budget_expert_stats([100, 300, 200, 1000, 400]);
+  u:assert_eq([st2.min, st2.median, st2.p90, st2.max], [100, 300, 1000, 1000], "sorted statistics")?;
+  r = u:budget_residency(u:budget_config(16, 32, 52, 4, 1, 0, 0, 28), 8, 2, 0, 0);
+  u:assert_eq(r.expert_bytes, 8576, "expert bytes at f64")?;
+  u:assert_eq(r.stored, 7096 * 8, "stored bytes")?;
+  u:assert_eq(r.resident, (7096 - 832 + 16 - 4288) * 8 + 2 * 8576, "shared path plus two resident experts")?;
+  u:assert_approx(u:budget_transfer_ms(8576, 100, 500), 0.1 + 8576 / 500000000 * 1000, 0.000001, "latency plus bandwidth")
+}
+
+u:run_registered_tests()
