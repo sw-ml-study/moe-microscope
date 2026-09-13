@@ -1,9 +1,10 @@
 number = 2
 slug = "generation-benchmark"
-status = "in-progress"
+status = "completed"
 description = "Measured generation benchmark for DN01, MX01, MX02, and LD01: model-open time..."
 role = "production"
 context_files = []
 created_at = "2026-09-13T09:42:19"
+completed_at = "2026-09-13T10:29:11"
 task_type = "mlpl-benchmark"
-commits = []
+commits = ["05f43041fac7af4edf59cc1c80e656c329cbd030"]
