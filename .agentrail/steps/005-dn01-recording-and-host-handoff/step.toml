@@ -1,9 +1,10 @@
 number = 5
 slug = "dn01-recording-and-host-handoff"
-status = "in-progress"
+status = "completed"
 description = "Record DN01 over the live mlpl-serve SSE path under the peer version-zero rec..."
 role = "production"
 context_files = []
 created_at = "2026-09-12T20:27:28"
+completed_at = "2026-09-12T21:45:39"
 task_type = "mlpl-recording"
-commits = []
+commits = ["7ec9fd67c52dfe5616ba96ec3ee33e2fe351dd6a"]
