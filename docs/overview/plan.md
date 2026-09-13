@@ -545,6 +545,20 @@ relitigate them:
    the dense-masked path; a gate check that the site builds from committed
    fixtures only; a browser verification record (every page loads, every
    recording steps to its last frame) in `docs/results/live-demo.md`.
+   Every page carries the standard footer of the sw-embed web demos: the
+   license and copyright from `LICENSE` and `COPYRIGHT`, links to the
+   campus (`https://software-wrighter-lab.github.io/sw-campus/`), the blog
+   (`https://blog.softwarewrighter.com/about/` until the post is
+   published, then the post), Discord
+   (`https://discord.com/invite/Ctzk5uHggZ`), and the GitHub repository,
+   then the build info: host, short commit SHA, and UTC timestamp. There is
+   no compile step, so the Pages workflow and the local serve recipe write
+   `learn/build-info.json` at publish time and the page renders it. The
+   README links the live demo and the blog post (the about page until then).
+   The recordings hold per-epoch summaries, so the routing and dispatch
+   walkthroughs come from a small export script that records one trained
+   window stage by stage (logits, probabilities, mask, gate, per-expert
+   groups, expert outputs, scatter, exact sum) into a pinned fixture.
 4. **matcher-baseline (MB01).** The deterministic alias-and-concept matcher
    the campus mockup uses, written in MLPL over the same snapshot (alias
    substring hits ranked above concept token overlap, the four intents by
