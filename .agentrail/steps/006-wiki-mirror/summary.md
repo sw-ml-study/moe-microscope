@@ -1,0 +1,1 @@
+Wiki mirrored (Home, Start Here, Learn, Results, Experiments, Internals, Reference, sidebar) and pushed; verified after push: six Mermaid diagrams render without error under Mermaid 11 in headless Chrome, 53 distinct link targets (7 wiki pages, 46 repository files) return HTTP 200. Chrome extension was not connected, so headless Chrome and curl did the verification.
