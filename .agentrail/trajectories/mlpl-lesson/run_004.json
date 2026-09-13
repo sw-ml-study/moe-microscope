@@ -1,0 +1,11 @@
+{
+  "task_type": "mlpl-lesson",
+  "state": {
+    "number": 4,
+    "step": "top2-and-specialization-map"
+  },
+  "action": "Added top-2 helpers with tests; hit and filed the F18 tape panic; made MX01 export its family counts as a fixture; derived MX02 from MX01 with two new diagrams; rebuilt the cost table with positioned columns after SVG whitespace collapse; trimmed overruns; gate; commit by name; push.",
+  "result": "success",
+  "reward": 1,
+  "timestamp": "2026-09-12T23:45:18"
+}
