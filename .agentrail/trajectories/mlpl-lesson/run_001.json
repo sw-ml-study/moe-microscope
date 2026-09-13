@@ -1,0 +1,11 @@
+{
+  "task_type": "mlpl-lesson",
+  "state": {
+    "number": 1,
+    "step": "resource-budget-microscope"
+  },
+  "action": "Derived component formulas from measured counts (rms_norm parameterless, attention without biases); wrote the calculator and tests; wrote the generating demo and run script; fixed a scenario configuration and text overruns; gate; commit by name; push.",
+  "result": "success",
+  "reward": 1,
+  "timestamp": "2026-09-13T10:11:18"
+}

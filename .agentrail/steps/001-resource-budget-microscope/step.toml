@@ -1,9 +1,10 @@
 number = 1
 slug = "resource-budget-microscope"
-status = "in-progress"
+status = "completed"
 description = "RB01: no training. From the committed model configurations (DN01, MX01, MX02,..."
 role = "production"
 context_files = []
 created_at = "2026-09-13T09:42:19"
+completed_at = "2026-09-13T10:11:18"
 task_type = "mlpl-lesson"
-commits = []
+commits = ["628c27f81d15d77e737a4f29cebe6ad06e21aa7c"]
