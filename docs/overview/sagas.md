@@ -324,8 +324,9 @@ track in [`plan.md`](plan.md).
 - Saga 4 `campus-docent-v0` (next): the second training area, from
   [`research3.txt`](../research/research3.txt). A tiny MoE trained in batch
   here and run in the browser to direct visitors of the sw-campus site:
-  snapshot A of the campus catalog (IBM 1130, APL, RCA 1802) with a
-  deterministic corpus generator, the dense classifier CD01, the routed
+  snapshot A of the campus catalog (IBM 1130, APL, RCA 1802) with canned
+  stories per place and the story-selection policy, a deterministic corpus
+  generator, the dense classifier CD01, the routed
   docent CD02 with its specialization map CD03 and ambiguity panel CD04,
   the `just docent` batch export with manifest, the inference-first docent
   page CD05 on the proven `mlpl-wasm` bridge with a budgeted live-training

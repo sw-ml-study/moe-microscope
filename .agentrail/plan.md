@@ -446,9 +446,21 @@ Design decisions, taken from the research and kept here so the steps do not
 relitigate them:
 
 - The model predicts meaning, not facts: an intent (navigate, explain,
-  recommend, unsupported) and a destination distribution over places. The
-  campus catalog remains the authority for titles, summaries, URLs,
+  recommend, story, unsupported) and a destination distribution over places.
+  The campus catalog remains the authority for titles, summaries, URLs,
   breadcrumbs, and status, so a stale model can never invent an exhibit.
+- Docents tell stories, and the stories are canned. Every place (campus,
+  building, wing, exhibit) may carry pre-written stories in its docent block:
+  an id, a title, the text, the concepts it touches, and a kind (arrival,
+  feature, detail, anecdote). The model never generates story text; it only
+  decides that a story is wanted (the story intent, or a concept the visitor
+  asked about) and which concepts fit. A deterministic policy over the
+  catalog and the docent's local context picks the story: prefer an untold
+  story for the current place, then an untold story for the predicted
+  destination or concept; volunteer an arrival story once when the visitor
+  enters a place; never repeat a told story unless asked ("tell me that
+  again"); offer "another story?" when untold ones remain. Told stories live
+  in the docent context and can be cleared.
 - The corpus is derived from the catalog. Each place carries a reviewable
   docent block (aliases, concepts, example queries); a deterministic MLPL
   generator expands it into a small, inspectable training set (a few hundred
@@ -500,14 +512,19 @@ relitigate them:
 
 1. **campus-snapshot-a (CD00).** The catalog snapshot fixture
    (`fixtures/campus/snapshot-a.json`) in the sw-campus `Place` shape plus
-   the docent block for the three destinations, authored here and handed to
-   sw-campus for adoption; the deterministic corpus generator in MLPL with
+   the docent block for the three destinations and their ancestors,
+   including two or three canned stories per place, authored here and handed
+   to sw-campus for adoption; the story-selection policy in MLPL with tests
+   over scripted visits (arrival story once, no repeat unless asked, untold
+   stories offered, cleared context starts over); the deterministic corpus generator in MLPL with
    its diagram (source place, transformation, resulting rows, labels); the
    split; the catalog-hash function. Locate the APL and RCA 1802 demo
    repositories and record their URLs, or mark them placeholder as sw-campus
    does. Tests over the generator, the label space, and the split.
 2. **docent-dense (CD01).** Hashed-feature encoder, pooled embedding, one
-   hidden layer, intent and destination heads, masked losses; the flat
+   hidden layer, intent and destination heads (the story intent and
+   story-eliciting queries such as "any anecdotes about the 1130?" and "tell
+   me that again" are part of the corpus), masked losses; the flat
    classifier baseline with its diagram and results row (intent accuracy,
    destination accuracy, top-3, params, bytes, ms per query).
 3. **docent-moe (CD02, CD03).** The same encoder behind a router over 4 and
@@ -535,11 +552,13 @@ relitigate them:
    (passive featured exhibit, interactive docent), loading the exported
    model, catalog-hash comparison with a stale badge, the local
    `DocentContext` (current place, recent places, interests, recent
-   queries) in IndexedDB, and the link back to the microscope; recordings
-   pinned for the generic host.
+   queries, told stories) in IndexedDB, the arrival-story volunteer with
+   the story policy, and the link back to the microscope; recordings pinned
+   for the generic host.
 
 Exit: a batch-trained tiny MoE, loaded in the page, navigates among the
 three destinations with explainable routing and catalog-backed responses,
+tells the right canned story once and another on request,
 and the live-training budget has a measured answer;
 dense, four-expert, and eight-expert rows sit in the results table with the
 docent metrics; snapshot A is preserved with its provenance; sw-campus has an

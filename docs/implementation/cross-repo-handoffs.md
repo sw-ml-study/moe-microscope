@@ -57,8 +57,9 @@ recipe, commit the new weights and manifest, and the campus site picks up
 the new files on its next build. The campus agent should:
 
 1. adopt `fixtures/campus/snapshot-a.json` as the shape of a reviewable
-   docent block on `Place` (aliases, concepts, example queries) without
-   changing the human-facing catalog fields, and export the catalog with a
+   docent block on `Place` (aliases, concepts, example queries, and canned
+   stories with id, title, text, concepts, and kind) without changing the
+   human-facing catalog fields, and export the catalog with a
    stable hash so the docent manifest can name the revision it was trained
    on;
 2. add one easel per lobby with a passive face (featured exhibit, visit
@@ -69,7 +70,10 @@ the new files on its next build. The campus agent should:
    catalog; the catalog, never the model, supplies titles, URLs, breadcrumbs,
    and status, and "no sufficiently specific destination" is a valid answer;
 4. keep the docent context (current place, recent places, interests, recent
-   queries) in IndexedDB and transient route state in session storage;
+   queries, told stories) in IndexedDB and transient route state in session
+   storage; volunteer a place's arrival story once, apply the story policy
+   from this repository (untold first, no repeat unless asked, offer another
+   while untold ones remain), and let the visitor clear the context;
 5. run inference through the same `mlpl-wasm` session the microscope page
    uses, or a headless build of it once upstream publishes one; no Rust
    model code; `sw-checklist` applies to the Yew easel as to the rest of the
