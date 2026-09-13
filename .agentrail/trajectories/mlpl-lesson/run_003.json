@@ -1,0 +1,11 @@
+{
+  "task_type": "mlpl-lesson",
+  "state": {
+    "number": 3,
+    "step": "sparse-dispatch-inference"
+  },
+  "action": "Wrote dispatch/place/cost helpers with tests; wrote the lesson with a short training then two-path evaluation; removed timings from the diagram after the freshness check caught nondeterminism; fixed label collisions; gate; commit by name; push.",
+  "result": "success",
+  "reward": 1,
+  "timestamp": "2026-09-12T23:23:07"
+}

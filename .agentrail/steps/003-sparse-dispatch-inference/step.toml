@@ -1,9 +1,10 @@
 number = 3
 slug = "sparse-dispatch-inference"
-status = "in-progress"
+status = "completed"
 description = "Forward-only sparse dispatch: evaluate only the selected experts per token, a..."
 role = "production"
 context_files = []
 created_at = "2026-09-12T22:36:21"
+completed_at = "2026-09-12T23:23:07"
 task_type = "mlpl-lesson"
-commits = []
+commits = ["6b24c4bb63e97e7e38418d9e4719debb2eb7482c"]
