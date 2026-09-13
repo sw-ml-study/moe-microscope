@@ -111,4 +111,51 @@ def u:test_specialization() {
   u:assert_eq(take(u:row_normalize([[2, 2, 0, 0], [0, 0, 0, 0]]), 0, 1), [0, 0, 0, 0], "empty family stays zero")
 }
 
+@test {name: "packed low-rank deltas equal an explicit per-expert sum", tags: ["moe", "delta"]}
+def u:test_delta_parity() {
+  "Three rank-2 experts over width 4 with an arbitrary gate: the two-matmul form equals the loop.";
+  d = 4;
+  E = 3;
+  r = 2;
+  x = randn(1, [5, d]);
+  A_all = randn(2, [d, E * r]);
+  B_all = randn(3, [E * r, d]);
+  gate = [[0.5, 0, 0.5], [1, 0, 0], [0, 0.3, 0.7], [0.2, 0.2, 0.6], [0, 1, 0]];
+  expand = u:delta_expand(E, r);
+  u:assert_eq(expand, [[1, 1, 0, 0, 0, 0], [0, 0, 1, 1, 0, 0], [0, 0, 0, 0, 1, 1]], "block one-hot")?;
+  packed = u:delta_out(x, A_all, B_all, gate, expand);
+  cols = transpose(A_all);
+  rows = B_all;
+  explicit = fill([5, d], 0);
+  e = 0;
+  while lt(e, E) {
+    A_e = transpose(gather_rows(cols, e * r + range(r)));
+    B_e = gather_rows(rows, e * r + range(r));
+    explicit = explicit + reshape(take(gate, 1, e), [5, 1]) * matmul(matmul(x, A_e), B_e);
+    e = e + 1
+  };
+  u:assert_approx(reduce(:max, abs(packed - explicit)), 0, 0.000000001, "packed equals explicit")?;
+  u:assert_eq(u:delta_params(16, 4), 128, "128 params per rank-4 expert over width 16")?;
+  u:assert_eq(u:router_macs(16, 16), 272, "router multiply-adds per token")
+}
+
+@test {name: "packed deltas differentiate with respect to both factor matrices and the router", tags: ["moe", "delta", "gradient"]}
+def u:test_delta_gradient() {
+  "The Switch gate inside the packed form still routes gradient to the router.";
+  A_all = param[4, 6];
+  A_all = randn(2, [4, 6]) * 0.3;
+  B_all = param[6, 4];
+  B_all = randn(3, [6, 4]) * 0.3;
+  Wr = param[4, 3];
+  Wr = randn(4, [4, 3]);
+  x = randn(1, [5, 4]);
+  expand = u:delta_expand(3, 2);
+  target = randn(5, [5, 4]);
+  gA = grad(reduce_add((u:delta_out(x, A_all, B_all, u:switch_gate(matmul(x, Wr), 3), expand) - target) * (u:delta_out(x, A_all, B_all, u:switch_gate(matmul(x, Wr), 3), expand) - target)), A_all);
+  gW = grad(reduce_add((u:delta_out(x, A_all, B_all, u:switch_gate(matmul(x, Wr), 3), expand) - target) * (u:delta_out(x, A_all, B_all, u:switch_gate(matmul(x, Wr), 3), expand) - target)), Wr);
+  u:assert_shape(gA, [4, 6], "gradient to A_all")?;
+  u:assert_gt(reduce_add(abs(gA)), 0, "A_all gradient nonzero")?;
+  u:assert_gt(reduce_add(abs(gW)), 0, "router gradient nonzero")
+}
+
 u:run_registered_tests()

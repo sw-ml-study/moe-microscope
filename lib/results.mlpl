@@ -35,3 +35,54 @@ def u:results_append(path, row) {
   "Append one formatted row plus newline to the results file.";
   append_bytes(path, tokenize_bytes(str_concat(u:results_row(row), "\n")))
 }
+
+def u:str_trim(s) {
+  "Strip leading and trailing spaces.";
+  n = str_len(s);
+  a = 0;
+  while lt(a, n) * str_eq(str_slice(s, a, 1), " ") {
+    a = a + 1
+  };
+  b = n;
+  while gt(b, a) * str_eq(str_slice(s, b - 1, 1), " ") {
+    b = b - 1
+  };
+  str_slice(s, a, b - a)
+}
+
+def u:results_cell_number(cells, i) {
+  "The i-th cell of a split results row as a number, or -1 for a dash.";
+  c = u:str_trim(unwrap(list_get(cells, i)));
+  if str_eq(c, "-") {
+    0 - 1
+  } else {
+    unwrap(to_number(c))
+  }
+}
+
+def u:results_lookup(path, lesson) {
+  "Read the committed results table and return the numeric columns of one lesson's row (first match) as a record; err when absent.";
+  lines = str_split(read_text(path)?, "\n");
+  prefix = str_concat(str_concat("| ", lesson), " |");
+  found = "";
+  i = 0;
+  while lt(i, list_len(lines)) {
+    line = unwrap(list_get(lines, i));
+    found = if str_eq(found, "") * gt(str_len(line), str_len(prefix)) {
+      if str_eq(str_slice(line, 0, str_len(prefix)), prefix) {
+        line
+      } else {
+        found
+      }
+    } else {
+      found
+    };
+    i = i + 1
+  };
+  if str_eq(found, "") {
+    err(str_concat("results row not found: ", lesson))
+  } else {
+    c = str_split(found, "|");
+    ok({params: u:results_cell_number(c, 4), active_params: u:results_cell_number(c, 5), bytes_per_expert: u:results_cell_number(c, 6), expert_evals: u:results_cell_number(c, 8), bytes_per_token: u:results_cell_number(c, 9), val_loss: u:results_cell_number(c, 12), ppl: u:results_cell_number(c, 13), arith_acc: u:results_cell_number(c, 14), seq_acc: u:results_cell_number(c, 15), mlpl_acc: u:results_cell_number(c, 16), prose_acc: u:results_cell_number(c, 17), router_entropy: u:results_cell_number(c, 19), balance: u:results_cell_number(c, 20)})
+  }
+}

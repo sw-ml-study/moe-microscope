@@ -1,0 +1,39 @@
+#!/bin/sh
+# Run LD01 into a temporary directory; check (or write) its diagrams and the deterministic columns of its two results rows.
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+mlpl=$("$repo_root/scripts/select-mlpl")
+mode=${1:-check}
+tmp_rel="tmp/delta-demo"
+mkdir -p "$repo_root/$tmp_rel"
+binary=$("$mlpl" --version 2>/dev/null | head -1 | tr -d '\n')
+
+"$mlpl" --source-dir "$repo_root" "$repo_root/demos/delta_experts.mlpl" -- "$tmp_rel" "$binary"
+
+for name in delta-structure delta-comparison; do
+    generated="$repo_root/$tmp_rel/$name.svg"
+    committed="$repo_root/assets/previews/$name.svg"
+    [ -s "$generated" ] || { echo "delta demo did not write $name.svg" >&2; exit 1; }
+    if [ "$mode" = "write" ]; then
+        cp "$generated" "$committed"
+    elif ! cmp -s "$generated" "$committed"; then
+        echo "$name.svg preview is stale; run scripts/run-delta-demo write" >&2
+        exit 1
+    fi
+done
+
+keyof() { awk -F'|' '{ $4=""; $12=""; print }'; }
+if [ "$mode" = "write" ]; then
+    grep -v '^| LD01r\? |' "$repo_root/docs/results.md" > "$repo_root/$tmp_rel/results.md"
+    cat "$repo_root/$tmp_rel/results-row.md" >> "$repo_root/$tmp_rel/results.md"
+    cp "$repo_root/$tmp_rel/results.md" "$repo_root/docs/results.md"
+else
+    for lesson in LD01 LD01r; do
+        generated_key=$(grep "^| $lesson |" "$repo_root/$tmp_rel/results-row.md" | keyof)
+        committed_key=$(grep "^| $lesson |" "$repo_root/docs/results.md" | keyof)
+        [ "$generated_key" = "$committed_key" ] || { echo "$lesson results row differs; run scripts/run-delta-demo write" >&2; exit 1; }
+    done
+fi
+rm -rf "$repo_root/$tmp_rel"
+echo "PASS delta experts contract, previews, and results rows ($mode)"

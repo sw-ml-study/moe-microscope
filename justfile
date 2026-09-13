@@ -64,6 +64,10 @@ moe2 mode="check":
 scale mode="check":
     ./scripts/run-scale-sweep {{mode}}
 
+# Run LD01, low-rank delta experts with a shared FFN (under a minute); `just delta write` regenerates its diagrams and rows.
+delta mode="check":
+    ./scripts/run-delta-demo {{mode}}
+
 # Print the selected sw-MLPL executable.
 mlpl-path:
     ./scripts/select-mlpl

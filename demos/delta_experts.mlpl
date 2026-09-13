@@ -1,0 +1,317 @@
+# LD01 low-rank delta experts: a shared always-on FFN plus sixteen rank-4 experts packed into two matrices, trained with top-1 routing, compared with deltas alone, with DN01 (shared only), and with MX01 (four full experts).
+include "../lib/dense.mlpl";
+include "../lib/moe.mlpl";
+include "../lib/observe.mlpl";
+include "../lib/svg.mlpl";
+include "../lib/results.mlpl";
+
+print("WHAT THIS SHOWS -- Many cheap experts: each expert is a rank-4 delta A_e B_e over the residual stream (128 parameters), a shared FFN always runs, and the routed sum over all sixteen is two matmuls.");
+print("SHAPES -- A_all:[16,64], B_all:[64,16], gate:[T,16] expanded to [T,64] by a constant [16,64] block one-hot; router logits:[T,16].");
+
+out_dir = if list_len(args()) {
+  unwrap(list_get(args(), 0))
+} else {
+  ""
+};
+binary = if gt(list_len(args()), 1) {
+  unwrap(list_get(args(), 1))
+} else {
+  "unknown"
+};
+writing = str_len(out_dir);
+m = unwrap(u:domain_load_mixture(u:domain_mixture_path()));
+d = u:domain_build(m);
+w = unwrap(u:domain_windows(d.texts, m.window));
+s = u:domain_split(d.count, m.train_fraction, m.seed);
+V = u:domain_vocab_size();
+T = m.window;
+dm = 16;
+hidden = 32;
+E = 16;
+r = 4;
+epochs = 300;
+lr = 0.003;
+alpha = 0.01;
+every = 25;
+ntrain = reduce_mul(shape(s.train));
+nval = reduce_mul(shape(s.val));
+train_x = gather_rows(w.x, s.train);
+train_y = gather_rows(w.y, s.train);
+train_m = gather_rows(w.mask, s.train);
+val_x = gather_rows(w.x, s.val);
+val_y = gather_rows(w.y, s.val);
+val_m = gather_rows(w.mask, s.val);
+train_tags = reshape(gather_rows(reshape(d.tags, [d.count, 1]), s.train), [ntrain]);
+posT = u:positions(T, dm);
+expand = u:delta_expand(E, r);
+config = emit_frame("ld/config", 0, [dm, hidden, E, r, 1, T, epochs, ntrain, nval]);
+
+emb = embed(V, dm, 0);
+att = chain(rms_norm(dm), causal_attention(dm, 1, 1));
+ffn = chain(rms_norm(dm), linear(dm, hidden, 2), relu_layer(), linear(hidden, dm, 3));
+pre = rms_norm(dm);
+router = linear(dm, E, 9);
+A_all = param[16, 64];
+A_all = randn(30, [16, 64]) * 0.2;
+B_all = param[64, 16];
+B_all = randn(31, [64, 16]) * 0.1;
+norm = rms_norm(dm);
+head = linear(dm, V, 4);
+
+def u:delta_block(h1) {
+  "Routed low-rank deltas over the normalized state: gate from the router, two packed matmuls.";
+  x = apply(pre, h1);
+  u:delta_out(x, A_all, B_all, u:switch_gate(apply(router, x), E), expand)
+}
+
+def u:body(h0) {
+  "Residual attention, then residual shared FFN plus routed deltas, norm, head.";
+  h1 = h0 + apply(att, h0);
+  h2 = h1 + apply(ffn, h1) + u:delta_block(h1);
+  apply(head, apply(norm, h2))
+}
+
+def u:balance_at(h0) {
+  "Switch balance term of this window's routing.";
+  h1 = h0 + apply(att, h0);
+  logits = apply(router, apply(pre, h1));
+  u:balance_loss(u:router_probs(logits), u:top1_mask(logits, E), E, T)
+}
+
+def u:forward(x1) {
+  "Logits for one full window (shared plus deltas).";
+  u:body(apply(emb, x1) + posT)
+}
+
+def u:routing_of(x1) {
+  "Router logits [T, E] of one window under the shared-plus-deltas model.";
+  h0 = apply(emb, x1) + posT;
+  h1 = h0 + apply(att, h0);
+  apply(router, apply(pre, h1))
+}
+
+def u:train_routing() {
+  "Over every masked training position: load [E], family-by-expert [4, E], mean entropy and balance.";
+  load = fill([E], 0);
+  fam = fill([4, E], 0);
+  ent = 0;
+  bal = 0;
+  i = 0;
+  while lt(i, ntrain) {
+    logits = u:routing_of(take(train_x, 0, i));
+    mrow = reshape(take(train_m, 0, i), [T, 1]);
+    mask = u:top1_mask(logits, E) * mrow;
+    counts = u:expert_load(mask);
+    load = load + counts;
+    fam = fam + reshape(one_hot([take(train_tags, 0, i)], 4), [4, 1]) * reshape(counts, [1, E]);
+    probs = u:router_probs(logits);
+    ent = ent + u:router_entropy(probs);
+    bal = bal + u:balance_loss(probs, u:top1_mask(logits, E), E, T);
+    i = i + 1
+  };
+  {load: load, family: fam, entropy: ent / ntrain, balance: bal / ntrain}
+}
+
+p_emb = param_count(emb);
+p_att = param_count(att);
+p_ffn = param_count(ffn);
+p_router = param_count(router) + param_count(pre);
+p_delta = u:delta_params(dm, r);
+p_head = param_count(norm) + param_count(head);
+params = p_emb + p_att + p_ffn + p_router + E * p_delta + p_head;
+active = params - p_emb + dm - (E - 1) * p_delta;
+macs = u:router_macs(dm, E);
+print("MODEL -- params", params, "of which shared FFN", p_ffn, "sixteen deltas", E * p_delta, "router", p_router, "; active per token", active, "; router multiply-adds per token", macs);
+
+curve_e = fill([0], 0);
+curve_t = fill([0], 0);
+curve_v = fill([0], 0);
+train_ms = 0;
+e = 0;
+while lt(e, epochs) {
+  ts = clock_ms();
+  i = 0;
+  while lt(i, ntrain) {
+    x1 = take(train_x, 0, i);
+    y1 = take(train_y, 0, i);
+    m1 = take(train_m, 0, i);
+    adam(u:masked_ce(u:body(apply(emb, x1) + posT), y1, m1, V) + alpha * u:balance_at(apply(emb, x1) + posT), [emb, att, ffn, pre, router, A_all, B_all, norm, head], lr, 0.9, 0.999, 0.00000001);
+    i = i + 1
+  };
+  train_ms = train_ms + (clock_ms() - ts);
+  e = e + 1;
+  if eq(mod(e, every), 0) {
+    tl = emit_frame("ld/loss/train", e, u:set_loss(:u:forward, train_x, train_y, train_m, ntrain, V));
+    vl = emit_frame("ld/loss/val", e, u:set_loss(:u:forward, val_x, val_y, val_m, nval, V));
+    st = u:train_routing();
+    ld = emit_frame("ld/load", e, st.load);
+    en = emit_frame("ld/entropy", e, st.entropy);
+    ba = emit_frame("ld/balance", e, st.balance);
+    curve_e = concat(curve_e, e);
+    curve_t = concat(curve_t, tl);
+    curve_v = concat(curve_v, vl);
+    print("epoch", e, "train", u:svg_round(tl, 4), "val", u:svg_round(vl, 4), "entropy", u:svg_round(en, 3), "balance", u:svg_round(ba, 3), "busiest expert", reduce(:max, ld))
+  } else {
+    0
+  }
+};
+steps = epochs * ntrain;
+ms_per_token = train_ms / (steps * T);
+final = u:train_routing();
+family = emit_frame("ld/family-by-expert", epochs, final.family);
+spec = emit_frame("ld/specialization", epochs, u:specialization_score(final.family));
+rv = u:evaluate_prompts_padded(:u:forward, d, s.val, 12, T);
+rt = u:evaluate_prompts_padded(:u:forward, d, s.train, 12, T);
+val_acc = emit_frame("ld/accuracy/val", epochs, [rv.accuracy.arithmetic, rv.accuracy.sequence, rv.accuracy.mlpl, rv.accuracy.prose, rv.accuracy.overall]);
+train_acc = emit_frame("ld/accuracy/train", epochs, [rt.accuracy.arithmetic, rt.accuracy.sequence, rt.accuracy.mlpl, rt.accuracy.prose, rt.accuracy.overall]);
+final_train = take(curve_t, 0, reduce_mul(shape(curve_t)) - 1);
+final_val = take(curve_v, 0, reduce_mul(shape(curve_v)) - 1);
+print("QUALITY (shared + deltas) -- train loss", u:svg_round(final_train, 4), "val loss", u:svg_round(final_val, 4), "val acc", val_acc, "train acc", train_acc, "specialization", u:svg_round(spec, 3), "load", final.load);
+
+emb2 = embed(V, dm, 0);
+att2 = chain(rms_norm(dm), causal_attention(dm, 1, 1));
+pre2 = rms_norm(dm);
+router2 = linear(dm, E, 9);
+A2 = param[16, 64];
+A2 = randn(30, [16, 64]) * 0.2;
+B2 = param[64, 16];
+B2 = randn(31, [64, 16]) * 0.1;
+norm2 = rms_norm(dm);
+head2 = linear(dm, V, 4);
+
+def u:body_routed(h0) {
+  "Residual attention, then routed deltas only (no shared FFN), norm, head.";
+  h1 = h0 + apply(att2, h0);
+  x = apply(pre2, h1);
+  h2 = h1 + u:delta_out(x, A2, B2, u:switch_gate(apply(router2, x), E), expand);
+  apply(head2, apply(norm2, h2))
+}
+
+def u:balance_routed(h0) {
+  "Balance term for the deltas-only model.";
+  h1 = h0 + apply(att2, h0);
+  logits = apply(router2, apply(pre2, h1));
+  u:balance_loss(u:router_probs(logits), u:top1_mask(logits, E), E, T)
+}
+
+def u:forward_routed(x1) {
+  "Logits for one full window (deltas only).";
+  u:body_routed(apply(emb2, x1) + posT)
+}
+
+train_ms2 = 0;
+curve_v2 = fill([0], 0);
+e = 0;
+while lt(e, epochs) {
+  ts = clock_ms();
+  i = 0;
+  while lt(i, ntrain) {
+    x1 = take(train_x, 0, i);
+    y1 = take(train_y, 0, i);
+    m1 = take(train_m, 0, i);
+    adam(u:masked_ce(u:body_routed(apply(emb2, x1) + posT), y1, m1, V) + alpha * u:balance_routed(apply(emb2, x1) + posT), [emb2, att2, pre2, router2, A2, B2, norm2, head2], lr, 0.9, 0.999, 0.00000001);
+    i = i + 1
+  };
+  train_ms2 = train_ms2 + (clock_ms() - ts);
+  e = e + 1;
+  if eq(mod(e, every), 0) {
+    curve_v2 = concat(curve_v2, emit_frame("ldr/loss/val", e, u:set_loss(:u:forward_routed, val_x, val_y, val_m, nval, V)))
+  } else {
+    0
+  }
+};
+rv2 = u:evaluate_prompts_padded(:u:forward_routed, d, s.val, 12, T);
+rt2 = u:evaluate_prompts_padded(:u:forward_routed, d, s.train, 12, T);
+val_acc2 = emit_frame("ldr/accuracy/val", epochs, [rv2.accuracy.arithmetic, rv2.accuracy.sequence, rv2.accuracy.mlpl, rv2.accuracy.prose, rv2.accuracy.overall]);
+final_val2 = take(curve_v2, 0, reduce_mul(shape(curve_v2)) - 1);
+final_train2 = u:set_loss(:u:forward_routed, train_x, train_y, train_m, ntrain, V);
+params2 = params - p_ffn;
+active2 = active - p_ffn;
+print("QUALITY (deltas only) -- train loss", u:svg_round(final_train2, 4), "val loss", u:svg_round(final_val2, 4), "val acc", val_acc2, "train exact", u:svg_round(rt2.accuracy.overall, 3));
+
+dn = unwrap(u:results_lookup("docs/results.md", "DN01"));
+mx = unwrap(u:results_lookup("docs/results.md", "MX01"));
+row = {lesson: "LD01", config: "shared ffn + 16 rank4 deltas top1 d16 T28 120ex 300ep lr0.003 alpha0.01 routerMACs272", binary: binary, params: params, active_params: active, bytes_per_expert: p_delta * 8, expert_evals: 1, bytes_per_token: active * 8, ms_per_token: u:svg_round(ms_per_token, 4), val_loss: u:svg_round(final_val, 4), ppl: u:svg_round(exp(final_val), 2), arith_acc: u:svg_round(rv.accuracy.arithmetic, 3), seq_acc: u:svg_round(rv.accuracy.sequence, 3), mlpl_acc: u:svg_round(rv.accuracy.mlpl, 3), prose_acc: u:svg_round(rv.accuracy.prose, 3), router_entropy: u:svg_round(final.entropy, 3), balance: u:svg_round(final.balance, 3), specialization: u:svg_round(spec, 3)};
+row2 = {lesson: "LD01r", config: "16 rank4 deltas only top1 d16 T28 120ex 300ep lr0.003 alpha0.01 routerMACs272", binary: binary, params: params2, active_params: active2, bytes_per_expert: p_delta * 8, expert_evals: 1, bytes_per_token: active2 * 8, ms_per_token: u:svg_round(train_ms2 / (steps * T), 4), val_loss: u:svg_round(final_val2, 4), ppl: u:svg_round(exp(final_val2), 2), arith_acc: u:svg_round(rv2.accuracy.arithmetic, 3), seq_acc: u:svg_round(rv2.accuracy.sequence, 3), mlpl_acc: u:svg_round(rv2.accuracy.mlpl, 3), prose_acc: u:svg_round(rv2.accuracy.prose, 3)};
+r_row = if writing {
+  write_atomic(str_concat(out_dir, "/results-row.md"), str_concat(str_concat(u:results_row(row), "\n"), str_concat(u:results_row(row2), "\n")))
+} else {
+  ok(0)
+};
+print("MEMORY -- params", params, "active/token", active, "bytes/expert", p_delta * 8, "(full expert 8576)");
+print("SPEED -- ms/token", u:svg_round(ms_per_token, 4), "router multiply-adds/token", macs, "(", binary, ")");
+
+def u:structure_svg() {
+  "Diagram: the packed delta matrices, the gate expansion, and the byte accounting against full experts.";
+  page = u:svg_head("LD01 delta-expert data structure", "Sixteen rank-4 experts live in A_all (16 by 64) and B_all (64 by 16); a token's 16-entry gate is expanded to 64 entries by a constant block one-hot so the routed sum over all experts is x times A_all, scaled, times B_all; the table compares bytes per expert with full experts.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "LD01 DELTA EXPERTS -- sixteen experts in two matrices"));
+  page = str_concat(page, u:svg_text(32, 60, "m", "WHAT: expert e is x @ A_e @ B_e with A_e [16,4], B_e [4,16]; all sixteen are column blocks of A_all and row blocks of B_all"));
+  page = str_concat(page, u:svg_text(32, 96, "k", "A_all [16, 64] after training (|value|, brighter = larger); columns 4e..4e+3 belong to expert e"));
+  page = str_concat(page, u:svg_heat_plain(A_all, 32, 104, 12, 8));
+  page = str_concat(page, u:svg_text(32, 258, "k", "B_all transposed [16, 64] (rows of B_all are the same expert blocks)"));
+  page = str_concat(page, u:svg_heat_plain(transpose(B_all), 32, 266, 12, 8));
+  page = str_concat(page, u:svg_text(32, 420, "k", "expand [16, 64]: gate value of expert e repeated 4 times (block one-hot)"));
+  page = str_concat(page, u:svg_heat_plain(expand, 32, 428, 12, 3));
+  page = str_concat(page, u:svg_text(830, 110, "k", "bytes per expert"));
+  page = str_concat(page, u:svg_text(830, 132, "", "full     8576"));
+  page = str_concat(page, u:svg_text(830, 150, "", "delta    1024"));
+  page = str_concat(page, u:svg_text(830, 180, "k", "params"));
+  page = str_concat(page, u:svg_text(830, 202, "", "4 full   4288"));
+  page = str_concat(page, u:svg_text(830, 220, "", "16 delta 2048"));
+  page = str_concat(page, u:svg_text(830, 250, "k", "router MACs"));
+  page = str_concat(page, u:svg_text(830, 272, "", "E=4      68"));
+  page = str_concat(page, u:svg_text(830, 290, "", "E=16    272"));
+  page = str_concat(page, u:svg_rect(30, 486, 900, 50, "panel"));
+  page = str_concat(page, u:svg_text(50, 506, "", "WHY: a full expert costs 1,072 parameters and a rank-4 delta 128, so sixteen fit in the budget of two; the shared FFN keeps the nonlinearity."));
+  page = str_concat(page, u:svg_text(50, 526, "m", "HOW: u:delta_out = matmul(matmul(x, A_all) * matmul(gate, expand), B_all) with u:delta_expand's constant; parity is tested."));
+  str_concat(page, "</svg>")
+}
+
+def u:compare_row(y, label, p, a, b, macs_txt, vl, prose, mlpl) {
+  "One comparison row at fixed columns.";
+  str_concat(str_concat(str_concat(str_concat(u:svg_text(32, y, "", label), u:svg_text(300, y, "", p)), str_concat(u:svg_text(380, y, "", a), u:svg_text(470, y, "", b))), str_concat(u:svg_text(560, y, "", macs_txt), u:svg_text(640, y, "", vl))), str_concat(u:svg_text(730, y, "", prose), u:svg_text(810, y, "", mlpl)))
+}
+
+def u:comparison_svg() {
+  "Diagram: DN01, MX01, LD01, and deltas-only compared on parameters, active parameters, bytes per expert, router cost, validation loss, and held-out accuracy, plus the 16-expert family map.";
+  page = u:svg_head("LD01 comparison", "Four configurations of the same base model compared: shared FFN only, four full experts, shared FFN plus sixteen low-rank deltas, and sixteen deltas alone; below, which of the sixteen experts each task family uses.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "LD01 COMPARISON -- shared only, full experts, shared + deltas, deltas only"));
+  page = str_concat(page, u:svg_text(32, 60, "m", "WHAT: same embedding, attention, and head; the block after attention differs; 90 training rows, 300 epochs, one example per step"));
+  page = str_concat(page, u:compare_row(96, "", "params", "active", "B/expert", "routerMAC", "val loss", "prose", "mlpl"));
+  page = str_concat(page, u:compare_row(120, "DN01 shared FFN only", u:svg_num(dn.params), u:svg_num(dn.active_params), "-", "0", u:svg_num(u:svg_round(dn.val_loss, 3)), u:svg_num(dn.prose_acc), u:svg_num(dn.mlpl_acc)));
+  page = str_concat(page, u:compare_row(142, "MX01 4 full experts top-1", u:svg_num(mx.params), u:svg_num(mx.active_params), "8576", "68", u:svg_num(u:svg_round(mx.val_loss, 3)), u:svg_num(mx.prose_acc), u:svg_num(mx.mlpl_acc)));
+  page = str_concat(page, u:compare_row(164, "LD01 shared + 16 deltas top-1", u:svg_num(params), u:svg_num(active), "1024", u:svg_num(macs), u:svg_num(u:svg_round(final_val, 3)), u:svg_num(u:svg_round(rv.accuracy.prose, 3)), u:svg_num(u:svg_round(rv.accuracy.mlpl, 3))));
+  page = str_concat(page, u:compare_row(186, "LD01r 16 deltas only top-1", u:svg_num(params2), u:svg_num(active2), "1024", u:svg_num(macs), u:svg_num(u:svg_round(final_val2, 3)), u:svg_num(u:svg_round(rv2.accuracy.prose, 3)), u:svg_num(u:svg_round(rv2.accuracy.mlpl, 3))));
+  page = str_concat(page, u:svg_text(32, 214, "s", "B/expert = bytes per expert at f64; routerMAC = multiply-adds per token spent choosing; val loss = masked, 30 held-out rows"));
+  page = str_concat(page, u:svg_text(32, 250, "k", str_concat("LD01 family-by-expert shares over 16 experts; specialization score ", u:svg_num(u:svg_round(spec, 3)))));
+  page = str_concat(page, u:svg_heat(u:row_normalize(final.family), 120, 262, 34));
+  names = u:domain_tag_names();
+  page = str_concat(page, str_concat(str_concat(u:svg_text(32, 284, "", unwrap(list_get(names, 0))), u:svg_text(32, 318, "", unwrap(list_get(names, 1)))), str_concat(u:svg_text(32, 352, "", unwrap(list_get(names, 2))), u:svg_text(32, 386, "", unwrap(list_get(names, 3))))));
+  page = str_concat(page, u:svg_text(120, 418, "s", str_concat("load per expert: ", u:svg_vec(final.load, 0))));
+  page = str_concat(page, u:svg_rect(30, 440, 900, 96, "panel"));
+  page = str_concat(page, u:svg_text(50, 464, "", "WHY: DeepSeek-V3's shape at microscope scale: one shared expert always on, plus many cheap routed experts."));
+  page = str_concat(page, u:svg_text(50, 486, "", "WHY: deltas alone are a linear map per token and lean on the attention block; the shared FFN restores the nonlinearity."));
+  page = str_concat(page, u:svg_text(50, 508, "", "HOW: DN01 and MX01 come from docs/results.md; LD01 and LD01r are trained here; the map counts masked training tokens."));
+  page = str_concat(page, u:svg_text(50, 528, "m", "Sixteen experts on 406 tokens means about 25 tokens each; a column bright in one row is an expert one family owns."));
+  str_concat(page, "</svg>")
+}
+
+r1 = if writing {
+  write_atomic(str_concat(out_dir, "/delta-structure.svg"), u:structure_svg())
+} else {
+  ok(0)
+};
+r2 = if writing {
+  write_atomic(str_concat(out_dir, "/delta-comparison.svg"), u:comparison_svg())
+} else {
+  ok(0)
+};
+print("NUMERICAL CONTRACT -- shared + deltas: training loss below 0.5 and validation loss below 4.0; sixteen deltas cost 2048 parameters against 4288 for four full experts; specialization score in [0.0625, 1].");
+print("THE POINT -- Expert count is cheap when experts are deltas; what to buy with the budget (more experts, higher rank, a shared expert) is the frontier question.");
+print("BOUNDARY -- Rank 4 over width 16 is a quarter-rank update; at lab scale rank 8 over 256 is one thirty-second, where the saving is far larger.");
+contract = lt(final_train, 0.5) * lt(final_val, 4) * eq(E * p_delta, 2048) * gt(spec, 0.06) * lt(spec, 1.01);
+if contract * is_ok(r1) * is_ok(r2) * is_ok(r_row) {
+  ok("delta experts written")
+} else {
+  err("delta experts contract failed")
+}

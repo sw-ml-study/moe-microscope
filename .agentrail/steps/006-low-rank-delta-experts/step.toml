@@ -1,6 +1,6 @@
 number = 6
 slug = "low-rank-delta-experts"
-status = "pending"
+status = "in-progress"
 description = "Experts as a shared FFN plus low-rank deltas A_e B_e (rank 4 to 8), allowing ..."
 role = "production"
 context_files = []

@@ -176,6 +176,39 @@ by construction. Top-2 fits the training rows better (0.86 exact match) and
 answers two of seven held-out MLPL prompts, the first non-prose held-out
 successes in the table, at the cost of a worse validation loss.
 
+## Low-rank delta experts
+
+LD01 makes experts cheap. Each expert is a rank-4 delta over the residual
+stream, 128 parameters instead of a full expert's 1,072, and all sixteen
+live in two packed matrices so the routed sum over every expert is two
+matmuls with the gate expanded by a constant block matrix (tests pin exact
+parity with a per-expert loop). A shared feed-forward layer always runs, the
+DeepSeek-V3 shape at microscope scale. The lesson trains that model and a
+deltas-only variant and compares both with DN01 (shared only) and MX01
+(four full experts).
+
+![LD01 delta-expert data structure: the packed A and B matrices after training, the gate expansion matrix, and bytes per expert](assets/previews/delta-structure.svg)
+
+![LD01 comparison: shared only, four full experts, shared plus sixteen deltas, and sixteen deltas only, with the family-by-expert map over sixteen experts](assets/previews/delta-comparison.svg)
+
+```sh
+just delta           # train both variants (under a minute and a half) and check diagrams and rows
+```
+
+| Configuration | Params | Active per token | Bytes per expert | Router multiply-adds | Val loss |
+|---|---|---|---|---|---|
+| DN01 shared FFN only | 3,812 | 2,996 | - | 0 | 3.79 |
+| MX01 four full experts, top-1 | 7,096 | 3,064 | 8,576 | 68 | 3.76 |
+| LD01 shared FFN plus 16 deltas, top-1 | 6,132 | 3,396 | 1,024 | 272 | 3.46 |
+| LD01r 16 deltas only, top-1 | 5,060 | 2,324 | 1,024 | 272 | 3.37 |
+
+Sixteen delta experts cost 2,048 parameters against 4,288 for four full
+ones and give the best validation losses in the table so far, at the price
+of a noisier training curve and no prose generalization on this run. Router
+cost grows with the expert count (272 multiply-adds per token for sixteen
+experts, still small next to one 16-by-32 matmul), which is why it is
+recorded per lesson.
+
 ## Data scale
 
 DS01 answers the question the previous lessons raise: does more training or
@@ -323,6 +356,7 @@ just moe             # run MX01 training (about 36 s) and check its diagrams and
 just dispatch        # run SD01 sparse dispatch with exact parity (about 5 s)
 just moe2            # run MX02 top-2 routing and the specialization map (about 36 s)
 just scale           # validate the DS01 data-scale points and diagram (opt-in sweep: just scale write)
+just delta           # run LD01 low-rank delta experts with a shared FFN (about 80 s)
 just mlpl-style      # canonical formatting and docstring checks
 ```
 

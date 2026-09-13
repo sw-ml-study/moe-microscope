@@ -117,3 +117,19 @@ memory = "DN01 (3,812 params) and MX01 (7,096 params) unchanged; data sizes 120,
 speed = "opt-in sweep of eight points (minutes); the gate only validates the committed points and redraws the diagram"
 quality = "validation loss and per-family held-out accuracy against data size; the 400-epoch points at 120 examples isolate the epoch effect"
 status = "accepted"
+
+[[lesson]]
+id = "LD01"
+slug = "low-rank-delta-experts"
+title = "Sixteen experts for the price of two"
+source = "demos/delta_experts.mlpl"
+library = ["lib/moe.mlpl", "lib/dense.mlpl", "lib/domain.mlpl", "lib/evaluate.mlpl", "lib/results.mlpl", "lib/svg.mlpl"]
+test = ["tests/test_moe.mlpl", "tests/test_results.mlpl"]
+previews = ["assets/previews/delta-structure.svg", "assets/previews/delta-comparison.svg"]
+fixture = "fixtures/moe/mx01-family-by-expert.json"
+implementation = "from-scratch"
+observations = ["ld/config", "ld/loss/train", "ld/loss/val", "ld/load", "ld/entropy", "ld/balance", "ld/family-by-expert", "ld/specialization", "ld/accuracy/train", "ld/accuracy/val", "ldr/loss/val", "ldr/accuracy/val"]
+memory = "shared FFN plus 16 rank-4 delta experts packed as A_all [16, 64] and B_all [64, 16]: 128 parameters (1,024 bytes) per expert against 1,072 (8,576 bytes) for a full expert"
+speed = "two extra matmuls per window whatever E is; router cost 272 multiply-adds per token for E = 16; both variants train in under a minute"
+quality = "shared plus deltas and deltas-only compared with DN01 (shared only) and MX01 (four full experts) on validation loss and per-family accuracy; family-by-expert map over 16 experts"
+status = "accepted"

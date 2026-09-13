@@ -22,4 +22,19 @@ def u:test_results_append() {
   u:assert_eq(str_find(text, "| B | - | - | - | - | - | - | - | - | - | - | - | 2 |"), 86, "second row keeps column positions")
 }
 
+@test {name: "results_lookup reads a lesson's numeric columns back from a table", tags: ["results", "io"]}
+def u:test_results_lookup() {
+  "Dashes read as -1; numbers read exactly; an absent lesson is an error.";
+  path = "tests/fixtures/results-lookup.tmp";
+  write_atomic(path, "| Lesson | ...\n|---|\n")?;
+  u:results_append(path, {lesson: "ZZ01", params: 10, val_loss: 1.25, prose_acc: 0.5})?;
+  r = u:results_lookup(path, "ZZ01")?;
+  u:assert_eq(r.params, 10, "params")?;
+  u:assert_eq(r.val_loss, 1.25, "val loss")?;
+  u:assert_eq(r.prose_acc, 0.5, "prose")?;
+  u:assert_eq(r.bytes_per_expert, 0 - 1, "dash reads as -1")?;
+  u:assert_err(u:results_lookup(path, "QQ99"), "absent lesson")?;
+  u:assert_text_eq(u:str_trim("  a b "), "a b", "trim")
+}
+
 u:run_registered_tests()

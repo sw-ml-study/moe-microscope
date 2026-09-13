@@ -150,3 +150,22 @@ def u:svg_vec(v, places) {
   };
   out
 }
+
+def u:svg_heat_plain(M, x0, y0, wd, ht) {
+  "A rank-two matrix as opacity-shaded cells without labels, values scaled by the matrix's maximum absolute value.";
+  rows = reduce_mul(shape(take(M, 1, 0)));
+  cols = reduce_mul(shape(take(M, 0, 0)));
+  peak = reduce(:max, abs(M)) + 0.000000001;
+  out = "";
+  i = 0;
+  while lt(i, rows) {
+    j = 0;
+    while lt(j, cols) {
+      v = abs(take(take(M, 0, i), 0, j)) / peak;
+      out = str_concat(out, str_concat(str_concat(str_concat(str_concat(str_concat(str_concat(str_concat("<rect x=\"", u:svg_num(x0 + j * wd)), "\" y=\""), u:svg_num(y0 + i * ht)), "\" width=\""), u:svg_num(wd)), "\" height=\""), str_concat(str_concat(str_concat(u:svg_num(ht), "\" class=\"heat\" stroke=\"none\" fill-opacity=\""), u:svg_num(u:svg_round(0.08 + 0.92 * v, 2))), "\"/>")));
+      j = j + 1
+    };
+    i = i + 1
+  };
+  out
+}

@@ -34,6 +34,12 @@ experts, and the MoE recordings for the generic host.
 7. `moe-recordings-and-host-handoff` - MX01 and MX02 recorded over live SSE,
    pinned, and handed to the generic host.
 
+Step 6 status: complete. LD01 low-rank delta experts: sixteen rank-4
+experts packed in two matrices (exact parity with a per-expert loop, tested),
+a shared always-on FFN, deltas-only variant, comparison against DN01 and
+MX01 read from the results table, router multiply-adds per token recorded,
+family map over sixteen experts, two diagrams, two results rows.
+
 Step 5 status: complete. DS01 data-scale sweep: eight committed points
 (dense and MoE at 120, 480, 960 examples for 200 epochs, plus 120 for 400
 epochs), index with hashes, eight results rows, and a diagram redrawn from
@@ -95,11 +101,23 @@ schema document for the Saga 4 external exporter, a fixture diagram, a
 results row, and a no-training gate check. Saga 1 is complete; Saga 2
 (mixture of experts from scratch) is next.
 
+Step 6 status: complete. LD01 low-rank delta experts: sixteen rank-4
+experts packed in two matrices (exact parity with a per-expert loop, tested),
+a shared always-on FFN, deltas-only variant, comparison against DN01 and
+MX01 read from the results table, router multiply-adds per token recorded,
+family map over sixteen experts, two diagrams, two results rows.
+
 Step 5 status: complete. DN01 recorded over live `mlpl-serve` SSE into
 `fixtures/recordings/dense-baseline-run-v0.json` with a hash-pinned index;
 `scripts/bundle-program` works around the server's missing source provider
 (F16); loop streaming proven; `docs/host-handoff.md` written for
 `../demo-extensions`; D1 and F10 verified fixed upstream.
+
+Step 6 status: complete. LD01 low-rank delta experts: sixteen rank-4
+experts packed in two matrices (exact parity with a per-expert loop, tested),
+a shared always-on FFN, deltas-only variant, comparison against DN01 and
+MX01 read from the results table, router multiply-adds per token recorded,
+family map over sixteen experts, two diagrams, two results rows.
 
 Step 5 status: complete. DS01 data-scale sweep: eight committed points
 (dense and MoE at 120, 480, 960 examples for 200 epochs, plus 120 for 400
@@ -111,6 +129,12 @@ Step 4 status: complete. DN01 (`demos/dense_baseline.mlpl`) with
 `lib/dense.mlpl` and `lib/svg.mlpl`; two annotated diagrams; the first
 results row; catalog entry; seven more findings (F9 to F15) filed with
 reproducers, two of which (F5, F6) upstream fixed the same evening.
+
+Step 6 status: complete. LD01 low-rank delta experts: sixteen rank-4
+experts packed in two matrices (exact parity with a per-expert loop, tested),
+a shared always-on FFN, deltas-only variant, comparison against DN01 and
+MX01 read from the results table, router multiply-adds per token recorded,
+family map over sixteen experts, two diagrams, two results rows.
 
 Step 5 status: complete. DS01 data-scale sweep: eight committed points
 (dense and MoE at 120, 480, 960 examples for 200 epochs, plus 120 for 400
@@ -129,6 +153,12 @@ Step 3 status: complete. `lib/domain.mlpl`, `lib/evaluate.mlpl`, and
 `lib/results.mlpl` with 28 native tests; the 120-example mixture fixture;
 the DM01 domain microscope with three annotated diagrams (window, tags,
 split) freshness-checked by `just check`; catalog entry DM01.
+
+Step 6 status: complete. LD01 low-rank delta experts: sixteen rank-4
+experts packed in two matrices (exact parity with a per-expert loop, tested),
+a shared always-on FFN, deltas-only variant, comparison against DN01 and
+MX01 read from the results table, router multiply-adds per token recorded,
+family map over sixteen experts, two diagrams, two results rows.
 
 Step 5 status: complete. DS01 data-scale sweep: eight committed points
 (dense and MoE at 120, 480, 960 examples for 200 epochs, plus 120 for 400

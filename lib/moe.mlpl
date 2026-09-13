@@ -118,3 +118,23 @@ def u:specialization_score(counts) {
   };
   total / n
 }
+
+def u:delta_expand(E, r) {
+  "Constant block one-hot [E, E*r] that repeats each expert's gate value r times, so a [T, E] gate becomes a [T, E*r] factor by matmul.";
+  transpose(one_hot(floor(range(E * r) / r), E))
+}
+
+def u:delta_out(x, A_all, B_all, gate, expand) {
+  "Gated sum over low-rank delta experts in two matmuls: (x @ A_all) scaled per column by the expanded gate, then @ B_all; exact for any E and k.";
+  matmul(matmul(x, A_all) * matmul(gate, expand), B_all)
+}
+
+def u:delta_params(d, r) {
+  "Trainable parameters of one rank-r delta expert over width d.";
+  2 * d * r
+}
+
+def u:router_macs(d, E) {
+  "Multiply-adds per token spent choosing experts: one d-by-E matmul row plus the bias adds.";
+  d * E + E
+}
