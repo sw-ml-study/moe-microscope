@@ -1,0 +1,61 @@
+# Router contract: probabilities, masks, gates, dispatch load, entropy, balance, and router gradient.
+include "lib/moe.mlpl";
+
+fixture_logits = [[2, 0, 0, 0], [0, 3, 0, 0], [0, 0, 1, 0.5], [0, 0, 0.5, 1]];
+
+@test {name: "router probabilities are a softmax per token", tags: ["moe", "router"]}
+def u:test_router_probs() {
+  "Every row sums to one and the largest score gets the largest probability.";
+  p = u:router_probs(fixture_logits);
+  u:assert_approx(reduce_add(take(p, 0, 0)), 1, 0.000000001, "row sums to one")?;
+  u:assert_eq(argmax(take(p, 0, 1)), 1, "largest probability at the largest score")
+}
+
+@test {name: "top-1 mask is one-hot and the Switch gate keeps only that probability", tags: ["moe", "gate"]}
+def u:test_top1_and_gate() {
+  "The gate is the selected expert's probability and zero elsewhere.";
+  m = u:top1_mask(fixture_logits, 4);
+  u:assert_eq(m, [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], "one-hot rows")?;
+  g = u:switch_gate(fixture_logits, 4);
+  p = u:router_probs(fixture_logits);
+  u:assert_approx(take(take(g, 0, 2), 0, 2), take(take(p, 0, 2), 0, 2), 0.000000001, "selected probability kept")?;
+  u:assert_eq(take(take(g, 0, 2), 0, 3), 0, "unselected zeroed")
+}
+
+@test {name: "top-k mask selects k experts per token and renormalizes", tags: ["moe", "topk"]}
+def u:test_topk_mask() {
+  "Top-2 keeps two experts per token and the renormalized gate sums to one.";
+  m = u:topk_mask(fixture_logits, 2, 4);
+  u:assert_eq(reduce_add(m, 1), [2, 2, 2, 2], "two per token")?;
+  u:assert_eq(take(m, 0, 2), [0, 0, 1, 1], "third token keeps experts two and three")?;
+  g = u:renormalized_gate(u:router_probs(fixture_logits), m);
+  u:assert_approx(reduce_add(take(g, 0, 2)), 1, 0.000000001, "renormalized")
+}
+
+@test {name: "load, entropy, and balance behave at the known extremes", tags: ["moe", "balance"]}
+def u:test_load_entropy_balance() {
+  "Balanced one-hot routing has balance one; uniform probabilities have entropy log E.";
+  m = u:top1_mask(fixture_logits, 4);
+  u:assert_eq(u:expert_load(m), [1, 1, 1, 1], "one token per expert")?;
+  uniform = fill([4, 4], 0.25);
+  u:assert_approx(u:router_entropy(uniform), log(4), 0.000001, "uniform entropy is log E")?;
+  u:assert_approx(u:balance_loss(uniform, m, 4), 1, 0.000001, "perfectly balanced routing scores one")?;
+  skewed = [[1, 0, 0, 0], [1, 0, 0, 0], [1, 0, 0, 0], [1, 0, 0, 0]];
+  u:assert_gt(u:balance_loss(u:router_probs(fixture_logits * 0 + skewed * 5), skewed, 4), 1, "collapsed routing scores above one")
+}
+
+@test {name: "the router receives a gradient through the Switch gate", tags: ["moe", "gradient"]}
+def u:test_router_gradient() {
+  "Selected logits get gradient through their probability; the mask itself is constant.";
+  Wr = param[3, 4];
+  Wr = randn(1, [3, 4]);
+  br = param[4];
+  br = fill([4], 0);
+  h = randn(2, [5, 3]);
+  weights = randn(3, [5, 4]);
+  g = grad(reduce_add(u:switch_gate(u:router_logits(h, Wr, br), 4) * weights), Wr);
+  u:assert_shape(g, [3, 4], "gradient reaches the router weights")?;
+  u:assert_gt(reduce_add(abs(g)), 0, "gradient is nonzero")
+}
+
+u:run_registered_tests()

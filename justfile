@@ -44,6 +44,10 @@ build-local-serve:
 teacher mode="check":
     ./scripts/run-teacher {{mode}}
 
+# Run the MX01 routing microscope and check its diagram; `just router write` regenerates it.
+router mode="check":
+    ./scripts/run-router-demo {{mode}}
+
 # Print the selected sw-MLPL executable.
 mlpl-path:
     ./scripts/select-mlpl

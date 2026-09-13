@@ -3,7 +3,7 @@
   "version": 1,
   "recording_schema": "fixtures/recordings/recording-schema-v0.json",
   "source_repository": "https://github.com/sw-ml-study/moe-microscope.git",
-  "source_revision": "174d373f8d23fb2af5923adbd65986bba5aac9d2",
+  "source_revision": "1a441bc5cbdfa39e6409085de232b0c8a84b938c",
   "bundler": "scripts/bundle-program",
   "fixtures": [
     {
@@ -15,7 +15,7 @@
       "guide": "docs/host-handoff.md",
       "recording_sha256": "ec308abdc311d04600e794f54e8e69bd971502e68419e19738e7bd46e11e3726",
       "source_sha256": "c2d0215ed62dd2773b0f31ba71e1535b31ac5bb3e3011d5e8934de0e2c337e74",
-      "bundle_sha256": "0c738a4c8a41c5c3c83d06d5cfd819d9fe1b3fe1a74f3cadbf19c3e9e707f482",
+      "bundle_sha256": "81f72666c2d96b2c83d9f035e2f5a8428596e1f7d85a6692e51ee489d3dc451d",
       "frame_count": 13,
       "observation_count": 29,
       "value_count": 96,

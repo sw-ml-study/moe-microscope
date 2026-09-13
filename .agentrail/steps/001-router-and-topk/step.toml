@@ -1,6 +1,6 @@
 number = 1
 slug = "router-and-topk"
-status = "pending"
+status = "in-progress"
 description = "MX01 part 1: implement the router in lib/moe.mlpl as readable MLPL: router li..."
 role = "production"
 context_files = []

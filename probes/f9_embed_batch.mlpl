@@ -1,3 +1,3 @@
-# F9 reproducer: embed rejects the rank-two [B, T] token input the reference documents; checked by scripts/run-probes.
+# F9 reproducer, resolved upstream: embed accepts the rank-two [B, T] token input the reference documents.
 emb = embed(8, 4, 0)
-apply(emb, [[1, 2, 3], [4, 5, 6]])
+print("batched embed shape", shape(apply(emb, [[1, 2, 3], [4, 5, 6]])))

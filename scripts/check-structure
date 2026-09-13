@@ -18,7 +18,8 @@ for path in AGENTS.md CLAUDE.md COPYRIGHT LICENSE README.md justfile mlplunit.co
     scripts/capture-dense-recording scripts/check-dense-recording scripts/run-dense-recording \
     scripts/make-recording-index scripts/run-emit-frame-loops scripts/build-local-serve \
     demos/teacher.mlpl tests/test_teacher.mlpl docs/teacher-fixture.md fixtures/teacher/teacher-v0.json \
-    fixtures/teacher/index-v1.json assets/previews/teacher-fixture.svg scripts/run-teacher; do
+    fixtures/teacher/index-v1.json assets/previews/teacher-fixture.svg scripts/run-teacher \
+    lib/moe.mlpl tests/test_moe.mlpl demos/router_microscope.mlpl assets/previews/router-routing.svg scripts/run-router-demo; do
     if [ ! -e "$repo_dir/$path" ]; then
         echo "missing required file: $path" >&2
         exit 1

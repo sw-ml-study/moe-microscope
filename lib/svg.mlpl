@@ -110,3 +110,26 @@ def u:svg_box(x0, y0, wd, ht, title, line2, line3) {
   "A labeled stage box with a title and two detail lines.";
   str_concat(str_concat(str_concat(u:svg_rect(x0, y0, wd, ht, "box"), u:svg_text(x0 + 8, y0 + 18, "k", title)), u:svg_text(x0 + 8, y0 + 36, "", line2)), u:svg_text(x0 + 8, y0 + 54, "m", line3))
 }
+
+def u:svg_grid(M, x0, y0, wd, places, on_mask) {
+  "A rank-two matrix as value cells rounded to places; cells whose on_mask entry is one are highlighted.";
+  rows = reduce_mul(shape(take(M, 1, 0)));
+  cols = reduce_mul(shape(take(M, 0, 0)));
+  out = "";
+  i = 0;
+  while lt(i, rows) {
+    j = 0;
+    while lt(j, cols) {
+      cls = if take(take(on_mask, 0, i), 0, j) {
+        "on"
+      } else {
+        "cell"
+      };
+      out = str_concat(out, u:svg_rect(x0 + j * wd, y0 + i * 26, wd - 2, 24, cls));
+      out = str_concat(out, u:svg_text(x0 + j * wd + 4, y0 + i * 26 + 16, "s", u:svg_num(u:svg_round(take(take(M, 0, i), 0, j), places))));
+      j = j + 1
+    };
+    i = i + 1
+  };
+  out
+}

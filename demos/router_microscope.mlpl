@@ -1,0 +1,73 @@
+# MX01 routing microscope: one small batch of tokens through router logits, probabilities, the top-1 mask, the Switch gate, and the dispatch table.
+include "../lib/moe.mlpl";
+include "../lib/observe.mlpl";
+include "../lib/svg.mlpl";
+
+print("WHAT THIS SHOWS -- How a router turns each token's hidden state into scores, probabilities, a one-hot expert choice, a gate that still carries gradient, and a dispatch table.");
+print("SHAPES -- hidden:[T=6,d=4], router weights:[4,E=4], logits/probs/mask/gate/dispatch:[6,4], load:[4].");
+
+out_dir = if list_len(args()) {
+  unwrap(list_get(args(), 0))
+} else {
+  ""
+};
+writing = str_len(out_dir);
+T = 6;
+d = 4;
+E = 4;
+hidden = emit_frame("moe/router/hidden", 0, round(randn(11, [6, 4]) * 100) / 100);
+Wr = round(randn(12, [4, 4]) * 100) / 100;
+br = fill([4], 0);
+logits = emit_frame("moe/router/logits", 1, u:router_logits(hidden, Wr, br));
+probs = emit_frame("moe/router/probs", 2, u:router_probs(logits));
+mask = emit_frame("moe/router/mask", 3, u:top1_mask(logits, E));
+gate = emit_frame("moe/router/gate", 4, u:switch_gate(logits, E));
+mask2 = emit_frame("moe/router/mask-top2", 4, u:topk_mask(logits, 2, E));
+load = emit_frame("moe/dispatch/load", 5, u:expert_load(mask));
+entropy = emit_frame("moe/router/entropy", 5, u:router_entropy(probs));
+balance = emit_frame("moe/router/balance", 5, u:balance_loss(probs, mask, E));
+disp(logits);
+disp(gate);
+print("NUMERICAL CONTRACT -- every probability row sums to one; every mask row has one 1; gate equals probs where mask is 1 and zero elsewhere; loads sum to T; balance of this fixture is", u:svg_round(balance, 4), "; entropy", u:svg_round(entropy, 4), "of log(4)=", u:svg_round(log(4), 4));
+
+def u:routing_svg() {
+  "Diagram: logits, softmax probabilities, argmax mask, and Switch gate as four aligned matrices, then the dispatch table and per-expert load.";
+  page = u:svg_head("MX01 routing transformation", "Six tokens' router logits become probabilities by softmax, a one-hot mask by argmax, and a gate that keeps only the selected expert's probability; the dispatch table below counts tokens per expert.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "MX01 ROUTING -- from hidden state to expert choice"));
+  page = str_concat(page, u:svg_text(32, 60, "m", "WHAT: logits = h @ Wr + b -> probs = softmax(logits) -> mask = one_hot(argmax) -> gate = probs * mask, all [T=6, E=4]"));
+  page = str_concat(page, u:svg_text(32, 96, "k", "logits"));
+  page = str_concat(page, u:svg_grid(logits, 32, 104, 52, 2, fill([6, 4], 0)));
+  page = str_concat(page, u:svg_text(262, 96, "k", "probs (softmax)"));
+  page = str_concat(page, u:svg_grid(probs, 262, 104, 52, 2, fill([6, 4], 0)));
+  page = str_concat(page, u:svg_text(492, 96, "k", "mask (argmax, one-hot)"));
+  page = str_concat(page, u:svg_grid(mask, 492, 104, 52, 0, mask));
+  page = str_concat(page, u:svg_text(722, 96, "k", "gate = probs * mask"));
+  page = str_concat(page, u:svg_grid(gate, 722, 104, 52, 2, mask));
+  page = str_concat(page, u:svg_text(32, 282, "k", "load (tokens per expert)"));
+  page = str_concat(page, u:svg_cells(load, 32, 290, 52, fill([4], 0)));
+  page = str_concat(page, u:svg_text(262, 282, "k", "top-2 mask (two per token)"));
+  page = str_concat(page, u:svg_grid(mask2, 262, 290, 52, 0, mask2));
+  page = str_concat(page, u:svg_text(492, 304, "", str_concat("router entropy ", str_concat(u:svg_num(u:svg_round(entropy, 3)), str_concat(" nats (log 4 = ", str_concat(u:svg_num(u:svg_round(log(4), 3)), ")"))))));
+  page = str_concat(page, u:svg_text(492, 326, "", str_concat("balance loss ", str_concat(u:svg_num(u:svg_round(balance, 3)), " (1.0 is perfectly balanced)"))));
+  page = str_concat(page, u:svg_text(492, 348, "", "columns are experts 0..3; rows are tokens 0..5"));
+  page = str_concat(page, u:svg_rect(30, 454, 900, 82, "panel"));
+  page = str_concat(page, u:svg_text(50, 474, "", "WHY: argmax has no gradient, so the gate multiplies the selected probability in; the router learns through it (Switch)."));
+  page = str_concat(page, u:svg_text(50, 494, "", "WHY: the mask is also the dispatch table: which expert each token runs through, and how many tokens each expert gets."));
+  page = str_concat(page, u:svg_text(50, 514, "", "HOW: u:router_logits, u:router_probs, u:top1_mask (one_hot inside the loss), u:switch_gate, u:expert_load, u:balance_loss."));
+  page = str_concat(page, u:svg_text(50, 532, "m", "Pink cells are the selected expert per token; tests pin row sums, one-hot rows, gate identity, loads, entropy, gradient."));
+  str_concat(page, "</svg>")
+}
+
+r1 = if writing {
+  write_atomic(str_concat(out_dir, "/router-routing.svg"), u:routing_svg())
+} else {
+  ok(0)
+};
+print("THE POINT -- Routing is four small matrix operations; everything downstream (dispatch, load, balance, specialization) reads off the mask.");
+print("BOUNDARY -- Six tokens and four experts with random weights; no training yet, so the choices are arbitrary but exact.");
+contract = reduce_mul(eq(reduce_add(mask, 1), fill([6], 1))) * eq(reduce_add(load), T) * lt(abs(reduce_add(probs) - T), 0.000001) * lt(reduce_add(abs(gate - probs * mask)), 0.000001);
+if contract * is_ok(r1) {
+  ok("routing microscope written")
+} else {
+  err("routing microscope contract failed")
+}

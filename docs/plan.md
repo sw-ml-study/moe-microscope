@@ -51,7 +51,10 @@ The catalog records each lesson as `builtin`, `from-scratch`, or `both`.
 | Expert cache, q-star scheduler, packed file | no | from scratch | systems lessons; byte I/O builtins underneath |
 | Observation, SVG, recording, playback | yes (`emit_frame`, `svg`, peer schema, Yew host) | builtin | the host is dogfooded, not rebuilt |
 
-The source discussion is retained in [`research.txt`](research.txt).
+The source discussion is retained in [`research.txt`](research.txt); the
+questions about how experts specialize, how routing is decided, and how the
+Engram table is sized are answered in
+[`moe-engram-discussion.md`](moe-engram-discussion.md).
 
 ## Two questions answered up front
 
@@ -343,7 +346,9 @@ triple, a results row, and a pinned recording; the teacher fixture exists.
    MX02 next to DN01.
 5. **low-rank-delta-experts.** Experts as shared FFN plus `A_e B_e` deltas,
    allowing 16 to 32 experts at microscope scale; byte accounting per expert;
-   quality comparison with full experts.
+   quality comparison with full experts. Add a `shared` always-on expert
+   count (DeepSeek-V3 layout) and compare shared only, routed only, and both;
+   record router multiply-adds per token as a counted cost.
 6. **moe-recordings-and-host-handoff.** MX01 and MX02 recordings pinned; the
    router mask, dispatch table, and specialization map proven in the generic
    host.
@@ -361,7 +366,8 @@ specialization map is a checked artifact; MoE rows exist in the results table.
 3. **engram-from-scratch (EG01).** `ngram_hash` addressing, `gather_rows`
    retrieval, projection, and a learned gate written in MLPL; parity check
    against the `engram` builtin; gate magnitude, collision, and nonzero-row
-   observations; Engram table diagram with bytes.
+   observations; Engram table diagram with bytes; a table-size sweep (1,024
+   down to 16 slots) plotting collisions, gate magnitude, and prose accuracy.
 4. **recurrent-moe-engram (RE01).** All three sparsities together and the
    ablation table filled for the seven research combinations.
 5. **live-demo-foundation.** With DN01, MX02, and RM01 recordings pinned,

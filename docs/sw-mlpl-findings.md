@@ -10,8 +10,8 @@ reproducers under `probes/` that `scripts/run-probes` re-checks on every
 this document is updated in the same step.
 
 Binary under test: `mlpl-repl 0.22.0` from the adjacent `../sw-mlpl`
-checkout at `61da67ae` (2026-09-12), rebuilt after the second step of the
-upstream `moe-microscope-followups-2` saga (`mlpl-repl` 22:10, `mlpl-serve`
+checkout at `042d2d79` (2026-09-12), rebuilt after the third step of the
+upstream `moe-microscope-followups-2` saga (`mlpl-repl` 22:35, `mlpl-serve`
 21:51).
 
 ## Resolved upstream (verified here)
@@ -24,11 +24,12 @@ upstream `moe-microscope-followups-2` saga (`mlpl-repl` 22:10, `mlpl-serve`
 | F4 `gather_rows` not differentiable; no `kl_divergence` | scatter-add backward for `gather_rows`; KL documented as `reduce_add(P * (log(P) - log(Q)))` | `e1d693af` | probes "gather_rows scatter-adds gradient" and "KL divergence is a composition" |
 | F6 `repeat` rejected inside a traced function | `repeat N` with a literal count unrolls onto the tape | `a9ae2a79` | probe "repeat with a literal count unrolls inside a traced function"; `probes/f6_repeat_in_grad.mlpl` expects success |
 | F10 labeled positional table panicked the tape inside a residual block | partial axis labels are unified per axis, so a labeled table broadcasts against an unlabeled activation on the tape as eagerly | `9cd62367` | probe file expects success; `u:positions` keeps stripping labels only as documentation of the old workaround |
+| F9 `embed` rejected the documented `[B, T]` input | rank-two tokens return `[B, T, d]` | `042d2d79` | probe file expects success; DN01 keeps per-example training by choice (no cross-example attention, no shared positions) |
 | F14 `fill`/`zeros`/`ones` rejected inside `grad` | constant constructors are constant leaves on the tape | `61da67ae` | probe file expects success |
 | D1 silent zero gradient for an untracked `wrt` leaf | loud error: "the loss does not depend on 'W' (no gradient flows to it)" | upstream `moe-microscope-followups` step 3 | probe "grad of a pre-evaluated loss variable raises a loud error"; `probes/d1_silent_zero_grad.mlpl` expects the error |
 | F5 `one_hot`/`argmax` rejected inside `grad` | index and mask builtins (`argmax`, `one_hot`, `eq`, `gt`, `lt`, `argtop_k`) are stop-gradient constants on the tape | `54ad5849` | probe "one_hot and argmax act as stop-gradient constants"; `probes/f5_one_hot_in_grad.mlpl` now expects success |
 
-## Open, queued upstream as `moe-microscope-followups` (F7, F8, F9, F11, F12, F13, F15, F16, F17, S1; upstream is working F9 to F15 in `followups-2`)
+## Open, queued upstream as `moe-microscope-followups` (F7, F8, F11, F12, F13, F15, F16, F17, S1; upstream is working F11 to F15 in `followups-2`)
 
 ### F7: a model value cannot be a user-function argument
 
@@ -60,22 +61,6 @@ Affects: observation facade, any generated or parameterized observation name
 (per-expert, per-recurrence, per-cache-slot series). Proposed fix: accept any
 string value for the name, or document the literal rule and provide a
 `str`-valued form.
-
-### F9: `embed` rejects the batched `[B, T]` token input the reference documents
-
-```
-apply(embed(8, 4, 0), [[1, 2, 3], [4, 5, 6]])
-# error: unsupported: embed: tokens must be a 1-D [N] array, got shape [2, 3]
-```
-
-Reproducer: `probes/f9_embed_batch.mlpl`. The language reference for `embed`
-and `cross_entropy` promises `[B, T]` and `[B, T, V]` forms. Workaround (the
-idiom of the upstream `tiny_lm.mlpl` demo): flatten a chunk of examples into
-one rank-one sequence of `B * T` tokens; causal attention then spans example
-boundaries inside the chunk, which the lesson states. Affects: DN01 and
-every trained lesson. Proposed fix: implement the documented rank-two path in
-`embed` (and confirm attention and `cross_entropy` on rank three), or correct
-the reference.
 
 ### F11: a nested user-function call inside `grad` loses a parameter used in index arithmetic
 

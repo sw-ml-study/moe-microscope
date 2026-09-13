@@ -112,6 +112,22 @@ MLPL answers need rules this model cannot learn from 90 rows. The numbers are
 one row in [`docs/results.md`](docs/results.md), and the residual is written
 by hand so `attention_weights` can show the trained attention map.
 
+## Routing microscope
+
+MX01 begins with the router alone, before any training: six tokens' hidden
+states become logits, softmax probabilities, a one-hot expert choice, and a
+Switch-style gate that keeps only the chosen expert's probability so the
+router still receives a gradient. The mask doubles as the dispatch table, and
+the same diagram shows per-expert load, router entropy, the load-balance
+term, and the top-2 mask that MX02 will use.
+
+![MX01 routing: logits, probabilities, one-hot mask, and gate as four aligned matrices, with the dispatch load, top-2 mask, entropy, and balance below](assets/previews/router-routing.svg)
+
+```sh
+just router          # run the routing microscope and check its diagram
+just tests tests/test_moe.mlpl
+```
+
 ## In-repo teacher fixture
 
 TE01 is the teacher that Saga 4 distills from: two 32-wide blocks, 19,956
@@ -170,6 +186,7 @@ docs/host-handoff.md         The demo-extensions work order for the DN01 recordi
 docs/results.md              Memory/speed/quality rows, one per lesson run
 catalog/lessons.toml         Lesson inventory with implementation form and measured triple
 docs/research.txt            The original design discussion
+docs/moe-engram-discussion.md  How experts specialize, how routing decides, how Engram is sized
 lib/  demos/  tests/         MLPL model code, lessons, and native mlplunit tests
 probes/                      Standalone reproducers re-checked by the gate
 fixtures/  assets/previews/  Bounded fixtures, pinned recordings, and committed diagrams
@@ -201,6 +218,7 @@ just probes          # re-run the upstream-finding reproducers
 just domain          # run DM01 and check its diagrams
 just dense           # run DN01 (about 16 s) and check its diagrams and results row
 just teacher         # validate the committed TE01 fixture without retraining
+just router          # run the MX01 routing microscope and check its diagram
 just mlpl-style      # canonical formatting and docstring checks
 ```
 

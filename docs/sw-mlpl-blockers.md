@@ -35,7 +35,7 @@ Gaps with reproducers are written up as upstream work orders in
 |---|---|---|
 | Sparse expert dispatch | no batched gather across experts on the tape; per-token loops in the interpreter (16 routing decisions measured well under a millisecond) | dense-masked training plus forward-only sparse dispatch with parity assertion |
 | Top-k gate on the tape | `argmax`/`one_hot`/`argtop_k` are stop-gradient constants inside `grad` (F5 resolved), so the mask can live inside the loss; the Switch-style gate `softmax(logits) * mask` gives the router a gradient (a renormalized top-1 gate is identically 1 and gives none) | probes "adam trains a list of expert models..." and "one_hot and argmax act as stop-gradient constants" |
-| Batched sequences | `embed` accepts rank-one tokens only (F9) | flatten a chunk of `B` windows into one `B * T` sequence, as the upstream tiny LM demo does; attention spans the chunk |
+| Batched sequences | `embed` now accepts `[B, T]` (F9 resolved); lessons still train one example per step so attention never spans examples and positions stay per example | per-example loop |
 | Positional table on the tape | the labeled `sinusoidal_encoding` output trains inside `adam` (F10 resolved) | `u:positions` still strips labels; harmless |
 | Recurrence depth as a runtime value | `repeat` with a literal count unrolls on the tape (F6 resolved); a parameter-bound count does not (F15) | one user function per depth with a literal `repeat` |
 | Models as user-function parameters | models cannot be arguments (F7); they are reached as globals | lesson helpers name their globals |
@@ -56,7 +56,6 @@ Gaps with reproducers are written up as upstream work orders in
 |---|---|---|
 | F7 model as user-function argument | probe "a model value cannot be a user-function argument"; `probes/f7_model_argument.mlpl` | globals |
 | F8 `emit_frame` literal name | probe "emit_frame rejects a name held in a variable"; `probes/f8_emit_frame_name.mlpl` | literal names |
-| F9 batched `embed` | `probes/f9_embed_batch.mlpl` | flattened chunks |
 | F11 nested traced call loses an index parameter | `probes/f11_nested_param_binding_in_grad.mlpl` | slice chunks eagerly, pass arrays into the loss |
 | F12 size arithmetic inside `grad` | `probes/f12_size_arithmetic_in_grad.mlpl` | pass sizes as arguments |
 | F13 `attention_weights` and `residual` | `probes/f13_attention_weights_residual.mlpl` | explicit residual with a separate attention sub-model |

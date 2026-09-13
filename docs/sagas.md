@@ -30,6 +30,10 @@ experts, and the MoE recordings for the generic host.
 6. `moe-recordings-and-host-handoff` - MX01 and MX02 recorded over live SSE,
    pinned, and handed to the generic host.
 
+Step 1 status: complete. `lib/moe.mlpl` (router logits, probabilities,
+top-1 and top-k masks, Switch and renormalized gates, load, entropy, balance
+loss) with five tests; the MX01 routing microscope and its diagram.
+
 ## Completed: `moe-microscope-foundation` (Saga 1)
 
 Purpose: repository foundation, executable capability probes, the synthetic

@@ -1,0 +1,63 @@
+# Mixture-of-experts routing written out: router logits, probabilities, top-k masks, Switch-style gates, dispatch tables, load, entropy, and the balance loss.
+
+def u:router_logits(h, Wr, br) {
+  "Router scores [T, E]: one linear layer over the hidden state.";
+  matmul(h, Wr) + br
+}
+
+def u:router_probs(logits) {
+  "Router probabilities [T, E]: softmax over experts for each token.";
+  softmax(logits)
+}
+
+def u:top1_mask(logits, E) {
+  "One-hot [T, E] selecting each token's highest-scoring expert; a stop-gradient constant on the tape.";
+  one_hot(argmax(logits, 1), E)
+}
+
+def u:topk_mask(logits, k, E) {
+  "0/1 [T, E] selecting each token's k highest-scoring experts, built eagerly row by row.";
+  T = reduce_mul(shape(take(logits, 1, 0)));
+  mask = fill([0, E], 0);
+  t = 0;
+  while lt(t, T) {
+    row = reduce_add(one_hot(argtop_k(take(logits, 0, t), k), E), 0);
+    mask = concat(mask, reshape(row, [1, E]), 0);
+    t = t + 1
+  };
+  mask
+}
+
+def u:switch_gate(logits, E) {
+  "Switch-style gate [T, E]: the selected expert's probability, zero elsewhere, so the router receives a gradient.";
+  u:router_probs(logits) * u:top1_mask(logits, E)
+}
+
+def u:renormalized_gate(probs, mask) {
+  "Gate [T, E] whose selected entries are renormalized to sum to one per token (top-k combine).";
+  kept = probs * mask;
+  kept / reduce_add(kept, 1)
+}
+
+def u:gate_column(gate, e, T) {
+  "Column e of a gate as a [T, 1] factor to scale one expert's output.";
+  reshape(take(gate, 1, e), [T, 1])
+}
+
+def u:expert_load(mask) {
+  "Tokens routed to each expert, [E].";
+  reduce_add(mask, 0)
+}
+
+def u:router_entropy(probs) {
+  "Mean per-token entropy of the router distribution in nats; log(E) means indifferent, zero means certain.";
+  0 - mean(reduce_add(probs * log(probs + 0.000000000001), 1))
+}
+
+def u:balance_loss(probs, mask, E) {
+  "Switch load-balance term: E times the sum over experts of routed fraction times mean probability; equals one when perfectly balanced.";
+  T = reduce_mul(shape(take(mask, 1, 0)));
+  fraction = reduce_add(mask, 0) / T;
+  importance = reduce_add(probs, 0) / T;
+  E * reduce_add(fraction * importance)
+}

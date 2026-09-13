@@ -51,3 +51,18 @@ memory = "19,956 parameters (two 32-wide blocks, 64-wide FFNs); 18,324 active pe
 speed = "27,000 per-example Adam steps, about 2.5 ms per step; trained once by `just teacher write` (about a minute), never in the gate"
 quality = "training masked loss 0.135, top-1 agreement with targets 0.963, training exact match 0.83; validation loss 4.14 (memorization, as DN01)"
 status = "accepted"
+
+[[lesson]]
+id = "MX01"
+slug = "routing"
+title = "Routing: logits, probabilities, mask, gate, dispatch"
+source = "demos/router_microscope.mlpl"
+library = ["lib/moe.mlpl", "lib/svg.mlpl"]
+test = ["tests/test_moe.mlpl"]
+previews = ["assets/previews/router-routing.svg"]
+implementation = "from-scratch"
+observations = ["moe/router/hidden", "moe/router/logits", "moe/router/probs", "moe/router/mask", "moe/router/gate", "moe/router/mask-top2", "moe/dispatch/load", "moe/router/entropy", "moe/router/balance"]
+memory = "router 4x4 weights plus 4 biases for E=4 experts over d=4; masks and gates are [T, E]"
+speed = "four small matrix operations per token batch; the fixture runs in milliseconds"
+quality = "routing only (no training yet): row sums, one-hot rows, gate identity, loads, entropy, balance, and router gradient are pinned by tests"
+status = "partial"
