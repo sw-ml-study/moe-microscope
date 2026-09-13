@@ -22,19 +22,34 @@ decisions and the usefulness bar are in [`plan.md`](plan.md), Saga 4.
    canned stories, the deterministic corpus and split, the story policy.
 2. `docent-dense` - CD01: hashed features, pooled embedding, intent and
    destination heads; the flat classifier baseline.
-3. `docent-moe` - CD02 to CD04: routed delta experts (4 and 8), the
+3. `matcher-baseline` - MB01: the mockup's deterministic alias-and-concept
+   matcher in MLPL, scored on the validation rows and the held-out
+   paraphrase set; the yardstick every docent must beat.
+4. `docent-moe` - CD02 to CD04: routed delta experts (4 and 8), the
    specialization map and expert annotations, the ambiguity panel.
-4. `docent-batch-export` - `just docent`: the chosen configuration exported
+5. `docent-batch-export` - `just docent`: the chosen configuration exported
    with labels and manifest, INT8 sizes, replay recording, parity twin.
-5. `docent-in-browser` - CD05, CD06: inference-first page on the
+6. `docent-in-browser` - CD05, CD06: inference-first page on the
    `mlpl-wasm` bridge, measured latency, the budgeted live-training probe.
-6. `easel-handoff` - the sw-campus work order, recordings, docs and wiki.
+7. `easel-handoff` - the sw-campus work order, recordings, docs and wiki.
 
-Step 1 status: complete. Snapshot A (9 places, 21 stories, 12,868 bytes)
-from the live catalog; `lib/campus.mlpl` derives paths and URLs, a content
-hash, a 563-row corpus (422 train, 141 validation) over 5 intents and 10
-destinations, and the story policy; four diagrams, seven tests, the CD00
-row and report.
+Step 2 status: complete. CD01, the flat dense docent (1,024 hash slots,
+width 24, hidden 32, 26,003 parameters): held-out intent 0.938 and
+destination 0.925 on templated rows, but 0.296 destination on the 54
+held-out paraphrases, 0.3 unsupported recall, and 0.091 on ambiguous
+top-2, so the value-over-matcher question is open for MB01 and CD02. Docent results table, three diagrams,
+six tests; F13 verified resolved upstream, F19 (matmul panic in `grad`)
+filed with a probe.
+
+Step 1 status: complete. Snapshot A (12 places, 28 stories, 12 status
+sentences with maturity levels) from the live catalog; `lib/campus.mlpl`
+derives paths and URLs, a content hash, a 965-row corpus (724 train, 241
+validation) over 6 intents (navigate, explain, recommend, story, status,
+unsupported) and 10 destinations, and the story policy; four diagrams,
+eight tests, the CD00 row and report. The status intent and sentences, forty
+off-topic rows, the 54-row held-out paraphrase fixture, and the Computational
+Sciences Institute with its MoE Microscope exhibit were added during step 2
+at the user's request.
 
 ## Completed: `resource-budget-and-documentation` (Saga 3)
 
@@ -344,7 +359,8 @@ Every saga from here ends with a host step that pins its recordings and hands
 them to the generic `../demo-extensions` microscope; see the visualization
 track in [`plan.md`](plan.md).
 
-- Saga 4 `campus-docent-v0` (active, above): the second training area, from
+- Saga 4 `campus-docent-v0` (active, above; value over the deterministic
+  matcher is part of its usefulness bar): the second training area, from
   [`research3.txt`](../research/research3.txt). A tiny MoE trained in batch
   here and run in the browser to direct visitors of the sw-campus site:
   snapshot A of the campus catalog (IBM 1130, APL, RCA 1802) with canned
@@ -354,26 +370,37 @@ track in [`plan.md`](plan.md).
   the `just docent` batch export with manifest, the inference-first docent
   page CD05 on the proven `mlpl-wasm` bridge with a budgeted live-training
   probe, and the inference-only easel handoff to sw-campus.
-- Saga 5 `campus-docent-v1`: when the campus adds the 1442 card reader and
+- Saga 5 `pages-live-demo`: the first live demo of this repository on
+  GitHub Pages, linked from the README: the pinned recordings replayed step
+  by step (router logits, probabilities, mask, gate, loads, balance), the
+  sparse dispatch walkthrough, the docent page, and a browser verification
+  record.
+- Saga 6 `campus-docent-live`: the trained docent replaces the mockup's
+  keyword matcher in the campus site: the frozen export contract and
+  validator, the browser bridge module with `predict(query)` and a parity
+  page, the campus model-bridge work order, and live acceptance against
+  the deployed page (edition line, thirty scripted queries matching the
+  export, fallback, stale badge, latency) recorded as CD09.
+- Saga 7 `campus-docent-v1`: when the campus adds the 1442 card reader and
   its radio demo, the stale-model, retraining-versus-forgetting, and
   quantization study (CD06 to CD08) and the revision comparison page.
-- Saga 6 `recurrence-and-engram`: RC01, RM01, EG01 (both forms: from scratch
+- Saga 8 `recurrence-and-engram`: RC01, RM01, EG01 (both forms: from scratch
   and builtin, with parity), RE01, the seven-row ablation table, and the
   live-demo foundation handoff.
-- Saga 7 `distillation`: token KD against the in-repo teacher, router warm
+- Saga 9 `distillation`: token KD against the in-repo teacher, router warm
   start, expert-delta distillation, and the gated external-teacher export.
-- Saga 8 `quantization-packing-and-cache`: INT8 and INT4 experts, the packed
+- Saga 10 `quantization-packing-and-cache`: INT8 and INT4 experts, the packed
   TinyMoE file, the LRU expert-cache simulator with capacity curves, and
   prefill double buffering.
-- Saga 9 `hybrid-execution-and-embedded-budget`: bandwidth calibration, the
+- Saga 11 `hybrid-execution-and-embedded-budget`: bandwidth calibration, the
   q-star transfer/compute split, expert banks, and the 256 MB budget report.
-- Saga 10 `interactive-microscope-host`: systems recordings, live-demo
+- Saga 12 `interactive-microscope-host`: systems recordings, live-demo
   acceptance (the only `sw-checklist` scope), and the pocket-helper demo.
-- Saga 11 `configuration-frontier`: one harness over configuration records;
+- Saga 13 `configuration-frontier`: one harness over configuration records;
   sweeps of expert count, top-k, shared always-on experts, Engram slots, and
   recurrence depth; a Pareto frontier with smallest, fastest, and best picks.
-- Saga 12 `cuda-and-host-resident-experts`: backend probes for CUDA and MLX,
+- Saga 14 `cuda-and-host-resident-experts`: backend probes for CUDA and MLX,
   lab-scale training on the GPU, expert weights in host RAM with a bounded
   GPU cache, CPU execution of missing experts, and a VRAM-budget report.
-- Saga 13 `findings-and-recommendations`: `docs/report.md` with findings,
+- Saga 15 `findings-and-recommendations`: `docs/report.md` with findings,
   recommendations, and ranked future improvements, every claim cited.

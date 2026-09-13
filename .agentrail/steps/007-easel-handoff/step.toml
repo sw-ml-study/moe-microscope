@@ -1,4 +1,4 @@
-number = 6
+number = 7
 slug = "easel-handoff"
 status = "pending"
 description = "Easel handoff and saga close. Write docs/implementation/easel-handoff.md, the..."

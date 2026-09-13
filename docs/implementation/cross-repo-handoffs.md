@@ -79,6 +79,11 @@ the new files on its next build. The campus agent should:
    model code; `sw-checklist` applies to the Yew easel as to the rest of the
    campus app.
 
+The campus repository's own plan (its `campus-docent` saga) already carries
+the easel, drawer, keyword-matcher fallback, and a model-bridge step; this
+repository's Saga 5 delivers what that bridge consumes and verifies the
+live result.
+
 The 1442 card read punch and its radio demo are deliberately absent from
 snapshot A; when the campus publishes them, that revision is snapshot B and
 starts the docent v1 saga here.

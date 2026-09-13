@@ -1,6 +1,6 @@
 number = 2
 slug = "docent-dense"
-status = "pending"
+status = "in-progress"
 description = "CD01 docent dense classifier. In lib/docent.mlpl: the hashed feature encoder ..."
 role = "production"
 context_files = []
