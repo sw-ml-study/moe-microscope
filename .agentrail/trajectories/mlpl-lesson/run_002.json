@@ -1,0 +1,11 @@
+{
+  "task_type": "mlpl-lesson",
+  "state": {
+    "number": 4,
+    "step": "dense-baseline-lesson"
+  },
+  "action": "Probed batched embed, positions, masked loss parity, causality, per-example vs chunked training, learning rates and epochs; chose per-example 300 epochs; wrote lib/dense.mlpl with tests first; refactored SVG helpers into lib/svg.mlpl; wrote demo with two diagrams and results row; rendered with headless Chrome and trimmed overflowing text; filed findings; commit by name; push.",
+  "result": "success",
+  "reward": 1,
+  "timestamp": "2026-09-12T21:19:08"
+}

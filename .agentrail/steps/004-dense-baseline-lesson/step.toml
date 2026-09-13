@@ -1,9 +1,10 @@
 number = 4
 slug = "dense-baseline-lesson"
-status = "in-progress"
+status = "completed"
 description = "Implement DN01, the dense tiny transformer baseline at microscope scale (voca..."
 role = "production"
 context_files = []
 created_at = "2026-09-12T17:13:14"
+completed_at = "2026-09-12T21:19:08"
 task_type = "mlpl-lesson"
-commits = []
+commits = ["79589a3f95389b42a5dfda406ac112d8903497c6"]
