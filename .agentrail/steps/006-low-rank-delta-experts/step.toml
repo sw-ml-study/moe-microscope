@@ -1,9 +1,10 @@
 number = 6
 slug = "low-rank-delta-experts"
-status = "in-progress"
+status = "completed"
 description = "Experts as a shared FFN plus low-rank deltas A_e B_e (rank 4 to 8), allowing ..."
 role = "production"
 context_files = []
 created_at = "2026-09-12T22:36:21"
+completed_at = "2026-09-13T09:01:56"
 task_type = "mlpl-lesson"
-commits = []
+commits = ["9566fd2e138a872a2b09c87072de496c81e1ebfc"]

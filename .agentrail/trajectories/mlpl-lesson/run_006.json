@@ -1,0 +1,11 @@
+{
+  "task_type": "mlpl-lesson",
+  "state": {
+    "number": 6,
+    "step": "low-rank-delta-experts"
+  },
+  "action": "Designed the packed two-matmul form; wrote helpers and parity/gradient tests; added a results reader with trim; wrote the lesson with two variants and two diagrams; relaxed the training-loss contract after a noisy curve; rendered and trimmed; gate; commit by name; push.",
+  "result": "success",
+  "reward": 1,
+  "timestamp": "2026-09-13T09:01:56"
+}
