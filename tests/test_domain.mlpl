@@ -1,0 +1,93 @@
+# Synthetic domain contract: alphabet, generators with oracles, windows, mixture, and split.
+include "lib/domain.mlpl";
+
+@test {name: "alphabet encodes and decodes every example character exactly", tags: ["domain", "alphabet"]}
+def u:test_encode_decode() {
+  "Token ids are alphabet indices; padding is id zero.";
+  ids = u:domain_encode("17+25=|42.")?;
+  u:assert_shape(ids, [10], "one id per character")?;
+  u:assert_text_eq(u:domain_decode(ids), "17+25=|42.", "round trip")?;
+  u:assert_eq(str_find(u:domain_alphabet(), "~"), 0, "pad is id zero")?;
+  u:assert_err(u:domain_encode("17+25=?"), "question mark is outside the alphabet")
+}
+
+@test {name: "arithmetic generator answers match the exact oracle", tags: ["domain", "arithmetic"]}
+def u:test_arithmetic() {
+  "The answer is the interpreter's own arithmetic.";
+  u:assert_eq(u:arith_oracle(17, 25, 0), 42, "sum")?;
+  u:assert_eq(u:arith_oracle(17, 25, 1), 8, "larger minus smaller")?;
+  u:assert_eq(u:arith_oracle(17, 25, 2), 48, "product of residues mod 13")?;
+  ex = u:gen_arithmetic(7);
+  u:assert_eq(ex.tag, 0, "tag")?;
+  u:assert_ok(u:domain_encode(u:domain_text(ex)), "example text is encodable")?;
+  u:assert_text_eq(u:gen_arithmetic(7).prompt, ex.prompt, "deterministic per seed")
+}
+
+@test {name: "sequence generator reverses and sorts by oracle", tags: ["domain", "sequence"]}
+def u:test_sequence() {
+  "rev and sort are computed, not stored.";
+  u:assert_eq(u:sequence_oracle([3, 1, 4, 1, 5], 0), [5, 1, 4, 1, 3], "reverse")?;
+  u:assert_eq(u:sequence_oracle([3, 1, 4, 1, 5], 1), [1, 1, 3, 4, 5], "sort")?;
+  u:assert_text_eq(u:digits_text([3, 1, 4]), "3 1 4", "digit text")?;
+  ex = u:gen_sequence(11);
+  u:assert_eq(ex.tag, 1, "tag")?;
+  u:assert_ok(u:domain_encode(u:domain_text(ex)), "example text is encodable")
+}
+
+@test {name: "mlpl generator answers come from the named builtin", tags: ["domain", "mlpl"]}
+def u:test_mlpl_family() {
+  "The oracle is the interpreter: reduce_add, reduce(:max), reduce_mul.";
+  u:assert_eq(u:mlpl_oracle([2, 7, 3], 0), 12, "reduce_add")?;
+  u:assert_eq(u:mlpl_oracle([2, 7, 3], 1), 7, "reduce max")?;
+  u:assert_eq(u:mlpl_oracle([2, 7, 3], 2), 42, "reduce_mul")?;
+  ex = u:gen_mlpl(5);
+  u:assert_eq(ex.tag, 2, "tag")?;
+  u:assert_ok(u:domain_encode(u:domain_text(ex)), "example text is encodable")
+}
+
+@test {name: "prose generator ties each animal to one place", tags: ["domain", "prose"]}
+def u:test_prose() {
+  "A fixed local pattern that memory can learn.";
+  ex = u:gen_prose(3);
+  u:assert_eq(ex.tag, 3, "tag")?;
+  u:assert_text_eq(u:prose_place(0), "mat", "cat on the mat")?;
+  u:assert_ok(u:domain_encode(u:domain_text(ex)), "example text is encodable")
+}
+
+@test {name: "window pads, shifts, and masks answer targets", tags: ["domain", "window"]}
+def u:test_window() {
+  "x is the first T ids, y the next T, mask marks answer and stop targets only.";
+  w = u:domain_window("2+3=|5.", 8)?;
+  ids = u:domain_encode("2+3=|5.")?;
+  u:assert_eq(w.x, concat(ids, [0]), "x is the padded text")?;
+  u:assert_eq(w.y, concat(u:domain_slice(ids, 1, 6), [0, 0]), "y is shifted by one")?;
+  u:assert_eq(w.mask, [0, 0, 0, 0, 1, 1, 0, 0], "targets 5 and stop are the answer")?;
+  u:assert_err(u:domain_window("2+3=|5.", 4), "too long for the window")
+}
+
+@test {name: "mixture fixture builds an exact deterministic example set", tags: ["domain", "mixture"]}
+def u:test_mixture_build() {
+  "Counts follow the fixture ratios and the last family absorbs rounding.";
+  m = u:domain_load_mixture(u:domain_mixture_path())?;
+  u:assert_eq(u:domain_counts(m), [42, 36, 30, 12], "family counts for 120 examples")?;
+  d = u:domain_build(m);
+  u:assert_eq(d.count, 120, "total examples")?;
+  u:assert_eq(list_len(d.texts), 120, "one text per example")?;
+  u:assert_eq(reduce_add(eq(d.tags, 3)), 12, "twelve prose examples")?;
+  w = u:domain_windows(d.texts, m.window)?;
+  u:assert_shape(w.x, [120, 28], "x matrix")?;
+  u:assert_shape(w.mask, [120, 28], "mask matrix")?;
+  u:assert_text_eq(unwrap(list_get(u:domain_build(m).texts, 5)), unwrap(list_get(d.texts, 5)), "rebuild is identical")
+}
+
+@test {name: "split is a seeded permutation with an exact train count", tags: ["domain", "split"]}
+def u:test_split() {
+  "Every row lands in exactly one of train or validation.";
+  s = u:domain_split(8, 0.75, 0);
+  u:assert_shape(s.train, [6], "six training rows")?;
+  u:assert_shape(s.val, [2], "two validation rows")?;
+  u:assert_eq(reduce_add(concat(s.train, s.val)), 28, "rows 0..7 each appear once")?;
+  u:assert_eq(u:domain_split(8, 0.75, 0).train, s.train, "deterministic per seed")
+}
+
+u:run_registered_tests()

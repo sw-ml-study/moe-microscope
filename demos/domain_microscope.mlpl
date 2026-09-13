@@ -1,0 +1,225 @@
+# Domain microscope: the token window, task tags, and split data structures drawn from real generated values.
+include "../lib/domain.mlpl";
+include "../lib/observe.mlpl";
+
+print("WHAT THIS SHOWS -- How prompt|answer. text becomes padded token windows, how task tags label examples, and how a seeded split holds rows out.");
+print("SHAPES -- alphabet:[V], window x/y/mask:[N,T], tags:[N], split keys/order:[N].");
+
+out_dir = unwrap(list_get(args(), 0));
+sample = {seed: 0, total: 8, window: 12, train_fraction: 0.75, ratios: {arithmetic: 0.375, sequence: 0.25, mlpl: 0.25, prose: 0.125}};
+d = u:domain_build(sample);
+tags = emit_frame("data/tags", 0, d.tags);
+example = "2+3=|5.";
+w = unwrap(u:domain_window(example, sample.window));
+x = emit_frame("data/window/x", 1, w.x);
+y = emit_frame("data/window/y", 1, w.y);
+mask = emit_frame("data/window/mask", 1, w.mask);
+s = u:domain_split(sample.total, sample.train_fraction, sample.seed);
+keys = emit_frame("data/split/keys", 2, s.keys);
+order = emit_frame("data/split/order", 2, s.order);
+
+def u:svg_head(title, desc) {
+  "Open an SVG document with a title, description, and the shared style.";
+  str_concat(str_concat(str_concat("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" width=\"960\" height=\"540\" role=\"img\"><title>", title), "</title><desc>"), str_concat(desc, "</desc><style>text{font-family:ui-monospace,monospace;fill:#dbeafe;font-size:12px}.h{font-size:20px}.k{fill:#fbbf24}.s{font-size:9px}.m{fill:#a5b4fc}.panel{fill:#172033;stroke:#52627a;stroke-width:2}.cell{fill:#0f172a;stroke:#52627a}.pad{fill:#1e293b;stroke:#334155}.on{fill:#db2777}.t0{fill:#2563eb}.t1{fill:#16a34a}.t2{fill:#d97706}.t3{fill:#7c3aed}.tr{fill:#2563eb}.va{fill:#db2777}</style><rect width=\"960\" height=\"540\" fill=\"#0b1020\"/>"))
+}
+
+def u:svg_num(v) {
+  "A number as SVG text content.";
+  to_string(v)
+}
+
+def u:svg_text(x0, y0, cls, content) {
+  "One text element at x0, y0 with a class.";
+  str_concat(str_concat(str_concat(str_concat(str_concat(str_concat(str_concat("<text x=\"", u:svg_num(x0)), "\" y=\""), u:svg_num(y0)), "\" class=\""), cls), "\">"), str_concat(content, "</text>"))
+}
+
+def u:svg_rect(x0, y0, wd, ht, cls) {
+  "One rectangle with a class.";
+  str_concat(str_concat(str_concat(str_concat(str_concat(str_concat(str_concat(str_concat("<rect x=\"", u:svg_num(x0)), "\" y=\""), u:svg_num(y0)), "\" width=\""), u:svg_num(wd)), "\" height=\""), u:svg_num(ht)), str_concat(str_concat("\" class=\"", cls), "\"/>"))
+}
+
+def u:svg_cells(v, x0, y0, wd, on_mask) {
+  "A row of value cells; cells whose on_mask entry is one are highlighted, zeros are drawn as padding.";
+  n = reduce_mul(shape(v));
+  out = "";
+  i = 0;
+  while lt(i, n) {
+    val = take(v, 0, i);
+    cls = if take(on_mask, 0, i) {
+      "on"
+    } else {
+      if val {
+        "cell"
+      } else {
+        "pad"
+      }
+    };
+    out = str_concat(out, u:svg_rect(x0 + i * wd, y0, wd - 2, 24, cls));
+    out = str_concat(out, u:svg_text(x0 + i * wd + 5, y0 + 17, "", u:svg_num(val)));
+    i = i + 1
+  };
+  out
+}
+
+def u:svg_id_cells(v, x0, y0, wd) {
+  "A row of small-font id cells for the alphabet strip.";
+  n = reduce_mul(shape(v));
+  out = "";
+  i = 0;
+  while lt(i, n) {
+    out = str_concat(out, u:svg_rect(x0 + i * wd, y0, wd - 2, 24, "cell"));
+    out = str_concat(out, u:svg_text(x0 + i * wd + 2, y0 + 16, "s", u:svg_num(take(v, 0, i))));
+    i = i + 1
+  };
+  out
+}
+
+def u:svg_chars(text, x0, y0, wd) {
+  "A row of character cells for a string.";
+  n = str_len(text);
+  out = "";
+  i = 0;
+  while lt(i, n) {
+    out = str_concat(out, u:svg_rect(x0 + i * wd, y0, wd - 2, 24, "cell"));
+    out = str_concat(out, u:svg_text(x0 + i * wd + 7, y0 + 17, "", str_slice(text, i, 1)));
+    i = i + 1
+  };
+  out
+}
+
+def u:window_svg() {
+  "Diagram: alphabet ids, one example encoded, then x, y, and mask rows of the padded window.";
+  alphabet = u:domain_alphabet();
+  ids = unwrap(u:domain_encode(example));
+  page = u:svg_head("Token window data structure", "The alphabet assigns each character an id. The example text is encoded, right padded with id zero, then split into x (first T ids), y (the same ids shifted by one), and a mask that is one only where y is an answer or stop token.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "TOKEN WINDOW -- text to x, y, mask"));
+  page = str_concat(page, u:svg_text(32, 60, "m", str_concat(str_concat("WHAT: alphabet of ", u:svg_num(u:domain_vocab_size())), " characters; a character index is its token id; index 0 (~) is padding")));
+  page = str_concat(page, u:svg_chars(str_slice(alphabet, 0, 52), 32, 74, 17));
+  page = str_concat(page, u:svg_id_cells(range(52), 32, 100, 17));
+  page = str_concat(page, u:svg_text(32, 160, "k", str_concat("example text  ", example)));
+  page = str_concat(page, u:svg_chars(example, 260, 143, 30));
+  page = str_concat(page, u:svg_text(32, 200, "k", "ids"));
+  page = str_concat(page, u:svg_cells(ids, 260, 183, 30, fill([str_len(example)], 0)));
+  page = str_concat(page, u:svg_text(32, 250, "k", "x = first T ids"));
+  page = str_concat(page, u:svg_cells(w.x, 260, 233, 30, fill([sample.window], 0)));
+  page = str_concat(page, u:svg_text(32, 290, "k", "y = shifted by one"));
+  page = str_concat(page, u:svg_cells(w.y, 260, 273, 30, w.mask));
+  page = str_concat(page, u:svg_text(32, 330, "k", "mask = answer targets"));
+  page = str_concat(page, u:svg_cells(w.mask, 260, 313, 30, w.mask));
+  page = str_concat(page, u:svg_rect(30, 360, 900, 160, "panel"));
+  page = str_concat(page, u:svg_text(50, 390, "", "WHY: next-token prediction needs an input row and a target row offset by one; padding to T lets N examples stack as [N, T]."));
+  page = str_concat(page, u:svg_text(50, 415, "", "WHY: the mask limits scoring to the answer and stop tokens, so a model is graded on answering, not on copying the prompt."));
+  page = str_concat(page, u:svg_text(50, 445, "", "HOW: u:domain_encode maps characters with str_find; u:domain_window pads with fill, slices x and y with gather_rows,"));
+  page = str_concat(page, u:svg_text(50, 470, "", "     builds the mask as gt(position, bar) * lt(position, length); u:domain_windows stacks rows with concat on axis 0."));
+  page = str_concat(page, u:svg_text(50, 500, "m", "Highlighted y cells are the two masked targets, the answer 5 and the stop token; tests/test_domain.mlpl asserts them."));
+  str_concat(page, "</svg>")
+}
+
+def u:tag_class(tag) {
+  "CSS class for a task family tag.";
+  unwrap(list_get(["t0", "t1", "t2", "t3"], tag))
+}
+
+def u:tags_svg() {
+  "Diagram: each sample example with its family tag, and the mixture ratios that fix family counts.";
+  names = u:domain_tag_names();
+  page = u:svg_head("Task tag data structure", "Eight generated examples listed with their task family tag, beside bars showing the fixed mixture ratios of the 120-example fixture.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "TASK TAGS -- which family each example belongs to"));
+  page = str_concat(page, u:svg_text(32, 60, "m", "WHAT: tags:[N] holds 0 arithmetic, 1 sequence, 2 mlpl, 3 prose; texts:[N] are the prompt|answer. strings"));
+  i = 0;
+  while lt(i, d.count) {
+    tag = take(d.tags, 0, i);
+    page = str_concat(page, u:svg_rect(32, 80 + i * 30, 110, 24, u:tag_class(tag)));
+    page = str_concat(page, u:svg_text(40, 97 + i * 30, "", str_concat(str_concat(u:svg_num(tag), " "), unwrap(list_get(names, tag)))));
+    page = str_concat(page, u:svg_rect(150, 80 + i * 30, 380, 24, "cell"));
+    page = str_concat(page, u:svg_text(158, 97 + i * 30, "", unwrap(list_get(d.texts, i))));
+    i = i + 1
+  };
+  full = unwrap(u:domain_load_mixture(u:domain_mixture_path()));
+  counts = u:domain_counts(full);
+  ratios = [full.ratios.arithmetic, full.ratios.sequence, full.ratios.mlpl, full.ratios.prose];
+  page = str_concat(page, u:svg_text(570, 97, "k", "mixture-v0.json, 120 examples"));
+  j = 0;
+  while lt(j, 4) {
+    page = str_concat(page, u:svg_rect(570, 110 + j * 40, round(take(ratios, 0, j) * 800), 24, u:tag_class(j)));
+    page = str_concat(page, u:svg_text(578, 127 + j * 40, "", str_concat(str_concat(str_concat(unwrap(list_get(names, j)), " "), u:svg_num(take(ratios, 0, j) * 100)), str_concat(str_concat("% = ", u:svg_num(take(counts, 0, j))), " examples"))));
+    j = j + 1
+  };
+  page = str_concat(page, u:svg_rect(30, 340, 900, 180, "panel"));
+  page = str_concat(page, u:svg_text(50, 370, "", "WHY: expert specialization is only observable when examples carry a family label; accuracy is scored per family."));
+  page = str_concat(page, u:svg_text(50, 395, "", "WHY: the ratios are a fixture, not a hidden constant; prose is smallest so exactly scored families dominate."));
+  page = str_concat(page, u:svg_text(50, 425, "", "HOW: u:domain_counts rounds ratio * total per family, the last family absorbs rounding; u:domain_build makes"));
+  page = str_concat(page, u:svg_text(50, 450, "", "     count examples per family from seed * 100000 + tag * 10000 + j, so each example is reproducible from tag and j."));
+  page = str_concat(page, u:svg_text(50, 480, "m", "Answers come from oracles: interpreter arithmetic, gather_rows reorderings, the named builtin, a fixed animal-to-place table."));
+  str_concat(page, "</svg>")
+}
+
+def u:split_svg() {
+  "Diagram: seeded keys, their ascending rank order, and the resulting train/validation assignment.";
+  page = u:svg_head("Split data structure", "Eight rows receive seeded uniform keys; grade_up ranks them; the first six ranks form the training set and the remaining two the validation set.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "SPLIT -- a seeded permutation, not a coin per row"));
+  page = str_concat(page, u:svg_text(32, 60, "m", "WHAT: keys:[N] uniform in [0,1); order:[N] = grade_up(keys); train = first round(0.75 N) of order; val = the rest"));
+  k = round(sample.train_fraction * sample.total);
+  page = str_concat(page, u:svg_text(32, 100, "k", "row"));
+  page = str_concat(page, u:svg_text(160, 100, "k", "key (seed 0)"));
+  page = str_concat(page, u:svg_text(340, 100, "k", "rank"));
+  page = str_concat(page, u:svg_text(440, 100, "k", "assignment"));
+  i = 0;
+  while lt(i, sample.total) {
+    rank = 0;
+    j = 0;
+    while lt(j, sample.total) {
+      rank = if eq(take(s.order, 0, j), i) {
+        j
+      } else {
+        rank
+      };
+      j = j + 1
+    };
+    cls = if lt(rank, k) {
+      "tr"
+    } else {
+      "va"
+    };
+    label = if lt(rank, k) {
+      "train"
+    } else {
+      "validation"
+    };
+    page = str_concat(page, u:svg_rect(32, 112 + i * 28, 60, 24, "cell"));
+    page = str_concat(page, u:svg_text(52, 129 + i * 28, "", u:svg_num(i)));
+    page = str_concat(page, u:svg_rect(160, 112 + i * 28, 150, 24, "cell"));
+    page = str_concat(page, u:svg_text(168, 129 + i * 28, "", u:svg_num(round(take(s.keys, 0, i) * 1000) / 1000)));
+    page = str_concat(page, u:svg_rect(340, 112 + i * 28, 60, 24, "cell"));
+    page = str_concat(page, u:svg_text(360, 129 + i * 28, "", u:svg_num(rank)));
+    page = str_concat(page, u:svg_rect(440, 112 + i * 28, 120, 24, cls));
+    page = str_concat(page, u:svg_text(448, 129 + i * 28, "", label));
+    i = i + 1
+  };
+  page = str_concat(page, u:svg_text(600, 129, "k", "order = grade_up(keys)"));
+  page = str_concat(page, u:svg_cells(s.order, 600, 140, 30, fill([sample.total], 0)));
+  page = str_concat(page, u:svg_text(600, 200, "k", "train = order[0..6)"));
+  page = str_concat(page, u:svg_cells(s.train, 600, 211, 30, fill([k], 1)));
+  page = str_concat(page, u:svg_text(600, 270, "k", "val = order[6..8)"));
+  page = str_concat(page, u:svg_cells(s.val, 600, 281, 30, fill([sample.total - k], 0)));
+  page = str_concat(page, u:svg_rect(30, 360, 900, 160, "panel"));
+  page = str_concat(page, u:svg_text(50, 390, "", "WHY: exact-match accuracy only means something on rows never trained on, and the split must be identical across lessons."));
+  page = str_concat(page, u:svg_text(50, 415, "", "WHY: ranking keys gives an exact train count; flipping a coin per row would not."));
+  page = str_concat(page, u:svg_text(50, 445, "", "HOW: u:domain_split draws random(seed, [N]), ranks with grade_up, and slices the order with u:domain_slice (gather_rows)."));
+  page = str_concat(page, u:svg_text(50, 470, "", "     keys, order, train, and val are emitted as data/split observations so a host shows them without knowing what a split is."));
+  page = str_concat(page, u:svg_text(50, 500, "m", "The highlighted train strip holds the held-in row indices; tests/test_domain.mlpl asserts every row lands exactly once."));
+  str_concat(page, "</svg>")
+}
+
+r1 = write_atomic(str_concat(out_dir, "/domain-window.svg"), u:window_svg());
+r2 = write_atomic(str_concat(out_dir, "/domain-tags.svg"), u:tags_svg());
+r3 = write_atomic(str_concat(out_dir, "/domain-split.svg"), u:split_svg());
+print("NUMERICAL CONTRACT -- 8 sample examples with tags [0,0,0,1,1,2,2,3]; window T=12 of 2+3=|5. masks exactly two targets; split 6 train / 2 validation.");
+print("THE POINT -- Data structures are exact arrays with names; every diagram cell is a value a test asserts.");
+print("BOUNDARY -- The sample here has eight examples; the fixture used by lessons has 120 with window 28.");
+contract = reduce_mul(eq(tags, [0, 0, 0, 1, 1, 2, 2, 3])) * eq(reduce_add(mask), 2) * eq(reduce_mul(shape(s.train)), 6);
+if contract * is_ok(r1) * is_ok(r2) * is_ok(r3) {
+  ok("domain microscope written")
+} else {
+  err("domain microscope contract failed")
+}

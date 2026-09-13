@@ -8,7 +8,9 @@ for path in AGENTS.md CLAUDE.md COPYRIGHT LICENSE README.md justfile mlplunit.co
     docs/results.md docs/sagas.md docs/sw-mlpl-blockers.md docs/sw-mlpl-findings.md \
     lib/observe.mlpl tests/test_observe.mlpl tests/test_capability_probes.mlpl \
     probes/f5_one_hot_in_grad.mlpl probes/f6_repeat_in_grad.mlpl probes/f7_model_argument.mlpl \
-    probes/f8_emit_frame_name.mlpl probes/d1_silent_zero_grad.mlpl scripts/run-probes; do
+    probes/f8_emit_frame_name.mlpl probes/d1_silent_zero_grad.mlpl scripts/run-probes \
+    lib/domain.mlpl lib/evaluate.mlpl lib/results.mlpl fixtures/domain/mixture-v0.json \
+    demos/domain_microscope.mlpl catalog/lessons.toml scripts/run-domain-demo scripts/check-catalog; do
     if [ ! -e "$repo_dir/$path" ]; then
         echo "missing required file: $path" >&2
         exit 1

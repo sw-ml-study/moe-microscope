@@ -39,6 +39,10 @@ Gaps with reproducers are written up as upstream work orders in
 | Models as user-function parameters | models cannot be arguments (F7); they are reached as globals | lesson helpers name their globals |
 | Observation facade | `emit_frame` requires a literal name (F8); no forwarding wrapper is possible | `lib/observe.mlpl` provides naming helpers only |
 | Pre-evaluated loss variables | `grad(l, W)` on an assigned `l` is silently zero (D1) | always write the loss as an expression or user-function call |
+| Rank-one gather, reverse, sort | `gather_rows` is rank-two only; no `reverse` or value `sort` builtin | `u:domain_slice` reshapes to a column, gathers, reshapes back; sort is `gather_rows(column, grade_up(v))` |
+| String lists | no append; `for` does not iterate a string list | accumulate a `;`-joined string and `str_split` it; index with `list_get` in a `while` loop |
+| Dynamic record access | `record_get(r, key)` returns a Result | `unwrap` before `type_of` or use |
+| Script includes | `include` resolves relative to the script directory, sandboxed under `--source-dir` | demos use `../lib/...`; tests use `lib/...` through mlplunit's source root |
 | Integer arithmetic | arrays are f64; hashing exact below 2^53, no bitwise XOR | mul-add-mod hashing (already how `ngram_hash` is specified) |
 | Quantized weights | no integer dtype; INT8/INT4 are integer-valued f64 arrays plus packed byte files | byte accounting from packed files, not from in-memory arrays |
 | Multiple observations per step and non-numeric annotations | numeric-only frames; no typed envelope | stable slash names plus lesson text, as in the peer |

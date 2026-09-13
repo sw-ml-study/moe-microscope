@@ -56,6 +56,36 @@ acceptance scale for every lesson. The same source runs at a lab scale under
 `device("mlx") { }`. The 256 MB, 0.5 TOPS device is an inference target for
 the packed file, not a training target.
 
+## Synthetic domain microscope
+
+DM01 is the first executable microscope. It shows the three data structures
+every later lesson consumes: the padded token window with its shifted targets
+and answer mask, the task tags that make expert specialization measurable,
+and the seeded split that holds rows out. Each diagram is drawn from values a
+test asserts and annotated with what the structure is, why the model needs
+it, and how the MLPL computes it.
+
+![Token window: alphabet ids, one encoded example, and the x, y, and mask rows](assets/previews/domain-window.svg)
+
+![Task tags on eight generated examples beside the fixed mixture ratios](assets/previews/domain-tags.svg)
+
+![Split: seeded keys, their ranks, and the train or validation assignment](assets/previews/domain-split.svg)
+
+```sh
+just domain          # run the demo and check the three diagrams are fresh
+just domain write    # regenerate the committed diagrams from the demo
+just tests           # 28 native tests over the generators, oracles, evaluation, and results writer
+```
+
+The four task families are small-integer arithmetic, `rev`/`sort` sequence
+transformations, tiny MLPL expressions whose answers come from the named
+builtin, and templated prose with a fixed animal-to-place pattern. The
+mixture ratios, total, window, and split fraction live in
+[`fixtures/domain/mixture-v0.json`](fixtures/domain/mixture-v0.json). The
+exact-match harness reports accuracy per family and overall, and the results
+writer appends one fixed-column row per lesson run to
+[`docs/results.md`](docs/results.md).
+
 ## What is here
 
 ```text
@@ -66,6 +96,7 @@ docs/sw-mlpl-blockers.md     Capability ledger: supported, awkward, blocked
 docs/sw-mlpl-findings.md     Upstream work orders with reproducers and status
 docs/cross-repo-handoffs.md  Read-only work orders for sibling repositories
 docs/results.md              Memory/speed/quality rows, one per lesson run
+catalog/lessons.toml         Lesson inventory with implementation form and measured triple
 docs/research.txt            The original design discussion
 lib/  demos/  tests/         MLPL model code, lessons, and native mlplunit tests
 probes/                      Standalone reproducers re-checked by the gate
@@ -95,6 +126,7 @@ just                 # list recipes
 just check           # the complete pre-commit gate
 just tests           # native mlplunit tests (arguments filter paths or tags)
 just probes          # re-run the upstream-finding reproducers
+just domain          # run DM01 and check its diagrams
 just mlpl-style      # canonical formatting and docstring checks
 ```
 

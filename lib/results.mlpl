@@ -1,0 +1,37 @@
+# Results-table writer: one fixed-column markdown row per lesson run, appended to docs/results.md.
+
+def u:results_columns() {
+  "Record keys of the fixed results columns, in table order.";
+  ["lesson", "config", "binary", "params", "active_params", "bytes_per_expert", "packed_bytes", "expert_evals", "bytes_per_token", "cache_hit_rate", "ms_per_token", "val_loss", "ppl", "arith_acc", "seq_acc", "mlpl_acc", "prose_acc", "kl", "router_entropy", "balance", "specialization"]
+}
+
+def u:results_cell(row, key) {
+  "One cell as text: strings verbatim, numbers via to_string, missing values as a dash.";
+  if has_field(row, key) {
+    v = unwrap(record_get(row, key));
+    if str_eq(type_of(v), "string") {
+      v
+    } else {
+      to_string(v)
+    }
+  } else {
+    "-"
+  }
+}
+
+def u:results_row(row) {
+  "Format a record as one markdown table row with every fixed column.";
+  keys = u:results_columns();
+  out = "|";
+  i = 0;
+  while lt(i, list_len(keys)) {
+    out = str_concat(str_concat(str_concat(out, " "), u:results_cell(row, unwrap(list_get(keys, i)))), " |");
+    i = i + 1
+  };
+  out
+}
+
+def u:results_append(path, row) {
+  "Append one formatted row plus newline to the results file.";
+  append_bytes(path, tokenize_bytes(str_concat(u:results_row(row), "\n")))
+}

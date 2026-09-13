@@ -1,0 +1,16 @@
+#!/bin/sh
+# Every catalog entry must name existing files and an implementation form.
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+catalog="$repo_root/catalog/lessons.toml"
+
+grep -q '^schema = "sw-ml-study.moe-microscope-lessons"$' "$catalog"
+grep -q '^id = "DM01"$' "$catalog"
+grep -Eq '^implementation = "(builtin|from-scratch|both)"$' "$catalog"
+
+for path in $(grep -oE '"(demos|lib|tests|assets|fixtures)/[^"]+"' "$catalog" | tr -d '"' | sort -u); do
+    [ -f "$repo_root/$path" ] || { echo "catalog target missing: $path" >&2; exit 1; }
+done
+
+echo "PASS lesson catalog references existing artifacts"

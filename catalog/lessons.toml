@@ -1,0 +1,20 @@
+schema = "sw-ml-study.moe-microscope-lessons"
+version = 1
+
+# implementation: "builtin" (calls shipped sw-MLPL features), "from-scratch" (the mechanism is the lesson), or "both" (detailed and pragmatic forms with a parity check).
+
+[[lesson]]
+id = "DM01"
+slug = "synthetic-domain"
+title = "Text becomes windows, tags, and a held-out split"
+source = "demos/domain_microscope.mlpl"
+library = ["lib/domain.mlpl", "lib/evaluate.mlpl", "lib/results.mlpl"]
+test = ["tests/test_domain.mlpl", "tests/test_evaluate.mlpl", "tests/test_results.mlpl"]
+previews = ["assets/previews/domain-window.svg", "assets/previews/domain-tags.svg", "assets/previews/domain-split.svg"]
+fixture = "fixtures/domain/mixture-v0.json"
+implementation = "builtin"
+observations = ["data/tags", "data/window/x", "data/window/y", "data/window/mask", "data/split/keys", "data/split/order"]
+memory = "120 examples, window 28: x, y, mask are three [120,28] arrays (10,080 values); alphabet 52 ids"
+speed = "generation and windowing are O(N T) with O(N^2) concat copying; sample of 8 runs in well under a second"
+quality = "oracle answers by construction; exact-match harness reports arithmetic, sequence, mlpl, prose, overall"
+status = "accepted"

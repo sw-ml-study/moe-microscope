@@ -36,6 +36,11 @@ in-repo teacher fixture that later distillation lessons consume.
 6. `in-repo-teacher-fixture` - the larger dense teacher trained once, its
    next-token distributions exported as a bounded, hash-checked fixture.
 
+Step 3 status: complete. `lib/domain.mlpl`, `lib/evaluate.mlpl`, and
+`lib/results.mlpl` with 28 native tests; the 120-example mixture fixture;
+the DM01 domain microscope with three annotated diagrams (window, tags,
+split) freshness-checked by `just check`; catalog entry DM01.
+
 Step 2 status: complete. Sixteen native probes and five standalone
 reproducers; F1 to F4 verified fixed upstream, F5 to F8 and D1 pinned and
 queued upstream as `moe-microscope-followups`. See

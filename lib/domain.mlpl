@@ -1,0 +1,281 @@
+# Synthetic domain: restricted alphabet, four seeded task-family generators with oracles, mixture, windows, splits.
+
+def u:domain_alphabet() {
+  "The restricted byte-level alphabet; a character's index is its token id and index 0 is padding.";
+  "~ 0123456789+-*=>,[]():abcdefghijklmnopqrstuvwxyz_|."
+}
+
+def u:domain_vocab_size() {
+  "Number of token ids, equal to the alphabet length.";
+  str_len(u:domain_alphabet())
+}
+
+def u:domain_tag_names() {
+  "Task-family names in tag order 0 to 3.";
+  ["arithmetic", "sequence", "mlpl", "prose"]
+}
+
+def u:domain_encode(s) {
+  "Map each character of s to its alphabet index; a character outside the alphabet returns err.";
+  n = str_len(s);
+  ids = fill([n], 0);
+  bad = 0;
+  i = 0;
+  while lt(i, n) {
+    id = str_find(u:domain_alphabet(), str_slice(s, i, 1));
+    ids = scatter(ids, i, id);
+    bad = bad + lt(id, 0);
+    i = i + 1
+  };
+  if bad {
+    err("domain_encode: character outside the restricted alphabet")
+  } else {
+    ok(ids)
+  }
+}
+
+def u:domain_decode(ids) {
+  "Map token ids back to their characters.";
+  n = reduce_mul(shape(ids));
+  out = "";
+  i = 0;
+  while lt(i, n) {
+    out = str_concat(out, str_slice(u:domain_alphabet(), take(ids, 0, i), 1));
+    i = i + 1
+  };
+  out
+}
+
+def u:domain_slice(v, start, count) {
+  "Contiguous slice of a rank-one vector (rank-one gather spelled through gather_rows).";
+  n = reduce_mul(shape(v));
+  reshape(gather_rows(reshape(v, [n, 1]), start + range(count)), [count])
+}
+
+def u:domain_window(text, T) {
+  "Encode prompt|answer. text into a right-padded window: x (first T ids), y (shifted T ids), mask (1 on answer targets).";
+  ids = u:domain_encode(text)?;
+  n = reduce_mul(shape(ids));
+  bar = str_find(text, "|");
+  if gt(n, T + 1) {
+    err("domain_window: text longer than the window")
+  } else {
+    padded = if lt(n, T + 1) {
+      concat(ids, fill([T + 1 - n], 0))
+    } else {
+      ids
+    };
+    positions = range(T) + 1;
+    ok({x: u:domain_slice(padded, 0, T), y: u:domain_slice(padded, 1, T), mask: gt(positions, bar) * lt(positions, n)})
+  }
+}
+
+def u:domain_text(example) {
+  "The training text of one example: prompt, bar, answer, stop.";
+  str_concat(str_concat(str_concat(example.prompt, "|"), example.answer), ".")
+}
+
+def u:arith_oracle(a, b, op) {
+  "Exact answer for op 0 (a+b), 1 (larger minus smaller), 2 (small product).";
+  if eq(op, 0) {
+    a + b
+  } else {
+    if eq(op, 1) {
+      reduce(:max, [a, b]) - reduce(:min, [a, b])
+    } else {
+      mod(a, 13) * mod(b, 13)
+    }
+  }
+}
+
+def u:gen_arithmetic(seed) {
+  "Small-integer arithmetic example, tag 0.";
+  r = rand_ints(3, 0, 100, seed);
+  a = take(r, 0, 0);
+  b = take(r, 0, 1);
+  op = mod(take(r, 0, 2), 3);
+  lhs = if eq(op, 0) {
+    str_concat(str_concat(to_string(a), "+"), to_string(b))
+  } else {
+    if eq(op, 1) {
+      str_concat(str_concat(to_string(reduce(:max, [a, b])), "-"), to_string(reduce(:min, [a, b])))
+    } else {
+      str_concat(str_concat(to_string(mod(a, 13)), "*"), to_string(mod(b, 13)))
+    }
+  };
+  {prompt: str_concat(lhs, "="), answer: to_string(u:arith_oracle(a, b, op)), tag: 0}
+}
+
+def u:digits_text(v) {
+  "Space-separated digits of a rank-one vector.";
+  n = reduce_mul(shape(v));
+  out = "";
+  i = 0;
+  while lt(i, n) {
+    out = if eq(i, 0) {
+      to_string(take(v, 0, i))
+    } else {
+      str_concat(str_concat(out, " "), to_string(take(v, 0, i)))
+    };
+    i = i + 1
+  };
+  out
+}
+
+def u:sequence_oracle(v, op) {
+  "Exact answer for op 0 (reverse) or 1 (ascending sort) of a digit vector.";
+  n = reduce_mul(shape(v));
+  order = if eq(op, 0) {
+    (n - 1) - range(n)
+  } else {
+    grade_up(v)
+  };
+  reshape(gather_rows(reshape(v, [n, 1]), order), [n])
+}
+
+def u:gen_sequence(seed) {
+  "Sequence transformation example (rev or sort of three to five digits), tag 1.";
+  r = rand_ints(7, 0, 10, seed);
+  n = 3 + mod(take(r, 0, 5), 3);
+  v = u:domain_slice(r, 0, n);
+  op = mod(take(r, 0, 6), 2);
+  name = if eq(op, 0) {
+    "rev "
+  } else {
+    "sort "
+  };
+  {prompt: str_concat(str_concat(name, u:digits_text(v)), "="), answer: u:digits_text(u:sequence_oracle(v, op)), tag: 1}
+}
+
+def u:mlpl_oracle(v, kind) {
+  "Exact answer computed by the interpreter's own builtin: 0 reduce_add, 1 reduce(:max), 2 reduce_mul.";
+  if eq(kind, 0) {
+    reduce_add(v)
+  } else {
+    if eq(kind, 1) {
+      reduce(:max, v)
+    } else {
+      reduce_mul(v)
+    }
+  }
+}
+
+def u:gen_mlpl(seed) {
+  "Tiny MLPL expression example whose answer is produced by the builtin it names, tag 2.";
+  r = rand_ints(4, 1, 10, seed);
+  v = u:domain_slice(r, 0, 3);
+  kind = mod(take(r, 0, 3), 3);
+  head = if eq(kind, 0) {
+    "reduce_add(["
+  } else {
+    if eq(kind, 1) {
+      "reduce(:max,["
+    } else {
+      "reduce_mul(["
+    }
+  };
+  body = str_join(str_split(u:digits_text(v), " "), ",");
+  {prompt: str_concat(str_concat(head, body), "])="), answer: to_string(u:mlpl_oracle(v, kind)), tag: 2}
+}
+
+def u:prose_place(animal) {
+  "The place each animal always ends up on; a fixed local pattern for Engram to memorize.";
+  unwrap(list_get(["mat", "rug", "nest", "log"], animal))
+}
+
+def u:gen_prose(seed) {
+  "Short templated prose example, tag 3.";
+  r = rand_ints(2, 0, 4, seed);
+  animal = take(r, 0, 0);
+  verb = take(r, 0, 1);
+  a = unwrap(list_get(["cat", "dog", "bird", "frog"], animal));
+  w = unwrap(list_get(["sat", "ran", "hid", "sang"], verb));
+  {prompt: str_concat(str_concat(str_concat(str_concat("the ", a), " "), w), " on the "), answer: u:prose_place(animal), tag: 3}
+}
+
+def u:domain_example(tag, seed) {
+  "Dispatch one example of the given task family.";
+  if eq(tag, 0) { u:gen_arithmetic(seed) } else {
+    if eq(tag, 1) { u:gen_sequence(seed) } else {
+      if eq(tag, 2) { u:gen_mlpl(seed) } else { u:gen_prose(seed) }
+    }
+  }
+}
+
+def u:domain_mixture_path() {
+  "Location of the fixed mixture fixture.";
+  "fixtures/domain/mixture-v0.json"
+}
+
+def u:domain_load_mixture(path) {
+  "Read the mixture fixture record from JSON.";
+  parse_json(read_text(path)?)
+}
+
+def u:domain_counts(mixture) {
+  "Example count per task family; the last family absorbs rounding so the total is exact.";
+  c0 = round(mixture.ratios.arithmetic * mixture.total);
+  c1 = round(mixture.ratios.sequence * mixture.total);
+  c2 = round(mixture.ratios.mlpl * mixture.total);
+  [c0, c1, c2, mixture.total - (c0 + c1 + c2)]
+}
+
+def u:domain_join(acc, s, first) {
+  "Accumulate strings separated by semicolons.";
+  if first {
+    s
+  } else {
+    str_concat(str_concat(acc, ";"), s)
+  }
+}
+
+def u:domain_build(mixture) {
+  "Generate the whole mixture deterministically: prompts, answers, texts, and tags in family order.";
+  counts = u:domain_counts(mixture);
+  prompts = "";
+  answers = "";
+  texts = "";
+  tags = fill([mixture.total], 0);
+  k = 0;
+  tag = 0;
+  while lt(tag, 4) {
+    j = 0;
+    while lt(j, take(counts, 0, tag)) {
+      ex = u:domain_example(tag, mixture.seed * 100000 + tag * 10000 + j);
+      prompts = u:domain_join(prompts, ex.prompt, eq(k, 0));
+      answers = u:domain_join(answers, ex.answer, eq(k, 0));
+      texts = u:domain_join(texts, u:domain_text(ex), eq(k, 0));
+      tags = scatter(tags, k, tag);
+      k = k + 1;
+      j = j + 1
+    };
+    tag = tag + 1
+  };
+  {prompts: str_split(prompts, ";"), answers: str_split(answers, ";"), texts: str_split(texts, ";"), tags: tags, count: k}
+}
+
+def u:domain_windows(texts, T) {
+  "Stack every text into x, y, mask matrices of shape [N, T].";
+  n = list_len(texts);
+  first = u:domain_window(unwrap(list_get(texts, 0)), T)?;
+  x = reshape(first.x, [1, T]);
+  y = reshape(first.y, [1, T]);
+  mask = reshape(first.mask, [1, T]);
+  i = 1;
+  while lt(i, n) {
+    w = u:domain_window(unwrap(list_get(texts, i)), T)?;
+    x = concat(x, reshape(w.x, [1, T]), 0);
+    y = concat(y, reshape(w.y, [1, T]), 0);
+    mask = concat(mask, reshape(w.mask, [1, T]), 0);
+    i = i + 1
+  };
+  ok({x: x, y: y, mask: mask})
+}
+
+def u:domain_split(n, train_fraction, seed) {
+  "Deterministic held-out split: rank seeded uniform keys, first round(fraction * n) are training rows.";
+  keys = random(seed, [n]);
+  order = grade_up(keys);
+  k = round(train_fraction * n);
+  {keys: keys, order: order, train: u:domain_slice(order, 0, k), val: u:domain_slice(order, k, n - k)}
+}

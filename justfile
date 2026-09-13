@@ -16,6 +16,10 @@ tests *args:
 probes:
     ./scripts/run-probes
 
+# Run the domain microscope and check its three diagrams; `just domain write` regenerates them.
+domain mode="check":
+    ./scripts/run-domain-demo {{mode}}
+
 # Print the selected sw-MLPL executable.
 mlpl-path:
     ./scripts/select-mlpl

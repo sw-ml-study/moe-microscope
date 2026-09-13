@@ -1,0 +1,29 @@
+# Exact-match evaluation: per-example hits and per-task-family accuracy.
+
+def u:exact_match(preds, answers) {
+  "One or zero per example: prediction string equals the answer string exactly.";
+  n = list_len(answers);
+  hits = fill([n], 0);
+  i = 0;
+  while lt(i, n) {
+    hits = scatter(hits, i, str_eq(unwrap(list_get(preds, i)), unwrap(list_get(answers, i))));
+    i = i + 1
+  };
+  hits
+}
+
+def u:tag_accuracy(hits, tags, tag) {
+  "Mean hit rate over examples carrying tag; zero when the tag is absent.";
+  mask = eq(tags, tag);
+  count = reduce_add(mask);
+  if count {
+    reduce_add(hits * mask) / count
+  } else {
+    0
+  }
+}
+
+def u:accuracy_by_tag(hits, tags) {
+  "Per-family and overall exact-match accuracy as a record.";
+  {arithmetic: u:tag_accuracy(hits, tags, 0), sequence: u:tag_accuracy(hits, tags, 1), mlpl: u:tag_accuracy(hits, tags, 2), prose: u:tag_accuracy(hits, tags, 3), overall: mean(hits)}
+}

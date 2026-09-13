@@ -1,0 +1,20 @@
+# Exact-match evaluation contract.
+include "lib/evaluate.mlpl";
+
+@test {name: "exact match compares strings whole", tags: ["evaluate"]}
+def u:test_exact_match() {
+  "Substrings and near misses score zero.";
+  u:assert_eq(u:exact_match(["42", "4", "1 3 4"], ["42", "42", "1 3 4"]), [1, 0, 1], "hits")
+}
+
+@test {name: "accuracy is reported per task family and overall", tags: ["evaluate"]}
+def u:test_accuracy_by_tag() {
+  "Absent families report zero rather than dividing by zero.";
+  a = u:accuracy_by_tag([1, 0, 1, 1], [0, 0, 1, 1]);
+  u:assert_approx(a.arithmetic, 0.5, 0.000001, "half of arithmetic")?;
+  u:assert_eq(a.sequence, 1, "all sequence")?;
+  u:assert_eq(a.mlpl, 0, "no mlpl examples")?;
+  u:assert_approx(a.overall, 0.75, 0.000001, "overall")
+}
+
+u:run_registered_tests()

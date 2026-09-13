@@ -1,0 +1,25 @@
+# Results-table writer contract.
+include "lib/results.mlpl";
+
+@test {name: "a results row has every fixed column with dashes for missing values", tags: ["results"]}
+def u:test_results_row() {
+  "Column order is frozen so the ablation matrix reads straight down.";
+  u:assert_eq(list_len(u:results_columns()), 21, "twenty-one columns")?;
+  row = u:results_row({lesson: "DN01", params: 1234, val_loss: 1.5});
+  u:assert_text_eq(str_slice(row, 0, 25), "| DN01 | - | - | 1234 | -", "leading cells")?;
+  u:assert_eq(list_len(str_split(row, "|")), 23, "twenty-one cells between twenty-two bars")
+}
+
+@test {name: "append writes one row per call", tags: ["results", "io"]}
+def u:test_results_append() {
+  "Rows accumulate in file order.";
+  path = "tests/fixtures/results-probe.tmp";
+  write_atomic(path, "")?;
+  u:results_append(path, {lesson: "A"})?;
+  u:results_append(path, {lesson: "B", ppl: 2})?;
+  text = read_text(path)?;
+  u:assert_eq(list_len(str_split(text, "\n")), 3, "two rows and a trailing newline")?;
+  u:assert_eq(str_find(text, "| B | - | - | - | - | - | - | - | - | - | - | - | 2 |"), 86, "second row keeps column positions")
+}
+
+u:run_registered_tests()

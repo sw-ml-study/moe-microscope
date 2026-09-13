@@ -1,0 +1,1 @@
+{"version": 0, "seed": 0, "total": 120, "window": 28, "train_fraction": 0.75, "ratios": {"arithmetic": 0.35, "sequence": 0.3, "mlpl": 0.25, "prose": 0.1}}
