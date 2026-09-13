@@ -534,25 +534,48 @@ relitigate them:
    me that again" are part of the corpus), masked losses; the flat
    classifier baseline with its diagram and results row (intent accuracy,
    destination accuracy, top-3, params, bytes, ms per query).
-3. **matcher-baseline (MB01).** The deterministic alias-and-concept matcher
+3. **recording-replay-page.** The first live demo of this repository,
+   published from GitHub Pages under `learn/` and linked from the README: a
+   static page that loads the pinned recordings (DN01, MX01, MX02) and steps
+   through them frame by frame (router logits, probabilities, mask, gate,
+   per-expert loads, balance, loss), drawn from the recorded values with the
+   names the generic host uses; previous, next, play, frame index; the SD01
+   dispatch and combine as a sequence on one recorded batch (tokens grouped
+   per expert, the expert run once, the scatter back, the exact sum) beside
+   the dense-masked path; a gate check that the site builds from committed
+   fixtures only; a browser verification record (every page loads, every
+   recording steps to its last frame) in `docs/results/live-demo.md`.
+4. **matcher-baseline (MB01).** The deterministic alias-and-concept matcher
    the campus mockup uses, written in MLPL over the same snapshot (alias
    substring hits ranked above concept token overlap, the four intents by
    keyword, unsupported when nothing matches), scored on the validation rows
    and on the paraphrase set with the same metrics as CD01; its row is the
    yardstick every docent must beat by the usefulness-bar margin.
-4. **docent-moe (CD02, CD03).** The same encoder behind a router over 4 and
+5. **docent-word-vectors (CD01b).** In-domain semantics without external
+   data: assemble `fixtures/campus/docs-a.txt` once from the campus's own
+   text (story and status sentences, taglines, summaries, and the READMEs of
+   the linked exhibit repositories, fetched by a script and committed);
+   train word vectors on it in MLPL (co-occurrence counts, positive PMI, a
+   low-rank factorization by power iteration, deterministic); store them in
+   an Engram-style hashed table (`ngram_hash` addressing over words) that
+   replaces the docent's random embedding rows and is fine-tuned; measure
+   paraphrase accuracy against CD01 and against the stronger MB01 matcher
+   that reads the same text; diagrams of the co-occurrence matrix, the
+   nearest neighbours of a few words, and the table. This is the fair way
+   for a model to earn a margin: same text for both sides.
+6. **docent-moe (CD02, CD03).** The same encoder behind a router over 4 and
    8 rank-4 delta experts, top-1, balance term; the routing and
    specialization map per destination and per concept, expert annotations
    derived from measured distributions, entropy and balance, and the
    ambiguous-query panel (top-2 comparison, CD04) as a recorded lesson.
-5. **docent-batch-export.** The `just docent` recipe: native batch
+7. **docent-batch-export.** The `just docent` recipe: native batch
    training of the chosen configuration, the packed weights, labels, and
    manifest written by MLPL (`write_atomic`, `to_json`), INT8 projection with
    measured file sizes, the recorded training run for replay, and an MLPL
    inference twin that reloads the export and asserts parity with the trained
    model on every corpus row. The gate checks the export against the pinned
    fixture the way it checks every other lesson.
-6. **docent-in-browser (CD05).** The docent page under `learn/`, inference
+8. **docent-in-browser (CD05).** The docent page under `learn/`, inference
    first: the adapted iframe bridge loads the exported weights (inlined into
    the program, since the WASM surface has no filesystem sandbox), answers
    queries with the "why this?" panel, replays the recorded batch run; measured
@@ -561,7 +584,7 @@ relitigate them:
    the CD06 browser benchmark row, deciding whether the "teach one epoch" and
    "teach a new exhibit" controls stay on the page. Published on GitHub Pages
    from this repository.
-7. **easel-handoff.** The work order for sw-campus: the easel component
+9. **easel-handoff.** The work order for sw-campus: the easel component
    (passive featured exhibit, interactive docent), loading the exported
    model, catalog-hash comparison with a stale badge, the local
    `DocentContext` (current place, recent places, interests, recent
@@ -569,7 +592,7 @@ relitigate them:
    the story policy, and the link back to the microscope; recordings pinned
    for the generic host.
 
-Usefulness bar, measured by steps 1 to 5 before any integration:
+Usefulness bar, measured by steps 1 to 6 before any integration:
 
 - destination exact match on held-out authored questions at or above 0.9
   across the three destinations, and intent accuracy at or above 0.9
@@ -584,12 +607,21 @@ Usefulness bar, measured by steps 1 to 5 before any integration:
 - value over a deterministic matcher, measured: on the held-out paraphrase
   set (`fixtures/campus/paraphrases-a.json`, phrasings that contain no alias
   verbatim plus off-topic questions, never trained on) the docent's
-  destination accuracy exceeds the alias-and-concept matcher's (step 3,
-  MB01, the mockup's algorithm in MLPL) by at least 20 points, its intent
+  destination accuracy exceeds the stronger of the two MB01 matchers (the
+  mockup's alias-and-concept matcher, and a matcher over all the catalog
+  text the model may also read) by at least 20 points, its intent
   accuracy by at least 20 points, and its unsupported recall is at least
   0.8; all numbers sit side by side in the docent results table. If the
-  margin is not met, the campus keeps its matcher and Saga 6 does not
+  margin is not met, the campus keeps its matcher and Saga 5 does not
   start.
+
+Milestone, first publication: the replay page (step 3) is live on GitHub
+Pages and linked from the README, the campus's Computational Sciences
+Institute lobby features it (a handoff the campus repository applies), and
+a blog post describes both honestly, with the campus docent still gated or
+labelled as the keyword matcher. This milestone does not wait for the
+trained docent; the docent joins the campus only when the usefulness bar
+with its margin over the matcher is met.
 
 Exit: the usefulness bar is met and recorded in the results table; a
 batch-trained tiny MoE, loaded in the page, navigates among the three
@@ -600,34 +632,7 @@ dense, four-expert, and eight-expert rows sit in the results table with the
 docent metrics; snapshot A is preserved with its provenance; sw-campus has an
 implementation-ready easel handoff.
 
-## Saga 5: live demo on GitHub Pages
-
-The first live demo of this repository, published from GitHub Pages and
-linked from the README: the MoE moving parts step by step, then the docent.
-
-1. **recording-replay.** A static page under `learn/` that loads the pinned
-   recordings (`fixtures/recordings/*.json`, DN01, MX01, MX02) and steps
-   through them frame by frame: router logits, probabilities, mask, gate,
-   per-expert loads, balance, loss, each drawn from the recorded values with
-   the same names the generic host uses; no lesson-specific semantics beyond
-   naming. Previous and next step, play, and a frame index.
-2. **dispatch-walkthrough.** The SD01 dispatch and combine shown as a
-   sequence on one recorded batch: tokens grouped per expert, the expert run
-   once, the scatter back, the exact sum; the dense-masked path beside it.
-3. **docent-on-pages.** The docent page from Saga 4 step 5 linked from the
-   same site, sharing the bridge module; the budgeted live-training controls
-   only if CD06 met the budget.
-4. **readme-link-and-check.** The README links the live demo; the campus
-   handoff names it as the featured exhibit of the Computational Sciences
-   Institute lobby and flips the MoE Microscope place from early to working; a gate check
-   that the site builds from committed fixtures only; a browser verification
-   record (every page loads, every recording steps to its last frame) kept
-   in `docs/results/live-demo.md`.
-
-Exit: a public page anyone can open that shows routing, load balance, and
-dispatch step by step from real recorded runs, and asks the docent.
-
-## Saga 6: campus docent live in the campus UI
+## Saga 5: campus docent live in the campus UI
 
 The trained docent replaces the mockup's keyword matcher in the campus
 site, and that replacement is verified on the live page, not assumed. The
@@ -670,7 +675,7 @@ live site answers from weights.
 Exit: the live campus site answers from the trained weights, proven by the
 step 4 record; the keyword matcher remains only as the documented fallback.
 
-## Saga 7: campus docent v1
+## Saga 6: campus docent v1
 
 Starts when the campus adds the IBM 1442 card read punch and its radio demo
 (snapshot B). If that content is not yet published, the step authors
@@ -693,7 +698,7 @@ snapshot B as a handoff fixture first and reruns when the real content lands.
 Exit: the before/after study is a recorded lesson with rows and diagrams,
 and the campus easel can show which revision its docent knows.
 
-## Saga 8: recurrence and Engram
+## Saga 7: recurrence and Engram
 
 1. **recurrent-block (RC01).** Shared block applied `R` times with recorded
    state per recurrence, accuracy versus `R`, and the deep-supervision loss.
@@ -715,7 +720,7 @@ and the campus easel can show which revision its docent knows.
 Exit: the ablation matrix rows through RE01 exist with diagrams and triples;
 the live demo has a written, implementation-ready handoff.
 
-## Saga 9: distillation
+## Saga 8: distillation
 
 1. **token-kd (KD01 part 1).** `beta L_KD` against the in-repo teacher
    fixture; KL and accuracy deltas versus the same student without KD.
@@ -729,7 +734,7 @@ the live demo has a written, implementation-ready handoff.
 
 Exit: each distillation term has a measured, diagrammed, and tabled effect.
 
-## Saga 10: quantization, packed format, and expert cache
+## Saga 9: quantization, packed format, and expert cache
 
 1. **int8-experts (QZ01).** Symmetric INT8 experts and shared weights as
    integer-valued arrays plus scales; quality delta; bytes per expert.
@@ -749,10 +754,16 @@ Exit: each distillation term has a measured, diagrammed, and tabled effect.
    blocks during prefill, with a timeline diagram; measured versus single
    buffer.
 
+6. **kv-cache-compression (KV01).** The decode-phase cache under
+   pressure: `gen_state` sizes per token at f64, INT8, and INT4 values,
+   eviction of the oldest and lowest-attention entries, and the quality
+   cost of each on the generation benchmark prompts; bytes per token and
+   tokens per second beside exact match, with the cache drawn as it fills
+   and is compressed.
 Exit: the same model runs from a packed file through a capacity-limited cache
 with a checked curve of hit rate and bytes per token versus capacity.
 
-## Saga 11: hybrid execution and the embedded budget
+## Saga 10: hybrid execution and the embedded budget
 
 1. **bandwidth-calibration.** A tiny `bench bw` analogue measuring the
    simulated transfer and host-compute bandwidths (from counted bytes and
@@ -769,7 +780,7 @@ with a checked curve of hit rate and bytes per token versus capacity.
 Exit: HY01 and PK01 rows exist; the embedded gap is a written handoff, not a
 claim.
 
-## Saga 12: interactive microscope host, complete
+## Saga 11: interactive microscope host, complete
 
 1. **systems-recordings.** Pinned recordings for QZ01, XC01, HY01, and PK01;
    cache traces and q-star splits proven in the generic host.
@@ -784,7 +795,7 @@ claim.
 Exit: every recorded lesson renders in the generic host without lesson-
 specific Rust, and the pocket helper runs end to end.
 
-## Saga 13: configuration frontier
+## Saga 12: configuration frontier
 
 After the mechanisms exist, compare configurations on the dimensions the
 results table already records and produce a size, speed, quality frontier.
@@ -806,7 +817,7 @@ results table already records and produce a size, speed, quality frontier.
 Exit: a frontier diagram whose every point is a results row and a
 recording.
 
-## Saga 14: CUDA system and CPU-resident expert weights
+## Saga 13: CUDA system and CPU-resident expert weights
 
 Today every lesson runs in the f64 CPU interpreter; `device("mlx")` and the
 CUDA backend in sw-MLPL are unused here. This saga moves the lab-scale runs
@@ -829,13 +840,13 @@ cache or executed on the CPU.
    real); measured tokens per second against the transfer-only policy and
    against all-GPU, with VRAM held below a chosen ceiling.
 5. **vram-budget-report.** The smallest VRAM that serves each frontier pick
-   from Saga 12 at a stated tokens-per-second, with the CPU/GPU split that
+   from Saga 11 at a stated tokens-per-second, with the CPU/GPU split that
    achieves it.
 
 Exit: a lab-scale MoE runs on CUDA with expert weights in host RAM at a
 documented VRAM ceiling, and the sw-MLPL backend findings are filed.
 
-## Saga 15: findings, recommendations, and future work
+## Saga 14: findings, recommendations, and future work
 
 The closing document, `docs/report.md`, written from the results table,
 the recordings, the findings ledger, and the frontier: what was built, what

@@ -1,4 +1,4 @@
-number = 3
+number = 4
 slug = "matcher-baseline"
 status = "pending"
 description = "MB01 matcher baseline. Implement in lib/matcher.mlpl the deterministic alias-..."

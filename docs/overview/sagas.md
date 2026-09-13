@@ -370,36 +370,31 @@ track in [`plan.md`](plan.md).
   the `just docent` batch export with manifest, the inference-first docent
   page CD05 on the proven `mlpl-wasm` bridge with a budgeted live-training
   probe, and the inference-only easel handoff to sw-campus.
-- Saga 5 `pages-live-demo`: the first live demo of this repository on
-  GitHub Pages, linked from the README: the pinned recordings replayed step
-  by step (router logits, probabilities, mask, gate, loads, balance), the
-  sparse dispatch walkthrough, the docent page, and a browser verification
-  record.
-- Saga 6 `campus-docent-live`: the trained docent replaces the mockup's
+- Saga 5 `campus-docent-live`: the trained docent replaces the mockup's
   keyword matcher in the campus site: the frozen export contract and
   validator, the browser bridge module with `predict(query)` and a parity
   page, the campus model-bridge work order, and live acceptance against
   the deployed page (edition line, thirty scripted queries matching the
   export, fallback, stale badge, latency) recorded as CD09.
-- Saga 7 `campus-docent-v1`: when the campus adds the 1442 card reader and
+- Saga 6 `campus-docent-v1`: when the campus adds the 1442 card reader and
   its radio demo, the stale-model, retraining-versus-forgetting, and
   quantization study (CD06 to CD08) and the revision comparison page.
-- Saga 8 `recurrence-and-engram`: RC01, RM01, EG01 (both forms: from scratch
+- Saga 7 `recurrence-and-engram`: RC01, RM01, EG01 (both forms: from scratch
   and builtin, with parity), RE01, the seven-row ablation table, and the
   live-demo foundation handoff.
-- Saga 9 `distillation`: token KD against the in-repo teacher, router warm
+- Saga 8 `distillation`: token KD against the in-repo teacher, router warm
   start, expert-delta distillation, and the gated external-teacher export.
-- Saga 10 `quantization-packing-and-cache`: INT8 and INT4 experts, the packed
+- Saga 9 `quantization-packing-and-cache`: INT8 and INT4 experts, the packed
   TinyMoE file, the LRU expert-cache simulator with capacity curves, and
   prefill double buffering.
-- Saga 11 `hybrid-execution-and-embedded-budget`: bandwidth calibration, the
+- Saga 10 `hybrid-execution-and-embedded-budget`: bandwidth calibration, the
   q-star transfer/compute split, expert banks, and the 256 MB budget report.
-- Saga 12 `interactive-microscope-host`: systems recordings, live-demo
+- Saga 11 `interactive-microscope-host`: systems recordings, live-demo
   acceptance (the only `sw-checklist` scope), and the pocket-helper demo.
-- Saga 13 `configuration-frontier`: one harness over configuration records;
+- Saga 12 `configuration-frontier`: one harness over configuration records;
   sweeps of expert count, top-k, shared always-on experts, Engram slots, and
   recurrence depth; a Pareto frontier with smallest, fastest, and best picks.
-- Saga 14 `cuda-and-host-resident-experts`: backend probes for CUDA and MLX,
+- Saga 13 `cuda-and-host-resident-experts`: backend probes for CUDA and MLX,
   lab-scale training on the GPU, expert weights in host RAM with a bounded
   GPU cache, CPU execution of missing experts, and a VRAM-budget report.
 - Saga 15 `findings-and-recommendations`: `docs/report.md` with findings,

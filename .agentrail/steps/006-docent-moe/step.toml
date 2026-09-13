@@ -1,4 +1,4 @@
-number = 4
+number = 6
 slug = "docent-moe"
 status = "pending"
 description = "CD02 to CD04 routed docent and specialization. Reuse lib/moe.mlpl: the same e..."
