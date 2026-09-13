@@ -6,7 +6,7 @@ repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 for path in AGENTS.md CLAUDE.md COPYRIGHT LICENSE README.md justfile mlplunit.conf \
     docs/overview/architecture.md docs/implementation/cross-repo-handoffs.md docs/overview/plan.md docs/research/research.txt \
     docs/reference/results.md docs/overview/sagas.md docs/reference/sw-mlpl-blockers.md docs/reference/sw-mlpl-findings.md \
-    docs/README.md docs/overview/README.md docs/results/README.md docs/implementation/README.md docs/reference/README.md docs/research/README.md \
+    docs/README.md docs/overview/README.md docs/results/README.md docs/implementation/README.md docs/reference/README.md docs/research/README.md docs/experiments/README.md \
     lib/observe.mlpl tests/test_observe.mlpl tests/test_capability_probes.mlpl \
     probes/f5_one_hot_in_grad.mlpl probes/f6_repeat_in_grad.mlpl probes/f7_model_argument.mlpl \
     probes/f8_emit_frame_name.mlpl probes/d1_silent_zero_grad.mlpl scripts/run-probes \

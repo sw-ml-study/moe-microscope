@@ -2,67 +2,81 @@
 
 Building mixture-of-experts models small enough to understand.
 
-`moe-microscope` is an sw-MLPL project that builds a tiny mixture-of-experts
-language model, MicroMoE, from scratch and lets a learner look inside every
-part of it. The model combines four ideas that normally live at very different
-scales: FreeToken-style heterogeneous expert execution (an expert cache that
-follows real routing decisions), HRM/TRM-style recursion (one shared block
-applied several times instead of many unique layers), DeepSeek-style Engram
-conditional memory (hashed n-gram lookup instead of neural memorization), and
-ordinary sparse routing over many tiny experts.
+MicroMoE is an educational and experimental mixture-of-experts model
+written in sw-MLPL. The repository isolates the techniques behind modern
+efficient MoE systems (routing, sparse dispatch, low-rank experts,
+recurrence, Engram memory, distillation, quantization, expert caching,
+heterogeneous execution) so each can be inspected and measured on its own,
+at a scale where every tensor, expert, routing decision, and byte can be
+printed. It is progressively constructing a tiny model inspired by
+FreeToken, HRM/TRM, DeepSeek's Engram, and sparse routing; it does not
+claim that the combined architecture is validated yet.
 
-Each mechanism is a separate, executable lesson. Every lesson records its own
-intermediate values, ships annotated diagrams of each data structure and
-transformation, and measures memory, speed, and quality. The learner reads the
-MLPL, changes it, reruns it, and watches the numbers and pictures change.
+Large MoE systems make it hard to see what each mechanism buys. Here the
+whole model is tens of thousands of parameters, every lesson is a readable
+MLPL program that records its own intermediate values, every diagram is
+drawn from values a test asserts, and every claim in this page cites a
+results row or a measured document.
 
-## Summary
+- [Documentation landing page](docs/README.md) (three reader journeys)
+- [Architecture](docs/overview/architecture.md) and [delivery plan](docs/overview/plan.md)
+- [Results dashboard](docs/results/README.md) and the [full results table](docs/reference/results.md)
 
-The repository progresses through comparable stages rather than starting from
-the final architecture:
+## Status
 
-| Stage | Lesson | What it adds | Question it answers |
-|---|---|---|---|
-| 0 | DN01 | dense tiny transformer | the baseline |
-| 1 | RC01 | one shared block applied `R` times | does repeated compute replace parameters? |
-| 2 | EG01 | Engram n-gram memory, built from scratch | does external memory help? |
-| 3-4 | MX01, MX02 | top-1 and top-2 routing over a bank of experts | can experts specialize, and is top-2 worth it? |
-| 5-6 | RM01, RE01 | recurrent MoE, then with Engram | does routing change over reasoning time? |
-| 7 | KD01 | distillation from an in-repo teacher | which distillation term buys what? |
-| 8 | QZ01 | INT8 then INT4 experts | what quality is lost, how many more experts fit? |
-| 9 | XC01 | capacity-limited LRU expert cache | what does cache size do to hits, bytes, speed? |
-| 10 | HY01 | CPU/NPU hybrid with the q-star split | can FreeToken-style scheduling help? |
-| 11 | PK01 | packed TinyMoE file and a 256 MB budget | can the whole thing survive an embedded budget? |
+Demonstrated, with measurements: a dense baseline (DN01); top-1 and top-2
+mixtures (MX01, MX02); measurable expert specialization; exact sparse
+dispatch (SD01); the data-versus-epochs effect (DS01); low-rank delta
+experts with a shared expert (LD01); an in-repo teacher fixture (TE01); the
+resource budget (RB01) and a measured generation benchmark (GB01); three
+recordings handed to the generic Rust/Yew host.
 
-The model works in a constrained mixture where value is measurable per task:
-small-integer arithmetic, sequence transformations, tiny MLPL expressions
-checked against the interpreter itself, and short templated prose. Experts are
-distilled at four levels, token distributions from a teacher, a router warm
-start from task tags, low-rank expert deltas fitted to a dense teacher, and
-deep supervision across recurrences, each measured alone against the baseline.
-The [delivery plan](docs/overview/plan.md) explains both choices in detail.
+Still to come: recurrence, Engram, distillation, quantization, the packed
+file, the expert cache, CPU/NPU scheduling, the 256 MB target, the
+configuration frontier, and the CUDA move with host-resident experts. See
+the [saga queue](docs/overview/sagas.md).
 
-The repository dogfoods sw-MLPL twice: as the language for building the model
-and its runtime pieces, and, together with `../demo-extensions`, as the
-toolchain for the educational visualization itself. Shipped features are
-preferred over rebuilt ones; a mechanism is built from scratch only where
-watching it is the lesson, and then both forms are shown with a parity check.
-Every gap becomes a reproducer, a pinned probe, and an upstream work order in
-[`docs/reference/sw-mlpl-findings.md`](docs/reference/sw-mlpl-findings.md); the first four were
-fixed upstream the day they were filed.
+## What we have learned
 
-The microscope scale (CPU, seconds, tens of thousands of parameters) is the
-acceptance scale for every lesson. The same source runs at a lab scale under
-`device("mlx") { }`. The 256 MB, 0.5 TOPS device is an inference target for
-the packed file, not a training target.
+1. **Sparse capacity is real.** The four-expert mixture stores 7,096
+   parameters and touches 3,064 per token; the dense model stores 3,812 and
+   touches 2,996. Stored capacity grew 1.86 times for 1.02 times the active
+   parameters, at the same validation loss (3.76 against 3.79).
+   Evidence: MX01 and DN01 rows in the [results table](docs/reference/results.md).
+2. **Experts specialize, without being told the task.** Under top-1
+   routing the specialization score is 0.61 against a 0.25 family-blind
+   baseline: prose leans on one expert, arithmetic on another. The router
+   never saw a family tag. Scope: the four synthetic families are
+   deliberately separable. Evidence: [MX02](docs/experiments/MX02.md).
+3. **Top-k is a cost and quality knob, not a free improvement.** Top-2
+   doubles expert evaluations per token, fits the training rows better
+   (0.86 against 0.62 exact match), gives the first held-out MLPL answers,
+   and has a worse validation loss (3.92) and a flatter specialization map
+   (0.42). Evidence: MX02 row.
+4. **Data moves the held-out columns; epochs do not.** From 120 to 960
+   examples, dense validation loss falls 3.48 to 1.11 and the mixture 3.49
+   to 1.22; prose becomes a solved family held-out. Doubling epochs at 120
+   examples makes both worse. The mixture beats dense at 480 examples and
+   loses at 960 at twice the cost. Evidence: [DS01](docs/experiments/DS01.md).
+5. **Sparse compute is not automatically faster.** Sparse dispatch cuts
+   expert row evaluations from 13,440 to 3,360 with outputs that agree
+   exactly, and is slower in this interpreter (0.74 against 0.42 ms per
+   window) because gather, scatter, and loop overhead exceed the three tiny
+   matmuls skipped. Evidence: [SD01](docs/experiments/SD01.md) and the
+   [generation benchmark](docs/reference/generation-benchmark.md).
 
-## How big is MicroMoE?
+One more, from the last lesson: sixteen rank-4 delta experts cost 2,048
+parameters against 4,288 for four full experts and give the best validation
+losses in the table so far (3.46 with a shared expert, 3.37 without).
+Evidence: [LD01](docs/experiments/LD01.md).
 
-RB01 answers the size question without training. Every number in
-[`docs/results/resource-economics.md`](docs/results/resource-economics.md) is labeled M
-(measured), D (derived), or E (estimate), and the calculator behind it
-(`lib/budget.mlpl`) is pinned to the measured parameter counts of every
-lesson.
+![MX02 specialization map: family-by-expert share heatmaps for top-1 and top-2 routing with their specialization scores](assets/previews/moe2-specialization.svg)
+
+## How small is MicroMoE?
+
+Every number is labeled measured, derived, or estimate in
+[resource economics](docs/results/resource-economics.md); the calculator
+behind it is pinned to the lessons' measured parameter counts.
 
 | Model | Params | Active per token | f64 weights | Active f64 per token |
 |---|---:|---:|---:|---:|
@@ -71,289 +85,37 @@ lesson.
 | MX02 top-2 of 4 | 7,096 | 4,136 | 55.4 KiB | 32.3 KiB |
 | LD01 shared + 16 deltas | 6,132 | 3,396 | 47.9 KiB | 26.5 KiB |
 
-One full expert is 1,072 parameters: 8,576 bytes at f64, 536 bytes of INT4
-payload. Top-1 stores 1.86 times the dense model while touching 1.02 times
-as much per token; top-2 touches one more expert's worth.
+One full expert is 1,072 parameters: 8,576 bytes at f64 and 536 bytes of
+INT4 payload; a rank-4 delta expert is 128 parameters. Generation runs at
+roughly 6,000 tokens per second dense, 3,200 top-1, 2,000 top-2, and 3,100
+packed deltas in the interpreter on one laptop, with p95 token latency
+under 0.6 ms in every case ([benchmark](docs/reference/generation-benchmark.md)).
 
 ![RB01 storage: proportional bars of stored weights by component and the bytes one token touches under top-1 and top-2](assets/previews/budget-storage.svg)
 
-```sh
-just budget          # regenerate and check the resource-budget document and diagram
-```
+## Architecture progression
 
-## How fast is it?
+Dense model, then routed experts, then top-k, then true sparse dispatch,
+then recurrence, then Engram memory, then quantization, then a bounded
+expert cache, then heterogeneous execution. Four independent sparsities
+organize it: parameter sharing (recurrence), conditional compute (MoE),
+conditional memory (Engram), and residency (cache). The
+[architecture page](docs/overview/architecture.md) has the full picture;
+concept pages in progression order arrive with Saga 3 step 5.
 
-GB01 measures rather than derives: build time, cold and warm time to first
-token, prefill and generation tokens per second, and p50, p95, and maximum
-token latency for DN01, MX01, MX02, and LD01, in
-[`docs/reference/generation-benchmark.md`](docs/reference/generation-benchmark.md).
-At this size the dense model generates on the order of 5,000 tokens per
-second in the interpreter and the sparse-dispatch mixtures roughly 3,000
-(top-1) and 1,900 (top-2), because every token pays the dispatch
-bookkeeping SD01 measured; the packed-delta model matches top-1. The exact
-figures for the committed run are in the document and change a little from
-run to run. Every forward runs the full 28-token
-window; there is no KV cache on this path yet.
+## Experiments
 
-```sh
-just benchmark       # validate the committed measurements and document
-just benchmark write # re-measure on this machine (seconds)
-```
+Each experiment introduces one mechanism and answers one question:
+[experiment index](docs/experiments/README.md). The machine-readable
+inventory is [`catalog/lessons.toml`](catalog/lessons.toml).
 
-## Synthetic domain microscope
+## Next
 
-DM01 is the first executable microscope. It shows the three data structures
-every later lesson consumes: the padded token window with its shifted targets
-and answer mask, the task tags that make expert specialization measurable,
-and the seeded split that holds rows out. Each diagram is drawn from values a
-test asserts and annotated with what the structure is, why the model needs
-it, and how the MLPL computes it.
-
-![Token window: alphabet ids, one encoded example, and the x, y, and mask rows](assets/previews/domain-window.svg)
-
-![Task tags on eight generated examples beside the fixed mixture ratios](assets/previews/domain-tags.svg)
-
-![Split: seeded keys, their ranks, and the train or validation assignment](assets/previews/domain-split.svg)
-
-```sh
-just domain          # run the demo and check the three diagrams are fresh
-just domain write    # regenerate the committed diagrams from the demo
-just tests           # 28 native tests over the generators, oracles, evaluation, and results writer
-```
-
-The four task families are small-integer arithmetic, `rev`/`sort` sequence
-transformations, tiny MLPL expressions whose answers come from the named
-builtin, and templated prose with a fixed animal-to-place pattern. The
-mixture ratios, total, window, and split fraction live in
-[`fixtures/domain/mixture-v0.json`](fixtures/domain/mixture-v0.json). The
-exact-match harness reports accuracy per family and overall, and the results
-writer appends one fixed-column row per lesson run to
-[`docs/reference/results.md`](docs/reference/results.md).
-
-## Dense baseline microscope
-
-DN01 trains the reference model every later mechanism must beat: one
-transformer block with 16-wide embeddings, one causal attention head, and a
-32-wide feed-forward layer, 3,812 parameters in all, trained one example at a
-time on the 90 training rows for 300 epochs. The run takes about 16 seconds
-on a laptop and is deterministic, so its diagrams and results row are checked
-for freshness by the gate.
-
-![DN01 model: the example window through embedding, positions, residual attention, residual FFN, norm, head, and the argmax prediction beside the target](assets/previews/dense-model.svg)
-
-![DN01 run: training and validation loss over 300 epochs, per-family exact-match bars, the attention heatmap of one example, and two decoded validation prompts](assets/previews/dense-run.svg)
-
-```sh
-just dense           # run DN01 and check its diagrams and results row
-just dense write     # regenerate the committed diagrams and the DN01 results row
-```
-
-The result is the honest dense baseline: training loss falls to 0.19 while
-validation loss rises to 3.79, training rows are reproduced 70 percent of the
-time, and on held-out rows only the prose family (a local animal-to-place
-pattern) is answered correctly, two times in three. Arithmetic, sequence, and
-MLPL answers need rules this model cannot learn from 90 rows. The numbers are
-one row in [`docs/reference/results.md`](docs/reference/results.md), and the residual is written
-by hand so `attention_weights` can show the trained attention map.
-
-## Routing microscope
-
-MX01 begins with the router alone, before any training: six tokens' hidden
-states become logits, softmax probabilities, a one-hot expert choice, and a
-Switch-style gate that keeps only the chosen expert's probability so the
-router still receives a gradient. The mask doubles as the dispatch table, and
-the same diagram shows per-expert load, router entropy, the load-balance
-term, and the top-2 mask that MX02 will use.
-
-![MX01 routing: logits, probabilities, one-hot mask, and gate as four aligned matrices, with the dispatch load, top-2 mask, entropy, and balance below](assets/previews/router-routing.svg)
-
-```sh
-just router          # run the routing microscope and check its diagram
-just tests tests/test_moe.mlpl
-```
-
-## Mixture of experts, trained
-
-MX01 replaces DN01's feed-forward layer with four experts and a router, and
-trains everything end to end one example at a time with the Switch
-load-balance term (weight 0.01). Training runs dense-masked: every expert
-is evaluated and the gate zeroes all but the chosen one, so the mathematics
-is exactly the sparse model while autograd stays simple. The run takes about
-36 seconds and is deterministic.
-
-![MX01 run: training and validation loss, tokens per expert over training, entropy and balance, and per-family accuracy](assets/previews/moe-run.svg)
-
-![MX01 load-balance term: one window's routing, the router probabilities, the routed fraction and importance per expert, and the term's value](assets/previews/moe-balance.svg)
-
-```sh
-just moe             # run MX01 and check its diagrams and results row
-just moe write       # regenerate the committed diagrams and the MX01 results row
-```
-
-The four experts stay in use (final loads 208, 30, 47, and 121 of 406 masked
-training tokens) rather than collapsing onto one, validation loss matches
-DN01's (3.76 against 3.79) with more total but similar active parameters,
-and prose is again the only family that generalizes. The family-by-expert
-counts are recorded now; the specialization map is drawn in MX02.
-
-## Top-2 routing and the specialization map
-
-MX02 routes every token to its two best experts with renormalized gates,
-doubling active expert compute, and draws the measurement the plan promised
-instead of assuming: for each task family, the share of its answer tokens
-each expert receives, for top-1 (MX01) and top-2 (MX02) side by side. The
-router never saw a family tag; any structure in the map is emergent.
-
-![MX02 specialization map: family-by-expert share heatmaps for top-1 and top-2 routing with their specialization scores](assets/previews/moe2-specialization.svg)
-
-![MX02 cost: top-1 versus top-2 on active parameters, expert evaluations, bytes, validation loss, accuracy, entropy, balance, and specialization](assets/previews/moe2-cost.svg)
-
-```sh
-just moe2            # run MX02 and check its diagrams and results row
-```
-
-The specialization score (mean over families of the largest expert share,
-0.25 when routing ignores the family) is 0.61 for top-1 and 0.42 for top-2,
-so at 90 training rows the experts do separate by family under top-1, with
-prose and arithmetic each leaning on one expert, while top-2 spreads tokens
-by construction. Top-2 fits the training rows better (0.86 exact match) and
-answers two of seven held-out MLPL prompts, the first non-prose held-out
-successes in the table, at the cost of a worse validation loss.
-
-## Low-rank delta experts
-
-LD01 makes experts cheap. Each expert is a rank-4 delta over the residual
-stream, 128 parameters instead of a full expert's 1,072, and all sixteen
-live in two packed matrices so the routed sum over every expert is two
-matmuls with the gate expanded by a constant block matrix (tests pin exact
-parity with a per-expert loop). A shared feed-forward layer always runs, the
-DeepSeek-V3 shape at microscope scale. The lesson trains that model and a
-deltas-only variant and compares both with DN01 (shared only) and MX01
-(four full experts).
-
-![LD01 delta-expert data structure: the packed A and B matrices after training, the gate expansion matrix, and bytes per expert](assets/previews/delta-structure.svg)
-
-![LD01 comparison: shared only, four full experts, shared plus sixteen deltas, and sixteen deltas only, with the family-by-expert map over sixteen experts](assets/previews/delta-comparison.svg)
-
-```sh
-just delta           # train both variants (under a minute and a half) and check diagrams and rows
-```
-
-| Configuration | Params | Active per token | Bytes per expert | Router multiply-adds | Val loss |
-|---|---|---|---|---|---|
-| DN01 shared FFN only | 3,812 | 2,996 | - | 0 | 3.79 |
-| MX01 four full experts, top-1 | 7,096 | 3,064 | 8,576 | 68 | 3.76 |
-| LD01 shared FFN plus 16 deltas, top-1 | 6,132 | 3,396 | 1,024 | 272 | 3.46 |
-| LD01r 16 deltas only, top-1 | 5,060 | 2,324 | 1,024 | 272 | 3.37 |
-
-Sixteen delta experts cost 2,048 parameters against 4,288 for four full
-ones and give the best validation losses in the table so far, at the price
-of a noisier training curve and no prose generalization on this run. Router
-cost grows with the expert count (272 multiply-adds per token for sixteen
-experts, still small next to one 16-by-32 matmul), which is why it is
-recorded per lesson.
-
-## Data scale
-
-DS01 answers the question the previous lessons raise: does more training or
-more data move the held-out columns? Both models were trained at 120, 480,
-and 960 examples for 200 epochs, and at 120 examples for 400 epochs. The
-sweep takes about eight minutes and is opt-in; the gate validates the eight
-committed points and redraws the diagram from them without training.
-
-![DS01 data scale: validation loss against example count for the dense model and the top-1 mixture, per-family held-out accuracy at each size, and training cost](assets/previews/scale-sweep.svg)
-
-```sh
-just scale           # validate the committed points and check the diagram (seconds)
-just scale write     # rerun the whole sweep (about eight minutes) and reinstall
-```
-
-| Examples | Dense val loss | MoE val loss | Dense held-out prose | Dense held-out arithmetic | Dense seconds | MoE seconds |
-|---|---|---|---|---|---|---|
-| 120 (200 epochs) | 3.48 | 3.49 | 0.67 | 0 | 12 | 27 |
-| 120 (400 epochs) | 3.89 | 4.17 | 0.67 | 0 | 25 | 54 |
-| 480 | 1.66 | 1.42 | 1.00 | 0.09 | 52 | 94 |
-| 960 | 1.11 | 1.22 | 1.00 | 0.19 | 97 | 190 |
-
-Data is the lever and epochs are not: doubling epochs at 120 examples makes
-validation loss worse for both models, while eightfold data cuts it by
-two thirds and turns prose into a solved family. The mixture beats the
-dense model at 480 examples and loses at 960 at twice the training cost,
-which is the honest state of a four-expert model on this domain and the
-reason the configuration frontier (Saga 8) exists.
-
-## Sparse dispatch
-
-SD01 evaluates the same mixture two ways and proves they are one model.
-Dense-masked runs every expert on every token and lets the gate zero the
-rest; sparse dispatch gathers each expert's routed rows with `compress`,
-runs the expert once on that sub-batch, scales by the gate, and scatters
-the result back through a one-hot selection matrix. Over all 120 windows the
-two outputs agree exactly (maximum difference 0), while the counted work
-drops from 13,440 expert row evaluations to 3,360 and parameters touched per
-token from 6,280 to 3,064.
-
-![SD01 dispatch and combine: one window's dispatch table, rows per expert, the exact cost comparison, and the sparse mixture output](assets/previews/dispatch-combine.svg)
-
-```sh
-just dispatch        # train 40 epochs, prove parity, count and time both paths
-```
-
-One honest number: in this interpreter the sparse path is slower per window
-(0.74 ms against 0.42), because per-expert gather, scatter, and loop
-overhead cost more than the three 16-by-32 matmuls they skip. The saving is
-real in the counts and becomes wall-clock time only with larger experts or a
-compiled runtime, which is why the results table records counts first.
-
-## In-repo teacher fixture
-
-TE01 is the teacher that Saga 4 distills from: two 32-wide blocks, 19,956
-parameters, trained once for 300 epochs on the same 90 rows. It fits the
-training rows far more closely than DN01 (masked loss 0.135, top-1 agreement
-with the targets 0.963, training exact match 0.83) while its validation
-behavior stays the same honest memorization story. Its export,
-[`fixtures/teacher/teacher-v0.json`](fixtures/teacher/teacher-v0.json), holds
-the top-8 next-token log-probabilities at every answer position of the
-training split as flat parallel vectors; the schema is documented in
-[`docs/implementation/teacher-fixture.md`](docs/implementation/teacher-fixture.md) so an external teacher
-can export the same shape.
-
-![TE01 teacher export: the first training row's answer positions with their top-8 next-token probabilities, target bars highlighted](assets/previews/teacher-fixture.svg)
-
-```sh
-just teacher         # validate the committed fixture, index, preview, and results row
-just teacher write   # retrain the teacher (about a minute) and reinstall everything
-```
-
-## Recording and host handoff
-
-Every lesson's observations are also captured over the live `mlpl-serve`
-SSE path into a recording under the peer version-zero schema from
-`../demo-ml-microscope`, pinned by hash in
-[`fixtures/recordings/index-v1.json`](fixtures/recordings/index-v1.json). The
-generic Rust/Yew/WASM microscope in `../demo-extensions` renders these
-recordings without lesson-specific Rust; the work order is
-[`docs/implementation/host-handoff.md`](docs/implementation/host-handoff.md). Because the server surface
-has no `include`, `scripts/bundle-program` inlines a lesson's library tree
-into the single program a host submits.
-
-```sh
-just emit-frame-loops     # every train step and while iteration streams in order
-just recording-check      # schema, budgets, shapes, names, and pinned hashes for every recording
-just recordings           # live server runs of DN01, MX01, and MX02 equal the committed recordings
-just recordings write MX01   # recapture one recording (or all, with no id)
-just build-local-serve    # compile a current mlpl-serve into tmp/ without touching ../sw-mlpl
-```
-
-Three lessons are recorded so far: DN01 (13 frames, 29 observations), and
-MX01 and MX02 with their per-expert loads, family-by-expert counts, and
-routing examples, all listed in `scripts/recordings.conf`.
-
-The scripts select an absolute `MLPL_SERVE` override, then a local build
-under `tmp/` made by `scripts/build-local-serve` (which compiles the adjacent
-source into this repository's ignored directory and never touches the
-sibling), then `../sw-mlpl/target/release/mlpl-serve`. Rebuild locally when
-the adjacent server binary is older than the evaluator fixes it needs.
+Whether recurrence, Engram, distillation, and quantization move the
+quality and resource frontier for roughly the same active budget, then
+whether a bounded expert cache and heterogeneous execution let the whole
+model exceed fast memory and stay usable. Plan:
+[docs/overview/plan.md](docs/overview/plan.md).
 
 ## What is here
 
@@ -361,6 +123,7 @@ the adjacent server binary is older than the evaluator fixes it needs.
 docs/README.md               Documentation landing page with three reader journeys
 docs/overview/               Architecture, delivery plan, saga queue
 docs/results/                Resource economics (RB01) and the results dashboard
+docs/experiments/            One page per experiment
 docs/reference/              Full results table, generation benchmark, capability ledger, upstream findings
 docs/implementation/         Host handoff, sibling work orders, teacher fixture schema
 docs/research/               The design discussion, the Saga 2 review, the MoE/Engram questions
@@ -370,9 +133,6 @@ fixtures/  assets/previews/  Bounded fixtures, pinned recordings, and committed 
 catalog/                     Machine-readable lesson inventory
 scripts/  justfile           Thin gate and tool-selection scripts
 ```
-
-Lesson code lands saga by saga; see [`docs/overview/sagas.md`](docs/overview/sagas.md) for what
-is active.
 
 ## Build and run
 

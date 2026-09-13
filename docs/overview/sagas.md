@@ -31,6 +31,17 @@ the hierarchy. Source: `research2.txt`.
 6. `wiki-mirror` - the peer wiki mirrors the hierarchy with verified Mermaid
    diagrams and links.
 
+Step 4 status: complete. README rewritten as an executive summary (what and
+why, status, five learned claims with numbers and evidence links, how small,
+how fast, progression, experiments, next); the per-lesson sections moved
+verbatim into `docs/experiments/` stubs with an index, for step 5 to turn
+into laboratory reports.
+
+Step 3 status: complete. Documents moved into overview, results,
+implementation, reference, and research with index pages and a landing page;
+every link and path reference updated; the gate checks links across the
+tree.
+
 Step 2 status: complete. GB01 measures build, cold and warm time to first
 token, prefill and generation throughput, and p50/p95/max token latency for
 the four models on freshly built weights; committed fixture with the binary

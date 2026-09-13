@@ -20,7 +20,8 @@ executive summary and this page is the landing page. Three reader journeys:
 - [Full results table](reference/results.md): one row per lesson run
 - [Generation benchmark](reference/generation-benchmark.md): measured
   latency and throughput
-- Experiment reports arrive in Saga 3 step 5 (`experiments/`)
+- [Experiments](experiments/README.md): one page per experiment, in
+  sequence
 
 ## I want to modify or reproduce it
 
