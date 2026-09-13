@@ -1,0 +1,9 @@
+number = 3
+slug = "documentation-hierarchy"
+status = "pending"
+description = "Restructure docs/ into overview, results, concepts, experiments, implementati..."
+role = "production"
+context_files = []
+created_at = "2026-09-13T09:42:19"
+task_type = "documentation"
+commits = []

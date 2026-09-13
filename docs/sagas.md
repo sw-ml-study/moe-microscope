@@ -10,6 +10,27 @@ The mandatory checklist in `AGENTS.md` applies to every step: focused tests,
 tracked-file audit, named-file staging, a detailed commit on `main`,
 Agentrail completion metadata, and a verified `git push origin main`.
 
+## Active: `resource-budget-and-documentation` (Saga 3)
+
+Purpose: give the project one quantitative vocabulary (stored, resident,
+active, transferred, executed), measure generation latency, and restructure
+the documentation so the README is an executive summary and the wiki mirrors
+the hierarchy. Source: `research2.txt`.
+
+1. `resource-budget-microscope` - RB01: stored versus active bytes by
+   component, expert size statistics, dtype projections, proportional
+   diagrams, capacity calculator, M/D/E labels.
+2. `generation-benchmark` - measured time to first token, tokens per
+   second, tail latency, expert loads per token; opt-in with a committed
+   fixture.
+3. `documentation-hierarchy` - overview, results, concepts, experiments,
+   implementation, reference; `docs/README.md` with three reader journeys.
+4. `readme-as-executive-summary` - the README rewritten to a few screens.
+5. `findings-and-concept-pages` - current findings, resource economics,
+   quality, experiment reports, concept pages with schematics.
+6. `wiki-mirror` - the peer wiki mirrors the hierarchy with verified Mermaid
+   diagrams and links.
+
 ## Completed: `mixture-of-experts-from-scratch` (Saga 2)
 
 Purpose: the router, top-k masks, dense-masked training with load balance,
@@ -231,13 +252,6 @@ Every saga from here ends with a host step that pins its recordings and hands
 them to the generic `../demo-extensions` microscope; see the visualization
 track in [`plan.md`](plan.md).
 
-- Saga 3 `resource-budget-and-documentation`: RB01 resource-budget microscope
-  (stored, resident, active, transferred, executed; expert size statistics;
-  quantization projections; capacity calculator; M/D/E labels), a measured
-  generation benchmark (time to first token, tokens per second, tail
-  latency), the layered documentation hierarchy with the README as an
-  executive summary, findings and concept and experiment pages, and a wiki
-  mirror with verified Mermaid diagrams and links. Source: `research2.txt`.
 - Saga 4 `recurrence-and-engram`: RC01, RM01, EG01 (both forms: from scratch
   and builtin, with parity), RE01, the seven-row ablation table, and the
   live-demo foundation handoff.

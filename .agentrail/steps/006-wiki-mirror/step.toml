@@ -1,0 +1,9 @@
+number = 6
+slug = "wiki-mirror"
+status = "pending"
+description = "Mirror the documentation hierarchy in ../moe-microscope.wiki (Home, Start Her..."
+role = "production"
+context_files = []
+created_at = "2026-09-13T09:42:19"
+task_type = "documentation"
+commits = []

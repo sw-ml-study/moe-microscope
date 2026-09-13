@@ -1,0 +1,9 @@
+number = 2
+slug = "generation-benchmark"
+status = "pending"
+description = "Measured generation benchmark for DN01, MX01, MX02, and LD01: model-open time..."
+role = "production"
+context_files = []
+created_at = "2026-09-13T09:42:19"
+task_type = "mlpl-benchmark"
+commits = []

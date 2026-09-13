@@ -1,0 +1,9 @@
+number = 4
+slug = "readme-as-executive-summary"
+status = "pending"
+description = "Rewrite README.md as a two-to-four-screen executive summary: what and why, st..."
+role = "production"
+context_files = []
+created_at = "2026-09-13T09:42:19"
+task_type = "documentation"
+commits = []

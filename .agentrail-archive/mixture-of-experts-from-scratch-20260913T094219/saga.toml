@@ -1,0 +1,6 @@
+name = "mixture-of-experts-from-scratch"
+status = "completed"
+current_step = 7
+created_at = "2026-09-12T22:36:21"
+plan_file = ".agentrail/plan.md"
+retroactive = false
