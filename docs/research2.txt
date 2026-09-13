@@ -1,0 +1,2159 @@
+lookat 
+sw-ml-study/moe-microscopeand summarize the results shown in the README so far.  There is too much information (information overload).  Need a concise analysis of the value shown.  Are we on track to demonstrate the techniques applied, scaled down, and getting useful results?  Need a more clear description of what the parts are, how they add value, what can be improved, assumptions supported or questionable results.
+
+You’re trying to answer a fairly simple question with the repo:
+
+Can the important ideas behind modern efficient MoE systems be reduced to tiny, inspectable experiments where we can see what each mechanism does, measure its cost/benefit, and eventually run the combined system on severely constrained hardware?
+
+Based on the README and current results, yes: the project is on track. More importantly, some of the early experiments already show genuinely useful results rather than merely reimplementing mechanisms. The problem is that the README currently buries those results under implementation detail.
+
+What has actually been demonstrated so far
+
+The clearest story is this:
+
+Mechanism	What it is supposed to buy	What the experiments show so far	Assessment
+Dense baseline	Reference point	Tiny model memorizes training data but generalizes poorly except on simple prose patterns	Good baseline
+Sparse MoE, top-1	More total capacity without proportional active compute	Similar validation quality to dense while exposing ~2× total parameters but nearly identical active parameters/token	Mechanism demonstrated
+Expert specialization	Different experts learn different kinds of work	Top-1 routing specialization score reaches 0.61 vs 0.25 random/uniform baseline	Interesting positive result
+Top-2 routing	More expert capacity per token	Better training fit; first held-out MLPL successes, but worse validation loss and 2× expert work	Useful tradeoff demonstrated
+Data scaling	Determine whether failures come from architecture or inadequate data	8× data sharply improves validation; simply doubling epochs makes things worse	Strong useful result
+Sparse dispatch	Avoid evaluating inactive experts	Expert evaluations fall 4×, from 13,440 to 3,360, with exactly identical outputs	Very strong demonstration
+Sparse runtime performance	Convert theoretical sparsity into actual speed	Sparse path is currently slower, 0.74 vs 0.42 ms/window	Excellent negative result
+Larger teacher	Provide knowledge for distillation	Teacher fits training much better but does not generalize much better	Useful fixture, weak teacher
+
+Those results come directly from the current experiments and measurements.
+
+The numerical results table reinforces the basic architecture argument. DN01 has 3,812 total / 2,996 active parameters per token, whereas MX01 has 7,096 total / 3,064 active. That is exactly the property you want to expose pedagogically: substantially greater stored capacity for almost unchanged per-token active model size.
+
+The most important result so far
+
+I think the README underplays this:
+
+You have already demonstrated the central MoE proposition at microscope scale.
+
+The top-1 model has roughly:
+
+1.86× total parameters
+but only 1.02× active parameters/token
+while maintaining essentially the same validation loss as the dense model.
+
+DN01 validation loss is 3.7888 versus 3.7641 for MX01.
+
+That does not prove MoE is better at this scale.
+
+It proves something more appropriate for this project:
+
+You can add dormant/specialized model capacity without proportionally increasing the computation performed for each token.
+
+That is the architectural concept the project is supposed to make visible.
+
+The quality benefit will require either more data, better training, distillation, recurrence, Engram, more experts, or some combination.
+
+That is fine.
+
+The second important result: specialization is actually happening
+
+This is probably the most interesting scientific result currently in the repo.
+
+For four experts, no specialization corresponds to approximately:
+
+$$ 1/4 = 0.25 $$
+
+The top-1 system reports:
+
+$$ \text{specialization}=0.61 $$
+
+and the router was not directly given the task-family tag.
+
+That suggests the hidden representations contain enough task information for routing to segregate work.
+
+That is exactly the phenomenon you need before ideas like:
+
+expert caching,
+heterogeneous CPU/NPU execution,
+expert placement,
+expert quantization,
+expert swapping,
+
+become interesting.
+
+If requests were distributed uniformly across experts, many of those later techniques would be much less useful.
+
+So I would elevate this result prominently.
+
+But there is an important caveat
+
+The synthetic tasks are quite separable:
+
+arithmetic
+sequence operations
+MLPL expressions
+templated prose
+
+Therefore the experiment shows:
+
+Experts can specialize when the underlying task distribution has obvious latent structure.
+
+It does not yet establish that useful specialization emerges in a less artificially partitioned language distribution.
+
+That's not a flaw. It is exactly the right microscope experiment.
+
+Just state the scope clearly.
+
+Top-2 is already telling you something useful
+
+Top-2 is not simply "better."
+
+Current measurements show:
+
+more expert computation,
+worse validation loss,
+less distinct specialization,
+but improved training accuracy,
+and the first non-prose held-out successes: 2/7 MLPL prompts.
+
+The results table shows MX02 active parameters/token rising from 3,064 → 4,136, and expert evaluations/token from 1 → 2.
+
+That gives you a clean pedagogical point:
+
+Top-k routing is a quality/cost knob, not a free improvement.
+
+That is considerably more valuable than merely showing how top-2 routing works mathematically.
+
+I would phrase the conclusion as:
+
+At this scale, top-2 buys additional fitting capacity and occasional generalization gains, but doubles expert execution and weakens specialization. Its value is workload-dependent.
+
+The data-scaling experiment may be the strongest science in the README
+
+The README currently treats DS01 almost as a side experiment. I think it deserves much greater prominence.
+
+At 120 examples:
+
+Dense val loss: 3.48
+MoE: 3.49
+
+At 480:
+
+Dense: 1.66
+MoE: 1.42
+
+At 960:
+
+Dense: 1.11
+MoE: 1.22
+
+Meanwhile doubling epochs from 200 → 400 at only 120 examples makes both models worse.
+
+That tells you several things.
+
+First, the poor early generalization was primarily data-limited, not evidence that the architectures were broken.
+
+Second, extra optimization cannot substitute for information.
+
+Third, the small MoE does not consistently dominate dense. It wins at 480 and loses at 960.
+
+That is exactly the kind of result that gives the project credibility.
+
+A less careful demo would only report the favorable 480-example point.
+
+Sparse dispatch is an excellent experiment
+
+This is perhaps the cleanest demonstration of an optimization technique.
+
+Dense-masked MoE:
+
+run every expert, then zero unwanted outputs.
+
+Sparse MoE:
+
+gather only tokens assigned to each expert, execute that expert, then scatter the results back.
+
+The experiment shows:
+
+Exact mathematical equivalence
+
+$$ \max |\text{dense}-\text{sparse}| = 0 $$
+
+while expert row evaluations fall:
+
+$$ 13,440 \rightarrow 3,360 $$
+
+which is exactly 4× less expert work.
+
+And then comes the especially valuable result:
+
+Sparse execution is currently slower.
+
+0.74 ms/window versus 0.42 ms/window.
+
+That is not a failure.
+
+It demonstrates a crucial systems principle:
+
+Reduced FLOPs do not automatically mean reduced latency.
+
+At microscope scale, dispatch overhead dominates the tiny matrix operations being avoided.
+
+This is precisely the sort of issue that FreeToken-style systems must contend with at full scale.
+
+I would make this one of the project's headline findings.
+
+Where I think the project stands
+
+I would divide the roadmap into three levels.
+
+Level 1 — architectural phenomena
+
+Already substantially demonstrated:
+
+sparse expert routing
+active vs stored capacity
+specialization
+top-k tradeoffs
+load balancing
+true sparse dispatch
+data-vs-training effects
+
+Status: successful.
+
+Level 2 — model improvement techniques
+
+Still mostly ahead:
+
+recurrence
+Engram memory
+distillation
+quantization
+
+These should answer whether increasingly sophisticated mechanisms actually move the quality / memory / compute frontier, rather than merely functioning.
+
+Status: not yet demonstrated.
+
+Level 3 — systems techniques
+
+Also mostly ahead:
+
+bounded expert cache
+cache locality from routing
+CPU/NPU heterogeneous execution
+packed model
+256-MB target
+
+These answer the FreeToken-inspired question:
+
+Can routing structure be exploited to operate a model whose total parameters exceed fast memory?
+
+Status: planned, not yet proven.
+
+That distinction would make the README much easier to understand.
+
+One claim I would be cautious about
+
+The README says things along the lines of the system combining FreeToken, HRM/TRM, DeepSeek Engram, sparse routing, etc.
+
+Architecturally that's reasonable.
+
+But until RC/EG/XC/HY exist, I would describe this as:
+
+The project is progressively constructing a tiny model inspired by these techniques.
+
+rather than implying that the current MicroMoE already validates the combined architecture.
+
+Right now the strongest demonstrated claim is:
+
+Tiny sparse MoE behavior can be made observable and quantitatively meaningful.
+
+That's already substantial.
+
+The teacher is currently questionable
+
+The TE01 teacher fits training much better:
+
+target agreement: 96.3%
+training exact match: 83%
+
+but held-out family accuracies in the results table are all zero.
+
+That makes it a legitimate distillation fixture, but not obviously a good teacher of generalizable behavior.
+
+There are two interpretations.
+
+One is acceptable:
+
+The teacher provides richer soft targets than one-hot labels even though it doesn't solve validation.
+
+That can still help.
+
+But if KD01 is intended to demonstrate knowledge transfer of superior behavior, I would eventually want a better teacher.
+
+Possibilities include:
+
+train it on substantially more synthetic data;
+make it wider/deeper;
+use a deterministic oracle to generate teacher distributions;
+or import logits from a genuinely stronger external teacher using the documented fixture format.
+
+The repo already seems designed to accommodate that last option.
+
+One metric I'd reconsider: validation loss vs exact-match
+
+The README presents both, which is good, but the interpretation occasionally becomes muddy.
+
+For these algorithmic tasks, exact-match is often the meaningful task metric.
+
+A model may have:
+
+lower cross-entropy,
+better calibrated token probabilities,
+
+while still getting the final answer wrong.
+
+Conversely a small change in token probabilities can flip an entire exact-match answer.
+
+I'd explicitly organize metrics into three categories:
+
+Category	Primary metrics
+Quality	exact-match by task, overall exact-match
+Model economics	total params, active params/token, bytes/token
+Runtime/system behavior	expert evals, cache hit rate, latency
+
+Then keep:
+
+loss,
+PPL,
+entropy,
+KL,
+balance,
+
+as diagnostic metrics.
+
+That would drastically reduce information overload.
+
+The README is currently upside-down
+
+Right now the structure is essentially:
+
+implementation → diagram → command → detailed measurements → interpretation
+
+For someone trying to decide whether the project is working, I'd reverse that.
+
+Start with something like:
+
+What have we learned?
+
+1. Sparse capacity works.
+A four-expert MoE exposes 7,096 parameters while using only 3,064 per token, almost the same active size as the 2,996-parameter dense path.
+
+2. Experts specialize.
+Top-1 specialization reaches 0.61 versus a 0.25 no-specialization baseline.
+
+3. Top-2 is not free.
+It doubles expert evaluations and weakens specialization, but produces the first held-out MLPL successes.
+
+4. Data matters more than extra epochs.
+8× more examples sharply improve held-out quality; 2× more epochs on the small dataset make validation worse.
+
+5. Sparsity saves computation but not necessarily time.
+True sparse dispatch performs 4× fewer expert evaluations with identical results, yet is slower at this tiny scale because dispatch overhead dominates.
+
+Then:
+
+Next: determine whether recurrence, Engram, distillation and quantization move the quality/resource frontier, followed by expert caching and heterogeneous execution.
+
+That is probably 80% of what a visitor needs to know.
+
+Everything else can move into lesson pages.
+
+A clearer mental model of the parts
+
+I would also add one small architectural figure/table explaining why these pieces exist.
+
+Part	Job	Why it matters
+Router	Chooses experts	Activates only useful capacity
+Experts	Learn different transformations	Increases total knowledge/capacity
+Top-k	Controls experts used/token	Quality ↔ compute knob
+Load balancing	Prevents expert collapse	Keeps capacity usable
+Sparse dispatch	Executes only selected experts	Turns sparsity into lower work
+Recurrence	Reuses one block several times	More computation without proportional parameters
+Engram	Retrieves memorized n-gram information	Moves lookup-like knowledge out of neural weights
+Distillation	Transfers behavior from a larger model	Improves tiny-model quality
+Quantization	Shrinks expert representation	Lets more experts fit in memory
+Expert cache	Keeps hot experts in fast memory	Lets total model exceed fast-memory capacity
+CPU/NPU scheduling	Sends work where it fits best	Exploits heterogeneous hardware
+Packed model	Bounded inference artifact	Tests whether the whole design fits constrained devices
+
+That makes the architecture comprehensible without requiring someone to already understand FreeToken, DeepSeek, Engram, Switch Transformers, HRM, etc.
+
+Are you actually on track for the original goal?
+
+Yes, with one important qualification.
+
+You are already successfully demonstrating mechanisms.
+
+You have not yet demonstrated the final thesis that their combination produces a useful tiny model on highly constrained hardware.
+
+And that is exactly where the project should be at this stage.
+
+I would summarize the evidence this way:
+
+Supported now
+MoE can expose substantially more total capacity than active capacity.
+Routing can develop measurable specialization.
+Top-k presents a real compute/quality tradeoff.
+Sparse dispatch eliminates unnecessary expert computation.
+Sparse execution overhead can outweigh theoretical savings at tiny scale.
+Data quantity strongly affects whether architectural differences become visible.
+Plausible but not demonstrated yet
+recurrence can improve reasoning per parameter;
+Engram can remove memorization pressure from neural weights;
+distillation can materially improve this tiny student;
+quantization can increase expert count without unacceptable quality loss;
+routing locality can produce useful expert-cache hit rates;
+CPU/NPU heterogeneous execution can outperform simpler placement;
+the full architecture can be useful inside 256 MB / ~0.5 TOPS.
+
+Those latter items should become the main experimental hypotheses for the next phases.
+
+The criterion I would use from here on
+
+Every new lesson should have to answer one sentence:
+
+What frontier moved?
+
+For example:
+
+RC01: same parameters → better quality?
+EG01: same neural params → better factual/pattern recall?
+KD01: same inference cost → better accuracy?
+QZ01: fewer bytes → acceptably similar quality?
+XC01: smaller resident memory → acceptable cache misses?
+HY01: same model → lower latency/energy on heterogeneous hardware?
+PK01: same useful model → fits within 256 MB?
+
+If the lesson cannot show movement along quality, memory, compute, or latency, it's probably explanatory instrumentation rather than an experimental result.
+
+Both have value, but the README should distinguish them.
+
+Bottom line
+
+The repo is already producing something better than a toy MoE demonstration. It is beginning to show why these techniques exist and where their tradeoffs appear.
+
+The strongest current findings are not "the MoE beats dense." They are:
+
+Sparse capacity is real; specialization is measurable; data dominates naïve over-training; top-k has costs; and theoretical sparse compute only becomes practical when the system overhead is small enough.
+
+Those are meaningful results.
+
+The next major milestone is when recurrence + Engram + distillation start letting you say:
+
+For approximately the same active inference budget, the tiny architecture now solves tasks that the dense baseline cannot.
+
+And the milestone after that is XC/HY/PK:
+
+The total model no longer has to fit in fast memory, yet locality and heterogeneous execution keep it usable.
+
+That progression would give the project a very coherent scientific story.
+
+so two asks: I'd like to see concrete numbers for space needed, computation time/costs, comparing different approaches, with (probably not yet measured) time to first token, tokens/second, weights file size, weights memory footprint, cost to swap experts in/out to SSD or HD.  Some numbers to explain the scope of this Tiny MoE model and its Dense, different top-k, models.  2nd ask: I'd like to see diagrams showing the progression, from simpler diagrams to more complex diagrams, "schematics" of the moving parts, relative sizes of the parts, answering questions like: how much storage does a typical expert take (min, max, mean, etc. for experts if they are not uniform), what ratio of disk, ram, and (eventually) VRAM for these tiny models (could be estimated as we do not use VRAM yet).   So tables and diagrams, please.
+
+Yes. I think the README needs an explicit “How big is MicroMoE?” section followed by a “How the architecture grows” visual sequence. Right now the repo has most of the raw measurements, but it does not give the reader an intuitive physical sense of how small this model really is, what top-k costs, or why expert caching becomes interesting only when we deliberately scale the expert bank.
+
+The current plan explicitly defines the microscope tier as tens of thousands of parameters and the later lab tier as millions, with the same mechanisms carried forward.
+
+1. Concrete scale of the models today
+
+The current results give us enough to construct a much clearer comparison.
+
+Model	Total params	Active params/token	FP64 weight storage*	Active FP64 weights/token	Measured ms/token	Approx. tokens/s**
+DN01 dense	3,812	2,996	29.8 KiB	23.4 KiB	0.0202	~49,500
+MX01 MoE top-1	7,096	3,064	55.4 KiB	23.9 KiB	0.0460	~21,700
+MX02 MoE top-2	7,096	4,136	55.4 KiB	32.3 KiB	0.0470	~21,300
+TE01 teacher	19,956	18,324	155.9 KiB	143.2 KiB	0.0791	~12,600
+
+* The current CPU-path arrays are f64, so this is simply params × 8 bytes. The delivery plan explicitly notes that CPU MLPL arrays are f64.
+** 1000 / ms-token; useful as a derived comparison, but I would label it derived, not measured generation throughput. We still need a proper autoregressive tokens/sec benchmark.
+
+This table says something important immediately:
+
+MX01 almost doubles stored model capacity—29.8 → 55.4 KiB—while the weights actually touched per token barely change: 23.4 → 23.9 KiB.
+
+That is probably the clearest numerical demonstration of the basic MoE idea in the project so far.
+
+And top-2 shows the price of activating another expert:
+
+23.9 → 32.3 KiB active/token, roughly another expert's worth of weights.
+
+That is intuitive.
+
+2. What exactly is an expert at this scale?
+
+SD01 reports 8,576 bytes/expert on the current f64 execution path.
+
+Since weights are f64:
+
+$$ 8576 / 8 = 1072\ parameters/expert $$
+
+So the four-expert bank is:
+
+$$ 4 \times 1072 = 4288\ expert\ parameters $$
+
+out of 7,096 total parameters.
+
+Current MicroMoE decomposition
+MX01 / MX02
+7,096 parameters total
+55.4 KiB as FP64
+
++-------------------------------+
+| shared/model infrastructure   |
+| 2,808 params                  |
+| 21.9 KiB                      |
++-------------------------------+
+
++------------+  Expert 0
+| 1,072      |  8.4 KiB FP64
++------------+
+
++------------+  Expert 1
+| 1,072      |  8.4 KiB FP64
++------------+
+
++------------+  Expert 2
+| 1,072      |  8.4 KiB FP64
++------------+
+
++------------+  Expert 3
+| 1,072      |  8.4 KiB FP64
++------------+
+
+That is a diagram I would actually put near the top of the README.
+
+It answers "What does four experts mean?" much better than saying E=4.
+
+One qualification: those 2,808 non-expert parameters should not simply be labeled "always active." The measured active count implies that only a subset of the total shared/storage parameters is touched for a given token. The repo already distinguishes stored parameters from parameters touched by sparse dispatch.
+
+3. Top-k should have a picture showing relative work
+
+This could be even simpler.
+
+Dense
+token
+  |
+  v
++-----------------------+
+| one FFN               |
+| ████████              |
++-----------------------+
+
+Total model:   3,812 params
+Active/token:  2,996
+FP64 model:    29.8 KiB
+MoE top-1
+                         expert bank
+                      +--------------+
+                 +---> | E0 ████████ |  active
+                 |     +--------------+
+token -> router -+     | E1 ░░░░░░░░ |
+                       +--------------+
+                       | E2 ░░░░░░░░ |
+                       +--------------+
+                       | E3 ░░░░░░░░ |
+                       +--------------+
+
+Total model:   7,096 params
+Active/token:  3,064
+FP64 model:    55.4 KiB
+Experts run:   1
+MoE top-2
+                         expert bank
+                      +--------------+
+                 +---> | E0 ████████ |  active
+                 |     +--------------+
+token -> router -+---> | E1 ████████ |  active
+                       +--------------+
+                       | E2 ░░░░░░░░ |
+                       +--------------+
+                       | E3 ░░░░░░░░ |
+                       +--------------+
+
+Total model:   7,096 params
+Active/token:  4,136
+FP64 model:    55.4 KiB
+Experts run:   2
+
+That immediately explains the difference among dense/top-1/top-2.
+
+4. Quantization makes the microscope scale almost comically small
+
+The eventual packed form is intended to use INT8 shared weights and INT8 then INT4 experts.
+
+For the current 1,072-parameter uniform expert, ignoring scales, alignment and metadata:
+
+Expert representation	Bytes/expert	Approx. size
+Current FP64	8,576	8.38 KiB
+FP32	4,288	4.19 KiB
+FP16	2,144	2.09 KiB
+INT8	1,072	1.05 KiB
+INT4 theoretical payload	536	0.52 KiB
+
+That is a fantastic educational result.
+
+A current INT4 expert is roughly half a kilobyte.
+
+Even all four experts together are only:
+
+$$ 4 \times 536 = 2144\ bytes $$
+
+of raw INT4 expert payload.
+
+For the entire MX model:
+
+Approximate packed-weight sizes
+
+Ignoring quantization scales and container overhead:
+
+Storage scheme	Approx. MX01/MX02 weight file
+FP64	55.4 KiB
+FP32	27.7 KiB
+FP16	13.9 KiB
+INT8 all weights	6.93 KiB
+INT4 all weights	~3.47 KiB
+INT8 shared + INT4 experts	~4.84 KiB
+
+The last is especially relevant because it resembles the planned deployment arrangement.
+
+This needs a large warning:
+
+These are payload estimates, not current packed-file measurements.
+
+QZ01/PK01 should report the actual:
+
+payload bytes,
+quantization-scale bytes,
+header/index bytes,
+alignment/padding,
+total file_size().
+
+The delivery plan already calls for packed-file bytes and bytes/expert, so this would mostly be making the intended measurements more prominent.
+
+5. SSD/HDD swapping has a counterintuitive answer at microscope scale
+
+For an 8.4-KiB FP64 expert, theoretical bulk transfer time is minuscule.
+
+Approximate transfer-only costs:
+
+Device assumption	8.4-KiB FP64 expert	1.05-KiB INT8	536-B INT4
+HDD @ 150 MB/s sequential	0.057 ms	0.007 ms	0.004 ms
+SATA SSD @ 500 MB/s	0.017 ms	0.002 ms	0.001 ms
+NVMe @ 3 GB/s	0.0029 ms	0.00036 ms	0.00018 ms
+
+But those figures are almost misleading.
+
+The real picture is:
+
+INT4 expert on disk
+        |
+        | 536 bytes
+        v
+
+HDD:
+[ seek + rotation ................. ][copy]
+  several milliseconds               ~0
+
+SSD:
+[command/I/O latency][copy]
+ tens/hundreds µs       ~0
+
+RAM:
+[memcpy]
+ tiny
+
+For these microscopic experts, I/O latency overwhelms bandwidth.
+
+An HDD random expert miss could easily cost orders of magnitude more than the inference itself. The current DN01 inference metric is ~0.020 ms/token, whereas an HDD random lookup is conventionally millisecond-scale.
+
+That gives XC01 a very nice pedagogical objective:
+
+At tiny scale, caching is not about reducing bytes. It is about avoiding storage access latency.
+
+And it explains why cache hit rate matters.
+
+6. This suggests another metric: expert-miss penalty
+
+XC01 should eventually report something like:
+
+Metric	Meaning
+expert size	bytes that must become resident
+resident experts	cache capacity
+hit rate	fraction requiring no load
+misses/token	actual external fetches
+bytes loaded/token	bandwidth demand
+load latency/token	latency penalty
+compute latency/token	model execution
+total latency/token	compute + cache stalls
+storage amplification	whole model / resident model
+
+And report two forms:
+
+Deterministic
+experts loaded/token
+bytes loaded/token
+cache hit rate
+Machine-dependent
+RAM -> resident load       µs
+SSD -> RAM load            µs
+HDD -> RAM load            ms
+
+This respects the architecture's existing distinction between deterministic counted work and machine-specific timings.
+
+7. I would add TTFT and real generation throughput
+
+The existing ms/token column is useful, but it isn't enough.
+
+For every deployable configuration I'd want:
+
+Metric	Why
+model-open time	file parsing/mapping
+cold TTFT	no experts resident
+warm TTFT	cache populated
+prompt processing tok/s	prefill behavior
+generation tok/s	serial decode behavior
+p50 token latency	normal behavior
+p95 token latency	cache misses show up here
+expert loads/token	explains tail latency
+bytes loaded/token	storage pressure
+cache hit %	locality
+peak RSS	actual RAM use
+
+In particular, TTFT is where disk-backed experts become visible.
+
+Suppose first-token routing asks for two experts that aren't resident. Then conceptually:
+
+TTFT =
+    model initialization
+  + prompt processing
+  + routing
+  + expert miss latency
+  + expert execution
+  + LM head
+
+Whereas subsequent warm tokens might be:
+
+token latency =
+    routing
+  + cache hit
+  + expert execution
+  + LM head
+
+That is exactly the systems behavior this project eventually wants to teach.
+
+8. Storage hierarchy diagram
+
+Once XC01 arrives, I would introduce a diagram like this.
+
+                 ┌─────────────────────────────┐
+                 │     MODEL ON DISK           │
+                 │                             │
+                 │ shared weights              │
+                 │ E0 E1 E2 E3 ... E31         │
+                 │ Engram table                │
+                 │                             │
+                 │       100% of model         │
+                 └──────────────┬──────────────┘
+                                │ expert miss
+                                ▼
+                 ┌─────────────────────────────┐
+                 │        SYSTEM RAM           │
+                 │                             │
+                 │ shared weights              │
+                 │ cache: E2 E7 E11 E19        │
+                 │ Engram / state              │
+                 │                             │
+                 │ ~resident working set       │
+                 └──────────────┬──────────────┘
+                                │ selected work
+                                ▼
+                 ┌─────────────────────────────┐
+                 │       VRAM / NPU SRAM       │
+                 │                             │
+                 │ shared active block         │
+                 │ E7                          │
+                 │ E11       top-2             │
+                 │ activations / KV state      │
+                 │                             │
+                 │ current-token working set   │
+                 └─────────────────────────────┘
+
+Then put actual quantities next to every box.
+
+At current scale it might almost embarrassingly say:
+
+Disk: 55 KiB
+RAM:  55 KiB
+active/token: 24 KiB
+
+And that's good.
+
+Later:
+
+Disk:    12 MiB
+RAM:      2 MiB
+accelerator: 400 KiB
+
+That visually demonstrates the point of residency sparsity.
+
+The architecture explicitly describes four independent sparsities—recurrence/parameter sharing, conditional MoE compute, conditional Engram memory, and cache residency—which gives this progression a very clean conceptual foundation.
+
+9. Relative-size diagrams should be proportional
+
+I strongly recommend that some diagrams use area or bar length proportional to bytes, rather than drawing four experts as four equally sized conceptual boxes without context.
+
+For today's MX01:
+
+FP64 stored weight footprint
+
+shared/non-expert  21.9 KiB |█████████████████████|
+expert 0            8.4 KiB |████████|
+expert 1            8.4 KiB |████████|
+expert 2            8.4 KiB |████████|
+expert 3            8.4 KiB |████████|
+                         total 55.4 KiB
+
+Then:
+
+Weights touched for one top-1 token
+
+shared path         |███████████████████|
+chosen expert       |████████|
+inactive experts    |........................|
+
+and:
+
+Weights touched for one top-2 token
+
+shared path         |███████████████████|
+expert A            |████████|
+expert B            |████████|
+inactive experts    |................|
+
+A learner can see the economics before understanding a single equation.
+
+10. Min/max/mean expert size becomes important later
+
+Today, all four experts appear structurally uniform, so:
+
+expert size:
+min  = 8,576 B
+mean = 8,576 B
+max  = 8,576 B
+
+FP64.
+
+But I agree strongly that the infrastructure should already calculate:
+
+expert_count
+min_bytes
+mean_bytes
+median_bytes
+p90_bytes
+max_bytes
+total_expert_bytes
+
+Why?
+
+Because later you may reasonably want heterogeneous experts:
+
+                  bytes
+arithmetic       ███████
+sequence         ███████████
+MLPL             ███████████████
+prose            █████
+
+Then cache policy gets more interesting.
+
+LRU by expert count is no longer equivalent to LRU by bytes.
+
+You may eventually compare:
+
+fixed number of experts;
+fixed cache byte budget;
+LRU;
+LFU;
+weighted by load cost;
+prediction/prefetch;
+pin hot experts;
+pin cheap experts;
+spill largest experts.
+
+That fits the eventual FreeToken-style investigation much better.
+
+11. A very useful model economics table
+
+I'd add a generated table to each architecture lesson.
+
+For the existing three main models it could look approximately like:
+
+	Dense	MoE top-1	MoE top-2
+Experts stored	1 FFN	4	4
+Experts active/token	1	1	2
+Total params	3,812	7,096	7,096
+Active params/token	2,996	3,064	4,136
+Total FP64 weights	29.8 KiB	55.4 KiB	55.4 KiB
+Active FP64 weights	23.4 KiB	23.9 KiB	32.3 KiB
+Expert size	—	8.38 KiB	8.38 KiB
+Expert evals/token	1	1	2
+Current ms/token	0.0202	0.0460	0.0470
+Val loss	3.789	3.764	3.916
+Prose exact	.667	.667	0
+MLPL exact	0	0	.286
+
+The main takeaway then jumps off the page:
+
+Top-1
+
+1.86× stored parameters for only ~1.02× active parameters.
+
+But currently:
+
+~2.3× observed interpreter latency.
+
+That's a good, honest result.
+
+The sparse model has architectural efficiency, but the tiny interpreted implementation has overhead.
+
+12. Show both theoretical work and observed wall-clock time
+
+This distinction should be explicit everywhere.
+
+SD01 is particularly strong:
+
+THEORETICAL / COUNTED WORK
+
+dense-masked:
+    4 experts × every token
+    13,440 expert-row evaluations
+
+sparse:
+    1 selected expert × token
+     3,360 expert-row evaluations
+
+                   ↓ 4×
+
+Yet:
+
+OBSERVED TIME
+
+dense masked     0.42 ms/window   |████████|
+sparse dispatch  0.74 ms/window   |██████████████|
+                                    slower
+
+The outputs are exactly equal.
+
+That diagram may be one of the most instructive in the entire project.
+
+It explains why real inference systems need:
+
+batching;
+fused dispatch;
+large enough experts;
+efficient kernels;
+cache locality;
+low-overhead schedulers.
+13. The diagrams should tell a progression
+
+I would not show the final architecture first.
+
+Instead, I would make the README tell this story.
+
+Diagram 1 — Dense
+token -> shared transformer -> FFN -> output
+
+Question:
+
+How good is a tiny dense model?
+
+Diagram 2 — More stored capacity with MoE
+                           -> E0
+token -> shared -> router  -> E1 -> combine -> output
+                           -> E2
+                           -> E3
+
+Question:
+
+Can we store more model than we execute?
+
+Answer: yes.
+
+Diagram 3 — top-k
+top-1:   router -> [ E2 ]
+
+top-2:   router -> [ E1 + E2 ]
+
+Question:
+
+What happens when we spend more compute per token?
+
+Diagram 4 — true sparse dispatch
+dense masked                    sparse
+
+E0(token)                       selected?
+E1(token)                          |
+E2(token)       --->               +--> E2(token)
+E3(token)
+
+4 evals                          1 eval
+
+Question:
+
+Can conditional compute actually avoid the unused work?
+
+Diagram 5 — recurrence
+                 +------------------+
+                 |                  |
+token -> block -> state -> block -> state -> ...
+          ^ same parameters ^
+
+Question:
+
+Can we trade additional compute for fewer unique parameters?
+
+Diagram 6 — Engram
+token/history -----> hash -----> Engram table
+       |                           |
+       +------ neural path <-------+
+
+Question:
+
+Can cheap lookup memory replace some learned memorization?
+
+Diagram 7 — quantized experts
+FP64 E0  ███████████████████████████████
+
+INT8 E0  ████
+
+INT4 E0  ██
+
+Question:
+
+How many experts fit in the same storage?
+
+Diagram 8 — cache residency
+SSD/HDD     RAM cache       active compute
+
+E0          E1              E7
+E1 -------> E3 ----router--> E3
+E2          E7
+...
+E31
+
+Question:
+
+Does the whole model actually need to reside in RAM?
+
+Diagram 9 — heterogeneous compute
+                   router
+                     |
+             +-------+-------+
+             |               |
+          CPU expert       NPU expert
+             |               |
+             +------combine--+
+
+Question:
+
+Should every expert run on the same device?
+
+Diagram 10 — complete MicroMoE
+
+Only now show the existing full architecture:
+
+embedding
+   |
+Engram
+   |
+shared recurrent attention
+   |
+router
+   |
+expert cache
+   |
+experts
+   |
+combine
+   |
+recur
+   |
+LM head
+
+The current architecture document already has this final view.
+
+The problem is pedagogical ordering: we shouldn't ask the reader to understand the final machine before seeing why each component was introduced.
+
+14. I would explicitly draw the four different kinds of sparsity
+
+This could become a signature diagram for the project.
+
+                    ALL AVAILABLE RESOURCES
+
+ PARAMETERS        COMPUTE          MEMORY          RESIDENCY
+ ──────────        ───────          ──────          ─────────
+
+ Block 0           E0               Engram row 0     Disk: E0
+ Block 1           E1               Engram row 1           E1
+ Block 2           E2               Engram row 2           E2
+ Block 3           E3               ...                    ...
+                                                          E63
+
+    ↓                ↓                 ↓               ↓
+
+ shared block       top-k experts     hashed rows      cache
+
+    ↓                ↓                 ↓               ↓
+
+ one physical       1-2 experts       few rows         few experts
+ block reused       executed/token    retrieved        resident
+
+Or as a compact table:
+
+Sparsity	We avoid paying for...	Mechanism
+Parameter	multiple physical layers	recurrence
+Compute	every expert	top-k MoE
+Memory lookup	whole associative table	Engram
+Residency	whole expert bank in fast memory	expert cache
+
+That is a much clearer statement of the architectural thesis than listing several papers that inspired it.
+
+15. RAM / VRAM / disk ratios need two diagrams: current and target
+
+Because current MicroMoE doesn't need VRAM at all, I would be explicit.
+
+Today — microscope
+                 CURRENT MICRO-MOE
+
+disk       55.4 KiB   █████████████████████████████
+RAM        ~same      █████████████████████████████
+VRAM       0          |
+
+Everything fits everywhere.
+Caching is simulated to expose the mechanism.
+
+That's not embarrassing; that's the point of a microscope.
+
+Then:
+
+Future scale experiment
+                CAPACITY HIERARCHY
+
+disk/model       ███████████████████████████████████████ 100%
+RAM/cache        ████████                                  20%
+NPU/VRAM         ██                                         5%
+active/token     █                                          2%
+
+The percentages should be computed from the actual configuration rather than hard-coded.
+
+This becomes the critical visualization for demonstrating FreeToken-like behavior.
+
+16. We should deliberately create a model where residency matters
+
+The current 4-expert model is far too small to prove cache economics.
+
+So I would add a systems scale, separate from "make the model smarter."
+
+For example:
+
+same tiny expert:
+1,072 params/expert
+
+4 experts       ~34 KiB FP64
+32 experts      ~268 KiB FP64
+256 experts     ~2.1 MiB FP64
+1,024 experts   ~8.4 MiB FP64
+
+Or in INT4 raw payload:
+
+4 experts       ~2.1 KiB
+32 experts      ~16.8 KiB
+256 experts     ~134 KiB
+1,024 experts   ~536 KiB
+
+This suggests something interesting.
+
+You could build a large-bank/tiny-expert systems experiment without requiring a better model.
+
+For example:
+
+E=256, top-1, deliberately constrained 8-expert RAM cache.
+
+Then:
+
+expert bank:      256
+cache:              8
+resident fraction: 3.1%
+active/token:        1
+
+Now locality matters enormously.
+
+And it can test caching, prefetch and storage behavior independently of whether 256 experts improve accuracy.
+
+That's a very good "microscope" philosophy.
+
+17. The 256-MB target needs a capacity calculator
+
+Eventually PK01 should say something much more concrete than:
+
+fits in 256 MB.
+
+Something like:
+
+256 MiB target
+
+OS/runtime                  48 MiB
+shared model                 8 MiB
+Engram                      32 MiB
+expert cache                96 MiB
+KV/state                    16 MiB
+I/O buffers                  8 MiB
+---------------------------------
+working set                208 MiB
+headroom                    48 MiB
+
+Those aren't proposed numbers—they'd need to be measured/configured—but that is the form of result I want to see.
+
+Likewise:
+
+packed model on storage:   1.2 GiB
+resident working set:      208 MiB
+model/resident ratio:        5.9×
+active/token weights:       14 MiB
+
+Now the FreeToken connection becomes concrete.
+
+18. Add a "capacity calculator" to the repo
+
+This seems highly aligned with sw-MLPL.
+
+Given:
+
+d_model
+expert_hidden
+experts
+top_k
+dtype
+cache_experts
+Engram slots
+Engram dim
+recurrences
+
+produce:
+
+total parameters
+shared parameters
+expert parameters
+bytes/expert
+expert bank bytes
+packed model bytes
+resident cache bytes
+active parameters/token
+active weight bytes/token
+storage/resident ratio
+resident/active ratio
+
+And perhaps estimated transfer time given:
+
+storage_latency_us
+storage_bandwidth_MB_s
+
+That would turn your second ask into an executable lesson rather than static documentation.
+
+19. Mark every number as measured, derived, or hypothetical
+
+This will prevent the diagrams from becoming misleading.
+
+I would use three tiny labels:
+
+M — measured
+
+8,576 bytes/expert
+
+D — derived from measured values
+
+1,072 params/expert
+
+E — estimate/model assumption
+
+~5–10 ms HDD random expert fetch
+
+Then something like:
+
+MX01
+
+Total params          7,096      [M]
+FP64 model bytes     56,768      [D]
+Expert bytes          8,576      [M]
+INT4 payload/expert      536      [D]
+SSD miss latency        TBD      [M needed]
+HDD miss latency        TBD      [M needed]
+TTFT                    TBD      [M needed]
+Generation tok/s        TBD      [M needed]
+
+This would make the project unusually rigorous and avoid the common problem where benchmark diagrams quietly mix simulation, extrapolation and real measurements.
+
+What I'd change in the README immediately
+
+I wouldn't add all these numbers to the already-overloaded README.
+
+I'd put one Resource Scale section near the beginning containing only this:
+
+MicroMoE today
+Dense           3,812 params   29.8 KiB FP64
+MoE top-1       7,096 params   55.4 KiB FP64
+MoE top-2       7,096 params   55.4 KiB FP64
+
+Each expert     1,072 params    8.38 KiB FP64
+                               ~1.05 KiB INT8
+                               ~0.52 KiB INT4
+
+                    stored       active/token
+Dense               29.8 KiB       23.4 KiB
+MoE top-1           55.4 KiB       23.9 KiB
+MoE top-2           55.4 KiB       32.3 KiB
+
+Then one sentence:
+
+Top-1 almost doubles stored parameter capacity while leaving active weight traffic essentially unchanged; top-2 spends another expert's worth of compute to increase per-token capacity.
+
+Then one diagram:
+
+Dense        [ shared ][ FFN ]
+
+Top-1       [ shared ][ E0 ][ E1 ][ E2 ][ E3 ]
+                         ^
+                       active
+
+Top-2       [ shared ][ E0 ][ E1 ][ E2 ][ E3 ]
+                         ^     ^
+                         active
+
+And point the reader to a new docs/resource-economics.md for everything else.
+
+The key new experiment I would prioritize
+
+Before recurrence/Engram make the story even more complicated, I would add a small RB01 — Resource Budget microscope.
+
+It doesn't need to train anything.
+
+It should take DN01/MX01/MX02 and generate:
+
+stored vs active parameters;
+weight bytes by component;
+expert min/mean/max size;
+FP64/FP32/FP16/INT8/INT4 projected sizes;
+measured cold/warm inference latency;
+TTFT and autoregressive tokens/sec;
+RAM-resident vs disk-resident expert microbenchmarks;
+a proportional storage-layout SVG;
+a top-k active-working-set SVG.
+
+Then XC01 can reuse exactly the same measurement vocabulary.
+
+That would answer both of your asks before adding more architectural mechanisms, and give the rest of the project a stable quantitative language:
+
+How much exists? How much is resident? How much is touched? How much moves? How long does it take? And what quality do we get for it?
+
+I think that five-level distinction—stored → resident → active → transferred → executed—should become one of the organizing ideas of moe-microscope.
+
+So suggest a document layout using README.md to show intro, status, conclusions so far, next steps, but generally acts like an index into separate ./docs/<topic>.md files so that all the info is not in one huge document.  Also these linked-to-documents could be smaller ones linking to larger ones.  Also this same information hierarchy could influence the design of a gh wiki for this project.
+
+You want the repository documentation to behave like a layered information architecture, not a monolithic technical report: README for orientation and current conclusions, topic documents for focused explanations, deeper references beneath those, and a structure that can map cleanly into a GitHub Wiki later.
+
+I think the right model is:
+
+README = executive summary + navigation
+
+topic docs = focused explanations
+
+reference docs = detailed evidence / implementation / measurements
+
+Proposed repository documentation hierarchy
+README.md
+
+docs/
+├── overview/
+│   ├── architecture.md
+│   ├── roadmap.md
+│   └── terminology.md
+│
+├── results/
+│   ├── README.md
+│   ├── current-findings.md
+│   ├── resource-economics.md
+│   ├── quality-results.md
+│   └── benchmark-methodology.md
+│
+├── concepts/
+│   ├── README.md
+│   ├── dense-vs-moe.md
+│   ├── routing.md
+│   ├── sparse-dispatch.md
+│   ├── recurrence.md
+│   ├── engram.md
+│   ├── distillation.md
+│   ├── quantization.md
+│   ├── expert-cache.md
+│   └── heterogeneous-execution.md
+│
+├── experiments/
+│   ├── README.md
+│   ├── DN01-dense.md
+│   ├── MX01-top1.md
+│   ├── MX02-top2.md
+│   ├── DS01-data-scale.md
+│   ├── SD01-sparse-dispatch.md
+│   ├── TE01-teacher.md
+│   └── ...
+│
+├── model/
+│   ├── README.md
+│   ├── model-anatomy.md
+│   ├── expert-bank.md
+│   ├── storage-layout.md
+│   └── packed-format.md
+│
+├── implementation/
+│   ├── README.md
+│   ├── sw-mlpl-architecture.md
+│   ├── visualization.md
+│   ├── recordings.md
+│   ├── testing.md
+│   └── known-limitations.md
+│
+├── research/
+│   ├── README.md
+│   ├── freetoken.md
+│   ├── hrm-trm.md
+│   ├── engram-background.md
+│   └── related-work.md
+│
+└── reference/
+    ├── results-table.md
+    ├── configuration-reference.md
+    ├── measurement-definitions.md
+    ├── sw-mlpl-findings.md
+    └── glossary.md
+
+I would not necessarily create every file immediately. This is the target taxonomy. Empty hierarchy is worse than a few good documents.
+
+1. README.md should be very small
+
+I'd aim for perhaps 2–4 screens, not dozens.
+
+Its job is to answer:
+
+What is this?
+Why does it exist?
+What works today?
+What have we learned?
+What comes next?
+Where do I go for details?
+
+Something like:
+
+# moe-microscope
+
+Build mixture-of-experts models small enough to understand.
+
+MicroMoE is an educational and experimental MoE implementation in sw-MLPL.
+It isolates modern techniques—routing, sparse dispatch, recurrence, Engram
+memory, distillation, quantization, expert caching, and heterogeneous
+execution—so each can be inspected and measured independently.
+
+## Why this project?
+
+Large MoE systems make it difficult to see what individual mechanisms
+actually buy. moe-microscope scales those ideas down enough to inspect
+every tensor, expert, routing decision, and byte moved.
+
+[Architecture →](docs/overview/architecture.md)
+[Project goals →](docs/overview/roadmap.md)
+
+## Status
+
+Currently demonstrated:
+
+- dense baseline
+- top-1 MoE
+- top-2 MoE
+- measurable expert specialization
+- data scaling
+- exact sparse-dispatch parity
+- theoretical compute reduction vs measured runtime overhead
+- in-repo teacher fixture
+
+Still to come:
+
+- recurrence
+- Engram
+- distillation
+- quantization
+- expert caching
+- CPU/NPU scheduling
+- packed constrained-device deployment
+
+[Full status →](docs/results/README.md)
+
+## What have we learned so far?
+
+### More stored capacity without proportionally more active compute
+
+Dense:
+3,812 total / 2,996 active parameters per token
+
+Top-1 MoE:
+7,096 total / 3,064 active parameters per token
+
+### Experts actually specialize
+
+Top-1 specialization:
+0.61 vs 0.25 uniform baseline.
+
+### Sparse compute does not automatically mean faster execution
+
+Sparse dispatch reduces expert work 4× while producing identical output,
+but is currently slower because dispatch overhead dominates these tiny experts.
+
+### Data matters more than extra epochs
+
+Increasing training data improves held-out behavior substantially.
+Simply doubling training epochs on the small dataset worsens validation loss.
+
+[Current findings →](docs/results/current-findings.md)
+
+## How small is MicroMoE?
+
+Current four-expert model:
+
+| | Dense | Top-1 | Top-2 |
+|---|---:|---:|---:|
+| Total params | 3,812 | 7,096 | 7,096 |
+| Active params/token | 2,996 | 3,064 | 4,136 |
+| FP64 model size | 29.8 KiB | 55.4 KiB | 55.4 KiB |
+
+One current expert is only about 8.4 KiB in FP64 and would have about
+536 bytes of raw INT4 payload.
+
+[Resource economics →](docs/results/resource-economics.md)
+
+## Architecture progression
+
+Dense → routed experts → sparse dispatch → recurrence → Engram →
+quantization → expert cache → heterogeneous execution.
+
+[Walk through the architecture →](docs/concepts/README.md)
+
+## Experiments
+
+Each experiment introduces one mechanism and answers one question.
+
+[Experiment index →](docs/experiments/README.md)
+
+## Next
+
+The next major goal is to determine whether recurrence, Engram,
+distillation, and quantization move the quality/resource frontier before
+adding storage-backed expert residency and heterogeneous execution.
+
+[Roadmap →](docs/overview/roadmap.md)
+
+That README tells me almost everything important about the project without drowning me.
+
+2. docs/results/README.md becomes the results dashboard
+
+This is the first level below README.
+
+It should still be concise.
+
+Its job is not to contain every benchmark. It should organize them.
+
+For example:
+
+Results
+│
+├── What have we learned?
+│     current-findings.md
+│
+├── How big/expensive are the models?
+│     resource-economics.md
+│
+├── Are they getting better?
+│     quality-results.md
+│
+└── How were these numbers measured?
+      benchmark-methodology.md
+
+And perhaps a compact table:
+
+Question	Current answer	Detail
+Does top-1 increase capacity efficiently?	Yes	resource-economics
+Do experts specialize?	Yes, at this synthetic scale	current-findings
+Is top-2 clearly superior?	No	quality-results
+Does sparse dispatch save work?	Yes, 4× expert eval reduction	resource-economics
+Is sparse dispatch faster yet?	No	benchmark-methodology
+Does more training solve low-data behavior?	No	quality-results
+Does more data help?	Yes	quality-results
+
+That becomes much more useful than a giant results table.
+
+3. current-findings.md should read like a scientific summary
+
+This document answers:
+
+What can we reasonably conclude today?
+
+Not:
+
+What exactly did every lesson print?
+
+Structure it around claims.
+
+Example
+# Current Findings
+
+## 1. Sparse capacity works
+
+Evidence:
+- DN01: 3,812 total parameters
+- MX01: 7,096 total parameters
+- active/token changes only 2,996 → 3,064
+
+Interpretation:
+Top-1 routing nearly doubles stored capacity without nearly doubling
+per-token parameter use.
+
+Confidence:
+Strong for this architecture.
+
+Limitations:
+Does not yet establish better held-out quality.
+
+## 2. Experts specialize
+
+Evidence:
+...
+
+Interpretation:
+...
+
+Limitations:
+Synthetic task families are deliberately separable.
+
+Every conclusion gets:
+
+Evidence → interpretation → limitation.
+
+That will help prevent overclaiming.
+
+4. resource-economics.md should contain the tables/diagrams we discussed
+
+This is where the physical model lives.
+
+Top-level sections:
+
+Resource Economics
+
+1. Model sizes today
+2. What an expert costs
+3. Stored vs resident vs active
+4. Dense vs top-1 vs top-2
+5. Quantization projections
+6. Sparse dispatch costs
+7. Storage hierarchy
+8. Expert swap costs
+9. TTFT and throughput
+10. Embedded 256-MB budget
+
+And importantly:
+
+separate measured, derived, and estimated values.
+
+A small legend near the beginning:
+
+[M] measured directly
+[D] derived from measured values
+[E] estimate / scenario
+5. docs/concepts/README.md should be the visual learning path
+
+This one should probably be almost entirely diagrams and one-paragraph explanations.
+
+Something like:
+
+Understanding MicroMoE
+
+1. Dense model
+       ↓
+2. Add multiple experts
+       ↓
+3. Route to top-1
+       ↓
+4. Route to top-2
+       ↓
+5. Actually skip inactive experts
+       ↓
+6. Reuse blocks recursively
+       ↓
+7. Add external Engram memory
+       ↓
+8. Quantize experts
+       ↓
+9. Keep only hot experts resident
+       ↓
+10. Schedule across CPU/NPU
+
+Each step links out:
+
+Why add routing? → routing.md
+
+Why sparse dispatch? → sparse-dispatch.md
+
+etc.
+
+This gives newcomers a linear path without making any individual page enormous.
+
+6. Each concept page should answer only four or five questions
+
+For example expert-cache.md:
+
+# Expert Cache
+
+## What problem does it solve?
+
+A model may contain more expert weights than fast memory can hold.
+
+## Basic idea
+
+[small schematic]
+
+## What does the microscope measure?
+
+- expert size
+- resident experts
+- cache capacity
+- hit rate
+- misses/token
+- bytes loaded/token
+- load latency
+- total token latency
+
+## What would demonstrate value?
+
+A useful result would show that a small resident working set captures
+most routing requests while allowing the total expert bank to exceed RAM
+or accelerator memory.
+
+## Experiments
+
+- XC01 ...
+- later cache-policy experiments ...
+
+## Deeper reference
+
+[Cache implementation → ../implementation/...]
+[Raw measurements → ../reference/results-table.md]
+
+This is a very good size for a conceptual doc.
+
+7. Experiment documents should be thin laboratory reports
+
+I like one file per experiment.
+
+For example:
+
+docs/experiments/MX01-top1.md
+
+Template:
+
+# MX01 — Top-1 MoE
+
+## Question
+
+Can multiple stored experts provide more model capacity while activating
+only one expert per token?
+
+## Change from previous experiment
+
+DN01:
+    dense FFN
+
+MX01:
+    router -> 4 experts -> top-1
+
+## Configuration
+
+...
+
+## Results
+
+...
+
+## What we learned
+
+...
+
+## What we did not prove
+
+...
+
+## Related concepts
+
+- Routing
+- Sparse dispatch
+- Expert specialization
+
+## Raw evidence
+
+- results row
+- generated diagrams
+- recording
+
+This has a nice property:
+
+experiment pages explain evidence; concept pages explain ideas.
+
+Don't mix the two.
+
+8. Architecture should have two levels
+
+You mentioned smaller linked docs pointing to larger ones. Architecture is a perfect example.
+
+docs/overview/architecture.md
+
+Keep it concise:
+
+What are the major components?
+How do data and weights flow?
+What are the four sparsities?
+How does the repository split responsibilities?
+
+Maybe 2–3 diagrams.
+
+Then:
+
+deeper implementation pages
+docs/model/model-anatomy.md
+docs/model/expert-bank.md
+docs/model/storage-layout.md
+docs/implementation/sw-mlpl-architecture.md
+docs/implementation/recordings.md
+
+So an ordinary reader never has to enter implementation details.
+
+9. I would distinguish three reader journeys
+
+This is where the hierarchy becomes especially useful.
+
+At the top of the docs index, offer:
+
+“I want to understand the idea”
+README
+ → concepts/
+ → architecture progression
+“I want to know whether it works”
+README
+ → results/
+ → experiments/
+“I want to modify or reproduce it”
+README
+ → implementation/
+ → reference/
+
+That's much better than expecting everyone to traverse the same document.
+
+10. The README should contain conclusions, not history
+
+I'd remove most of these kinds of things from README:
+
+long shell command lists;
+detailed sw-MLPL workarounds;
+recording schema discussion;
+host handoff;
+full saga descriptions;
+detailed teacher fixture format;
+every diagram generated by every lesson;
+all current limitations of specific operators.
+
+They're useful—but only after someone asks:
+
+How is this implemented?
+
+README should answer:
+
+Why should I care?
+
+11. Move the full raw results table to deep reference
+
+The current giant results table is valuable as canonical evidence but awful as an introduction.
+
+I would put it here:
+
+docs/reference/results-table.md
+
+and have the higher-level documents generate smaller curated tables from it.
+
+Hierarchy:
+
+README
+   |
+   +-- headline result
+          |
+          v
+docs/results/resource-economics.md
+   |
+   +-- selected comparison tables
+          |
+          v
+docs/reference/results-table.md
+   |
+   +-- every run / every field
+
+That's exactly the progressive disclosure you're describing.
+
+12. GitHub Wiki can mirror this structure
+
+I'd avoid designing the Wiki independently.
+
+Treat the repository docs as the canonical source hierarchy, and let the Wiki reproduce the navigation model.
+
+For example:
+
+Wiki Home
+│
+├── Start Here
+│   ├── What is moe-microscope?
+│   ├── Current Status
+│   └── What We've Learned
+│
+├── Learn
+│   ├── Dense Baseline
+│   ├── Mixture of Experts
+│   ├── Routing
+│   ├── Sparse Dispatch
+│   ├── Recurrence
+│   ├── Engram
+│   ├── Quantization
+│   └── Expert Caching
+│
+├── Results
+│   ├── Model Size and Cost
+│   ├── Quality
+│   ├── Performance
+│   └── Current Conclusions
+│
+├── Experiments
+│   ├── DN01
+│   ├── MX01
+│   ├── MX02
+│   └── ...
+│
+├── Internals
+│   ├── sw-MLPL Implementation
+│   ├── Recording Format
+│   ├── Visualizations
+│   └── Packed Model Format
+│
+└── Reference
+    ├── Full Results
+    ├── Configurations
+    ├── Glossary
+    └── Related Research
+
+The Wiki is especially good for navigational browsing, while the checked-in docs remain better for:
+
+source-controlled evidence;
+links tied to code revisions;
+reproducibility;
+PR review.
+
+I would therefore regard the Wiki as a presentation/navigation layer, not the authoritative technical source.
+
+13. One useful distinction: overview docs vs reference docs
+
+I'd make naming convey intended depth.
+
+Overview
+
+Readable front-to-back.
+
+architecture.md
+current-findings.md
+resource-economics.md
+dense-vs-moe.md
+expert-cache.md
+Reference
+
+Look things up.
+
+results-table.md
+measurement-definitions.md
+configuration-reference.md
+fixture-format.md
+packed-file-format.md
+sw-mlpl-findings.md
+
+That means a reader can tell from the link whether they're heading into a tutorial or a specification.
+
+14. A root docs/README.md would still be useful
+
+Even though GitHub doesn't automatically treat it as a Wiki home, it makes a good documentation landing page.
+
+Something like:
+
+# Documentation
+
+## Start here
+
+- [Project overview](../README.md)
+- [Current findings](results/current-findings.md)
+- [Architecture](overview/architecture.md)
+- [Roadmap](overview/roadmap.md)
+
+## Learn how MicroMoE works
+
+- [Concept guide](concepts/README.md)
+
+## See the evidence
+
+- [Results](results/README.md)
+- [Experiments](experiments/README.md)
+
+## Build or modify it
+
+- [Implementation](implementation/README.md)
+
+## Look something up
+
+- [Reference](reference/README.md)
+
+That can map almost verbatim onto Wiki Home.
+
+15. I'd also make the experiment sequence visible everywhere
+
+This is an unusually strong organizing structure for this repo.
+
+For example:
+
+DN01
+ Dense baseline
+   │
+   ▼
+MX01
+ top-1 experts
+   │
+   ▼
+MX02
+ top-2 routing
+   │
+   ├── DS01 data scaling
+   └── SD01 sparse dispatch
+   │
+   ▼
+RC01
+ recurrence
+   │
+   ▼
+EG01
+ Engram
+   │
+   ▼
+...
+
+Each experiment page could have:
+
+← MX01          MX02          SD01 →
+ previous       you are here  next
+
+This works extremely well in a Wiki too.
+
+16. Keep four kinds of documents conceptually separate
+
+This is probably the most important information-architecture decision.
+
+Document type	Answers
+Overview	What is this and why?
+Concept	How does this mechanism work?
+Experiment	What happened when we tested it?
+Reference	What exactly are the numbers/formats/configuration?
+
+Right now the README mixes all four.
+
+That's the root cause of the information overload.
+
+My preferred top-level structure
+
+If I were simplifying it to the smallest coherent structure, I'd start with:
+
+README.md
+
+docs/
+├── README.md
+│
+├── overview/
+│   ├── architecture.md
+│   └── roadmap.md
+│
+├── results/
+│   ├── README.md
+│   ├── current-findings.md
+│   ├── resource-economics.md
+│   └── quality.md
+│
+├── concepts/
+│   ├── README.md
+│   ├── routing.md
+│   ├── sparse-dispatch.md
+│   ├── recurrence.md
+│   ├── engram.md
+│   ├── quantization.md
+│   └── expert-cache.md
+│
+├── experiments/
+│   ├── README.md
+│   ├── DN01.md
+│   ├── MX01.md
+│   ├── MX02.md
+│   ├── DS01.md
+│   └── SD01.md
+│
+├── implementation/
+│   ├── README.md
+│   └── visualization.md
+│
+└── reference/
+    ├── results.md
+    ├── measurements.md
+    └── sw-mlpl-findings.md
+
+Then grow only when documents actually become too large.
+
+The navigation principle
+
+I'd use three levels at most for ordinary reading:
+
+README
+   ↓
+topic index
+   ↓
+focused document
+
+Anything deeper than that should generally be reference material, not required reading.
+
+So the overall experience becomes:
+
+README tells me the story.
+
+Topic indexes tell me where to look.
+
+Focused pages teach one thing.
+
+Reference pages preserve all the evidence.
+
+That structure also maps naturally onto a future Wiki without maintaining a completely different conceptual organization.

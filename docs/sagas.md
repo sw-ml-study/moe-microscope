@@ -195,23 +195,30 @@ Every saga from here ends with a host step that pins its recordings and hands
 them to the generic `../demo-extensions` microscope; see the visualization
 track in [`plan.md`](plan.md).
 
-- Saga 3 `recurrence-and-engram`: RC01, RM01, EG01 (both forms: from scratch
+- Saga 3 `resource-budget-and-documentation`: RB01 resource-budget microscope
+  (stored, resident, active, transferred, executed; expert size statistics;
+  quantization projections; capacity calculator; M/D/E labels), a measured
+  generation benchmark (time to first token, tokens per second, tail
+  latency), the layered documentation hierarchy with the README as an
+  executive summary, findings and concept and experiment pages, and a wiki
+  mirror with verified Mermaid diagrams and links. Source: `research2.txt`.
+- Saga 4 `recurrence-and-engram`: RC01, RM01, EG01 (both forms: from scratch
   and builtin, with parity), RE01, the seven-row ablation table, and the
   live-demo foundation handoff.
-- Saga 4 `distillation`: token KD against the in-repo teacher, router warm
+- Saga 5 `distillation`: token KD against the in-repo teacher, router warm
   start, expert-delta distillation, and the gated external-teacher export.
-- Saga 5 `quantization-packing-and-cache`: INT8 and INT4 experts, the packed
+- Saga 6 `quantization-packing-and-cache`: INT8 and INT4 experts, the packed
   TinyMoE file, the LRU expert-cache simulator with capacity curves, and
   prefill double buffering.
-- Saga 6 `hybrid-execution-and-embedded-budget`: bandwidth calibration, the
+- Saga 7 `hybrid-execution-and-embedded-budget`: bandwidth calibration, the
   q-star transfer/compute split, expert banks, and the 256 MB budget report.
-- Saga 7 `interactive-microscope-host`: systems recordings, live-demo
+- Saga 8 `interactive-microscope-host`: systems recordings, live-demo
   acceptance (the only `sw-checklist` scope), and the pocket-helper demo.
-- Saga 8 `configuration-frontier`: one harness over configuration records;
+- Saga 9 `configuration-frontier`: one harness over configuration records;
   sweeps of expert count, top-k, shared always-on experts, Engram slots, and
   recurrence depth; a Pareto frontier with smallest, fastest, and best picks.
-- Saga 9 `cuda-and-host-resident-experts`: backend probes for CUDA and MLX,
+- Saga 10 `cuda-and-host-resident-experts`: backend probes for CUDA and MLX,
   lab-scale training on the GPU, expert weights in host RAM with a bounded
   GPU cache, CPU execution of missing experts, and a VRAM-budget report.
-- Saga 10 `findings-and-recommendations`: `docs/report.md` with findings,
+- Saga 11 `findings-and-recommendations`: `docs/report.md` with findings,
   recommendations, and ranked future improvements, every claim cited.

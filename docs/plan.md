@@ -51,7 +51,9 @@ The catalog records each lesson as `builtin`, `from-scratch`, or `both`.
 | Expert cache, q-star scheduler, packed file | no | from scratch | systems lessons; byte I/O builtins underneath |
 | Observation, SVG, recording, playback | yes (`emit_frame`, `svg`, peer schema, Yew host) | builtin | the host is dogfooded, not rebuilt |
 
-The source discussion is retained in [`research.txt`](research.txt); the
+The source discussion is retained in [`research.txt`](research.txt) and the
+Saga 2 review that reshaped the documentation in
+[`research2.txt`](research2.txt); the
 questions about how experts specialize, how routing is decided, and how the
 Engram table is sized are answered in
 [`moe-engram-discussion.md`](moe-engram-discussion.md).
@@ -362,7 +364,72 @@ triple, a results row, and a pinned recording; the teacher fixture exists.
 Exit: a learner can watch one token be routed, dispatched, and combined; the
 specialization map is a checked artifact; MoE rows exist in the results table.
 
-## Saga 3: recurrence and Engram
+## Saga 3: resource budget and documentation restructure
+
+Source: [`research2.txt`](research2.txt), the user's review of the README
+after Saga 2. Its diagnosis: the mechanisms are demonstrated, but the README
+buries the findings under implementation detail, and the reader has no
+physical sense of how small the models are or what an expert costs. This
+saga runs before recurrence and Engram so the rest of the project speaks one
+quantitative language: stored, resident, active, transferred, executed.
+
+1. **resource-budget-microscope (RB01).** No training. Read the committed
+   models' configurations and results and produce: stored versus active
+   parameters and bytes by component; expert size statistics (count, min,
+   mean, median, p90, max, total) even while experts are uniform;
+   FP64/FP32/FP16/INT8/INT4 projected sizes; proportional storage-layout and
+   top-k working-set diagrams; a capacity calculator (given d_model, expert
+   width or rank, experts, top-k, dtype, cache experts, Engram slots and
+   width, recurrences, produce total, shared, expert, resident, and active
+   parameters and bytes plus storage-to-resident and resident-to-active
+   ratios, with optional transfer-time estimates from a stated latency and
+   bandwidth). Every number is labeled M (measured), D (derived), or E
+   (estimate).
+2. **generation-benchmark.** Measured, not derived: model-open time, cold
+   and warm time to first token, prompt tokens per second, generation
+   tokens per second, p50 and p95 token latency, expert loads per token, and
+   peak memory where the interpreter exposes it, for DN01, MX01, MX02, and
+   LD01, written to `docs/reference/` with the M/D/E legend. This is the
+   vocabulary XC01 and HY01 reuse.
+3. **documentation-hierarchy.** Restructure `docs/` into overview, results,
+   concepts, experiments, implementation, and reference, with `docs/README.md`
+   as the landing page and three reader journeys (understand the idea, see
+   whether it works, modify or reproduce it). Move the existing documents
+   into their places; every link is checked by the gate. Overview and
+   concept pages read front to back; reference pages are lookups.
+4. **readme-as-executive-summary.** Rewrite the README to two to four
+   screens: what and why, status, what we have learned (five claims, each
+   with its number), how small MicroMoE is, the architecture progression,
+   the experiment index, and next steps. Everything else moves to the
+   hierarchy. Claims are phrased as "progressively constructing a tiny model
+   inspired by these techniques", never as the combined architecture already
+   validated.
+5. **findings-and-concept-pages.** `results/current-findings.md` as
+   evidence, interpretation, and limitation per claim; `results/`
+   resource-economics and quality pages; one thin laboratory report per
+   experiment (question, change from the previous experiment, configuration,
+   results, what we learned, what we did not prove, raw evidence); concept
+   pages in the progression order dense, experts, top-k, sparse dispatch,
+   recurrence, Engram, quantization, expert cache, heterogeneous execution,
+   each with a small schematic and the four-sparsities table. Metrics are
+   grouped as quality (exact match), model economics (parameters, bytes),
+   runtime (evaluations, hits, latency), with loss, perplexity, entropy, KL,
+   and balance as diagnostics.
+6. **wiki-mirror.** Mirror the hierarchy in the peer wiki repository
+   `../moe-microscope.wiki` (Home, Start Here, Learn, Results, Experiments,
+   Internals, Reference, with a sidebar). The wiki is a navigation and
+   presentation layer; the repository documents remain canonical. Mermaid
+   diagrams must not use embedded HTML such as `<br>`; wiki-to-wiki links use
+   the wiki page syntax and wiki-to-repository-file links use the full
+   GitHub file URL; after pushing, verify in a browser that every Mermaid
+   diagram renders without error and that both kinds of link resolve.
+
+Exit: the README is an executive summary; every existing document has a
+home in the hierarchy and every link resolves; RB01 and the generation
+benchmark give measured resource and latency numbers with M/D/E labels;
+the wiki mirrors the hierarchy with verified diagrams and links.
+
+## Saga 4: recurrence and Engram
 
 1. **recurrent-block (RC01).** Shared block applied `R` times with recorded
    state per recurrence, accuracy versus `R`, and the deep-supervision loss.
@@ -384,7 +451,7 @@ specialization map is a checked artifact; MoE rows exist in the results table.
 Exit: the ablation matrix rows through RE01 exist with diagrams and triples;
 the live demo has a written, implementation-ready handoff.
 
-## Saga 4: distillation
+## Saga 5: distillation
 
 1. **token-kd (KD01 part 1).** `beta L_KD` against the in-repo teacher
    fixture; KL and accuracy deltas versus the same student without KD.
@@ -398,7 +465,7 @@ the live demo has a written, implementation-ready handoff.
 
 Exit: each distillation term has a measured, diagrammed, and tabled effect.
 
-## Saga 5: quantization, packed format, and expert cache
+## Saga 6: quantization, packed format, and expert cache
 
 1. **int8-experts (QZ01).** Symmetric INT8 experts and shared weights as
    integer-valued arrays plus scales; quality delta; bytes per expert.
@@ -421,7 +488,7 @@ Exit: each distillation term has a measured, diagrammed, and tabled effect.
 Exit: the same model runs from a packed file through a capacity-limited cache
 with a checked curve of hit rate and bytes per token versus capacity.
 
-## Saga 6: hybrid execution and the embedded budget
+## Saga 7: hybrid execution and the embedded budget
 
 1. **bandwidth-calibration.** A tiny `bench bw` analogue measuring the
    simulated transfer and host-compute bandwidths (from counted bytes and
@@ -438,7 +505,7 @@ with a checked curve of hit rate and bytes per token versus capacity.
 Exit: HY01 and PK01 rows exist; the embedded gap is a written handoff, not a
 claim.
 
-## Saga 7: interactive microscope host, complete
+## Saga 8: interactive microscope host, complete
 
 1. **systems-recordings.** Pinned recordings for QZ01, XC01, HY01, and PK01;
    cache traces and q-star splits proven in the generic host.
@@ -453,7 +520,7 @@ claim.
 Exit: every recorded lesson renders in the generic host without lesson-
 specific Rust, and the pocket helper runs end to end.
 
-## Saga 8: configuration frontier
+## Saga 9: configuration frontier
 
 After the mechanisms exist, compare configurations on the dimensions the
 results table already records and produce a size, speed, quality frontier.
@@ -475,7 +542,7 @@ results table already records and produce a size, speed, quality frontier.
 Exit: a frontier diagram whose every point is a results row and a
 recording.
 
-## Saga 9: CUDA system and CPU-resident expert weights
+## Saga 10: CUDA system and CPU-resident expert weights
 
 Today every lesson runs in the f64 CPU interpreter; `device("mlx")` and the
 CUDA backend in sw-MLPL are unused here. This saga moves the lab-scale runs
@@ -504,7 +571,7 @@ cache or executed on the CPU.
 Exit: a lab-scale MoE runs on CUDA with expert weights in host RAM at a
 documented VRAM ceiling, and the sw-MLPL backend findings are filed.
 
-## Saga 10: findings, recommendations, and future work
+## Saga 11: findings, recommendations, and future work
 
 The closing document, `docs/report.md`, written from the results table,
 the recordings, the findings ledger, and the frontier: what was built, what
