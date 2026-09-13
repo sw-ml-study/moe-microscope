@@ -10,9 +10,9 @@ reproducers under `probes/` that `scripts/run-probes` re-checks on every
 this document is updated in the same step.
 
 Binary under test: `mlpl-repl 0.22.0` from the adjacent `../sw-mlpl`
-checkout at `042d2d79` (2026-09-12), rebuilt after the third step of the
-upstream `moe-microscope-followups-2` saga (`mlpl-repl` 22:35, `mlpl-serve`
-21:51).
+checkout at `369cfeb1` (2026-09-13), rebuilt after the fourth step of the
+upstream `moe-microscope-followups-2` saga (`mlpl-repl` 08:11, `mlpl-serve`
+2026-09-12 21:51).
 
 ## Resolved upstream (verified here)
 
@@ -24,12 +24,14 @@ upstream `moe-microscope-followups-2` saga (`mlpl-repl` 22:35, `mlpl-serve`
 | F4 `gather_rows` not differentiable; no `kl_divergence` | scatter-add backward for `gather_rows`; KL documented as `reduce_add(P * (log(P) - log(Q)))` | `e1d693af` | probes "gather_rows scatter-adds gradient" and "KL divergence is a composition" |
 | F6 `repeat` rejected inside a traced function | `repeat N` with a literal count unrolls onto the tape | `a9ae2a79` | probe "repeat with a literal count unrolls inside a traced function"; `probes/f6_repeat_in_grad.mlpl` expects success |
 | F10 labeled positional table panicked the tape inside a residual block | partial axis labels are unified per axis, so a labeled table broadcasts against an unlabeled activation on the tape as eagerly | `9cd62367` | probe file expects success; `u:positions` keeps stripping labels only as documentation of the old workaround |
+| F18 shape mismatch inside `grad` panicked the process | the tape now reports "shape mismatch: 4 vs 3 elements" as a structured error | upstream `followups-2`, verified against the 08:11 rebuilt binary | probe requires the error and fails if the process panics |
+| F15 `repeat` with a parameter-bound count failed inside `grad` | the count resolves in the traced scope | `369cfeb1` | probe file expects success; depth can now be a function argument |
 | F9 `embed` rejected the documented `[B, T]` input | rank-two tokens return `[B, T, d]` | `042d2d79` | probe file expects success; DN01 keeps per-example training by choice (no cross-example attention, no shared positions) |
 | F14 `fill`/`zeros`/`ones` rejected inside `grad` | constant constructors are constant leaves on the tape | `61da67ae` | probe file expects success |
 | D1 silent zero gradient for an untracked `wrt` leaf | loud error: "the loss does not depend on 'W' (no gradient flows to it)" | upstream `moe-microscope-followups` step 3 | probe "grad of a pre-evaluated loss variable raises a loud error"; `probes/d1_silent_zero_grad.mlpl` expects the error |
 | F5 `one_hot`/`argmax` rejected inside `grad` | index and mask builtins (`argmax`, `one_hot`, `eq`, `gt`, `lt`, `argtop_k`) are stop-gradient constants on the tape | `54ad5849` | probe "one_hot and argmax act as stop-gradient constants"; `probes/f5_one_hot_in_grad.mlpl` now expects success |
 
-## Open, queued upstream as `moe-microscope-followups` (F7, F8, F11, F12, F13, F15, F16, F17, F18, S1; upstream is working F11 to F15 in `followups-2`)
+## Open, queued upstream as `moe-microscope-followups` (F7, F8, F11, F12, F13, F16, F17, S1; upstream is working F11 to F13 in `followups-2`)
 
 ### F7: a model value cannot be a user-function argument
 
@@ -107,19 +109,6 @@ weights are shared because the same model value is applied. This spelling is
 also more readable for the microscope. Affects: DN01 attention diagram.
 Proposed fix: walk `residual` and nested `chain` blocks in `attention_weights`.
 
-### F15: `repeat` with a parameter count fails inside `grad`
-
-```
-def u:recurn(x0, r) { "..."; s = x0; repeat r { s = matmul(s, W) }; s }
-grad(reduce_add(u:recurn(x, 3)), W)        # error: undefined variable: r
-```
-
-Reproducer: `probes/f15_repeat_param_count.mlpl`. The F6 fix unrolls a
-literal count; a count bound to a user-function parameter is not visible to
-the unroller, the same binding defect as F11. Workaround: one user function
-per depth with a literal count. Affects: recurrence lessons that sweep `R`.
-Proposed fix: resolve the count in the inlined call's scope before unrolling.
-
 ### F16: the `eval_stream` surface has no source provider, sandbox, or arguments
 
 ```
@@ -149,22 +138,6 @@ variable index is accepted, so the gap is the `r.field` expression form.
 Workaround: bind fields to variables eagerly before the loss. Affects: every
 lesson that keeps windows in a record. Proposed fix: evaluate field access
 as a constant (or trace it when the record holds a tracked value).
-
-### F18: a shape mismatch inside `grad` panics instead of erroring
-
-```
-W / reduce_add(W, 1)                       # eager: error: div: expected [3, 4], got [3]
-grad(reduce_add((W / reduce_add(W, 1)) * M), W)
-# thread 'main' panicked at .../mlpl-autograd/src/tensor_ops.rs:43:18: broadcastable shapes: ...
-```
-
-Reproducer: `probes/f18_shape_mismatch_panics_on_tape.mlpl`. The eager path
-reports a structured error; the tape path hits an `expect` and aborts the
-process, which is the same failure class as the original F10 panic. Met
-while renormalizing a top-2 gate. Workaround: replicate row sums with a
-ones matmul (`kept / matmul(kept, fill([E, E], 1))`), which also avoids
-passing T into a nested helper (F11). Proposed fix: route every tape shape
-check through the same structured error as eager evaluation.
 
 ### S1: the adjacent `mlpl-serve` binary was stale
 

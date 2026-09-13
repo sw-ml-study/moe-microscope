@@ -1,0 +1,61 @@
+#!/bin/sh
+# write: run the DS01 data-scale sweep (minutes) and install its points, index, results rows, and diagram. check: validate the committed points and index and freshness-check the diagram without training.
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+mode=${1:-check}
+mlpl=$("$repo_root/scripts/select-mlpl")
+fixture_dir="$repo_root/fixtures/scale"
+index="$fixture_dir/index-v1.json"
+points="dense:120:200 dense:120:400 dense:480:200 dense:960:200 moe:120:200 moe:120:400 moe:480:200 moe:960:200"
+
+if [ "$mode" = "write" ]; then
+    binary=$("$mlpl" --version 2>/dev/null | head -1 | tr -d '\n')
+    tmp_rel="tmp/scale-sweep"
+    mkdir -p "$repo_root/$tmp_rel"
+    rows="$repo_root/$tmp_rel/rows.md"
+    : > "$rows"
+    for spec in $points; do
+        kind=${spec%%:*}; rest=${spec#*:}; total=${rest%%:*}; epochs=${rest#*:}
+        name="$kind-$total-$epochs"
+        "$mlpl" --source-dir "$repo_root" "$repo_root/demos/scale_train.mlpl" -- "$kind" "$total" "$epochs" "$tmp_rel/$name.json" "$binary"
+        cp "$repo_root/$tmp_rel/$name.json" "$fixture_dir/$name.json"
+        cat "$repo_root/$tmp_rel/$name.json.row" >> "$rows"
+    done
+    grep -v '(DS01)' "$repo_root/docs/results.md" > "$repo_root/$tmp_rel/results.md"
+    cat "$rows" >> "$repo_root/$tmp_rel/results.md"
+    cp "$repo_root/$tmp_rel/results.md" "$repo_root/docs/results.md"
+    list=""
+    for spec in $points; do
+        kind=${spec%%:*}; rest=${spec#*:}; total=${rest%%:*}; epochs=${rest#*:}
+        name="$kind-$total-$epochs"
+        sha=$(shasum -a 256 "$fixture_dir/$name.json" | awk '{print $1}')
+        list="$list{\"name\":\"$name\",\"kind\":\"$kind\",\"total\":$total,\"epochs\":$epochs,\"sha256\":\"$sha\"},"
+    done
+    printf '{"schema":"sw-ml-study.moe-microscope-scale-index","version":1,"source_revision":"%s","trainer":"demos/scale_train.mlpl","trainer_sha256":"%s","points":[%s]}\n' \
+        "$(git -C "$repo_root" rev-parse HEAD)" "$(shasum -a 256 "$repo_root/demos/scale_train.mlpl" | awk '{print $1}')" "${list%,}" | jq . > "$index"
+    "$repo_root/scripts/run-scale-diagram" write
+    rm -rf "$repo_root/$tmp_rel"
+    echo "PASS data-scale sweep trained, installed, and indexed"
+    exit 0
+fi
+
+jq -e '.schema == "sw-ml-study.moe-microscope-scale-index" and (.points | length) == 8' "$index" >/dev/null
+[ "$(shasum -a 256 "$repo_root/demos/scale_train.mlpl" | awk '{print $1}')" = "$(jq -r '.trainer_sha256' "$index")" ] || {
+    echo "scale trainer changed since the sweep ran; run scripts/run-scale-sweep write (minutes)" >&2
+    exit 1
+}
+for encoded in $(jq -r '.points[] | @base64' "$index"); do
+    field() { printf '%s' "$encoded" | base64 --decode | jq -r "$1"; }
+    file="$fixture_dir/$(field '.name').json"
+    [ -f "$file" ] || { echo "missing scale point: $file" >&2; exit 1; }
+    [ "$(shasum -a 256 "$file" | awk '{print $1}')" = "$(field '.sha256')" ] || { echo "scale point hash drift: $file" >&2; exit 1; }
+    jq -e --arg k "$(field '.kind')" --argjson t "$(field '.total')" --argjson e "$(field '.epochs')" '
+      .kind == $k and .total == $t and .epochs == $e and
+      (.curve_epochs | length) == .curve_len and (.curve_val | length) == .curve_len and
+      .final_val > 0 and .final_train > 0 and .acc_overall >= 0 and .acc_overall <= 1
+    ' "$file" >/dev/null
+done
+grep -c '(DS01)' "$repo_root/docs/results.md" | grep -q '^8$' || { echo "expected eight DS01 results rows" >&2; exit 1; }
+"$repo_root/scripts/run-scale-diagram" check
+echo "PASS data-scale points, index, rows, and diagram"

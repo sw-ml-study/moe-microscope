@@ -1,6 +1,6 @@
 number = 5
 slug = "data-scale-sweep"
-status = "pending"
+status = "in-progress"
 description = "DS01 data-scale sweep, opt-in and never in the gate: train DN01 and MX01 at 1..."
 role = "production"
 context_files = []

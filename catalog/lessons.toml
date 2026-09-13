@@ -100,3 +100,20 @@ memory = "same 7,096-parameter model as MX01; 4,136 active per token with two ex
 speed = "27,000 one-example Adam steps, dense-masked; about 36 seconds; two expert evaluations per token at inference"
 quality = "validation masked loss 3.92 (MX01 3.76); validation accuracy mlpl 0.286, prose 0; training exact match 0.86; specialization score 0.42 for top-2 against 0.61 for MX01's top-1 (0.25 is family-blind)"
 status = "accepted"
+
+[[lesson]]
+id = "DS01"
+slug = "data-scale"
+title = "Data moves the held-out columns; epochs do not"
+source = "demos/scale_train.mlpl"
+diagram_source = "demos/scale_microscope.mlpl"
+library = ["lib/scale.mlpl", "lib/dense.mlpl", "lib/moe.mlpl", "lib/domain.mlpl", "lib/results.mlpl", "lib/svg.mlpl"]
+test = ["tests/test_scale.mlpl"]
+previews = ["assets/previews/scale-sweep.svg"]
+fixture = "fixtures/scale/index-v1.json"
+implementation = "from-scratch"
+observations = []
+memory = "DN01 (3,812 params) and MX01 (7,096 params) unchanged; data sizes 120, 480, 960 examples"
+speed = "opt-in sweep of eight points (minutes); the gate only validates the committed points and redraws the diagram"
+quality = "validation loss and per-family held-out accuracy against data size; the 400-epoch points at 120 examples isolate the epoch effect"
+status = "accepted"

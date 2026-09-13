@@ -22,7 +22,9 @@ for path in AGENTS.md CLAUDE.md COPYRIGHT LICENSE README.md justfile mlplunit.co
     lib/moe.mlpl tests/test_moe.mlpl demos/router_microscope.mlpl assets/previews/router-routing.svg scripts/run-router-demo demos/moe_baseline.mlpl scripts/run-moe-demo assets/previews/moe-run.svg assets/previews/moe-balance.svg \
     demos/dispatch_microscope.mlpl scripts/run-dispatch-demo assets/previews/dispatch-combine.svg \
     demos/moe_top2.mlpl scripts/run-moe2-demo assets/previews/moe2-specialization.svg assets/previews/moe2-cost.svg \
-    fixtures/moe/mx01-family-by-expert.json; do
+    fixtures/moe/mx01-family-by-expert.json \
+    lib/scale.mlpl tests/test_scale.mlpl demos/scale_train.mlpl demos/scale_microscope.mlpl \
+    scripts/run-scale-sweep scripts/run-scale-diagram fixtures/scale/index-v1.json assets/previews/scale-sweep.svg; do
     if [ ! -e "$repo_dir/$path" ]; then
         echo "missing required file: $path" >&2
         exit 1

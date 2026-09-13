@@ -34,6 +34,12 @@ experts, and the MoE recordings for the generic host.
 7. `moe-recordings-and-host-handoff` - MX01 and MX02 recorded over live SSE,
    pinned, and handed to the generic host.
 
+Step 5 status: complete. DS01 data-scale sweep: eight committed points
+(dense and MoE at 120, 480, 960 examples for 200 epochs, plus 120 for 400
+epochs), index with hashes, eight results rows, and a diagram redrawn from
+the points in the gate. Data cuts validation loss by two thirds and solves
+prose held-out; doubling epochs at 120 examples makes it worse.
+
 Step 4 status: complete. MX02 top-2 (`demos/moe_top2.mlpl`): two-argmax
 mask that traces, gate renormalized by a ones matmul (F18 panic and F11
 avoided), family-by-expert maps for MX01 (from its committed fixture) and
@@ -95,10 +101,22 @@ Step 5 status: complete. DN01 recorded over live `mlpl-serve` SSE into
 (F16); loop streaming proven; `docs/host-handoff.md` written for
 `../demo-extensions`; D1 and F10 verified fixed upstream.
 
+Step 5 status: complete. DS01 data-scale sweep: eight committed points
+(dense and MoE at 120, 480, 960 examples for 200 epochs, plus 120 for 400
+epochs), index with hashes, eight results rows, and a diagram redrawn from
+the points in the gate. Data cuts validation loss by two thirds and solves
+prose held-out; doubling epochs at 120 examples makes it worse.
+
 Step 4 status: complete. DN01 (`demos/dense_baseline.mlpl`) with
 `lib/dense.mlpl` and `lib/svg.mlpl`; two annotated diagrams; the first
 results row; catalog entry; seven more findings (F9 to F15) filed with
 reproducers, two of which (F5, F6) upstream fixed the same evening.
+
+Step 5 status: complete. DS01 data-scale sweep: eight committed points
+(dense and MoE at 120, 480, 960 examples for 200 epochs, plus 120 for 400
+epochs), index with hashes, eight results rows, and a diagram redrawn from
+the points in the gate. Data cuts validation loss by two thirds and solves
+prose held-out; doubling epochs at 120 examples makes it worse.
 
 Step 4 status: complete. MX02 top-2 (`demos/moe_top2.mlpl`): two-argmax
 mask that traces, gate renormalized by a ones matmul (F18 panic and F11
@@ -111,6 +129,12 @@ Step 3 status: complete. `lib/domain.mlpl`, `lib/evaluate.mlpl`, and
 `lib/results.mlpl` with 28 native tests; the 120-example mixture fixture;
 the DM01 domain microscope with three annotated diagrams (window, tags,
 split) freshness-checked by `just check`; catalog entry DM01.
+
+Step 5 status: complete. DS01 data-scale sweep: eight committed points
+(dense and MoE at 120, 480, 960 examples for 200 epochs, plus 120 for 400
+epochs), index with hashes, eight results rows, and a diagram redrawn from
+the points in the gate. Data cuts validation loss by two thirds and solves
+prose held-out; doubling epochs at 120 examples makes it worse.
 
 Step 4 status: complete. MX02 top-2 (`demos/moe_top2.mlpl`): two-argmax
 mask that traces, gate renormalized by a ones matmul (F18 panic and F11

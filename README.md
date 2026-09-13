@@ -176,6 +176,35 @@ by construction. Top-2 fits the training rows better (0.86 exact match) and
 answers two of seven held-out MLPL prompts, the first non-prose held-out
 successes in the table, at the cost of a worse validation loss.
 
+## Data scale
+
+DS01 answers the question the previous lessons raise: does more training or
+more data move the held-out columns? Both models were trained at 120, 480,
+and 960 examples for 200 epochs, and at 120 examples for 400 epochs. The
+sweep takes about eight minutes and is opt-in; the gate validates the eight
+committed points and redraws the diagram from them without training.
+
+![DS01 data scale: validation loss against example count for the dense model and the top-1 mixture, per-family held-out accuracy at each size, and training cost](assets/previews/scale-sweep.svg)
+
+```sh
+just scale           # validate the committed points and check the diagram (seconds)
+just scale write     # rerun the whole sweep (about eight minutes) and reinstall
+```
+
+| Examples | Dense val loss | MoE val loss | Dense held-out prose | Dense held-out arithmetic | Dense seconds | MoE seconds |
+|---|---|---|---|---|---|---|
+| 120 (200 epochs) | 3.48 | 3.49 | 0.67 | 0 | 12 | 27 |
+| 120 (400 epochs) | 3.89 | 4.17 | 0.67 | 0 | 25 | 54 |
+| 480 | 1.66 | 1.42 | 1.00 | 0.09 | 52 | 94 |
+| 960 | 1.11 | 1.22 | 1.00 | 0.19 | 97 | 190 |
+
+Data is the lever and epochs are not: doubling epochs at 120 examples makes
+validation loss worse for both models, while eightfold data cuts it by
+two thirds and turns prose into a solved family. The mixture beats the
+dense model at 480 examples and loses at 960 at twice the training cost,
+which is the honest state of a four-expert model on this domain and the
+reason the configuration frontier (Saga 8) exists.
+
 ## Sparse dispatch
 
 SD01 evaluates the same mixture two ways and proves they are one model.
@@ -293,6 +322,7 @@ just router          # run the MX01 routing microscope and check its diagram
 just moe             # run MX01 training (about 36 s) and check its diagrams and results row
 just dispatch        # run SD01 sparse dispatch with exact parity (about 5 s)
 just moe2            # run MX02 top-2 routing and the specialization map (about 36 s)
+just scale           # validate the DS01 data-scale points and diagram (opt-in sweep: just scale write)
 just mlpl-style      # canonical formatting and docstring checks
 ```
 

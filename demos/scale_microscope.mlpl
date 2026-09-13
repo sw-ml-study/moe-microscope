@@ -1,0 +1,108 @@
+# DS01 data-scale microscope: draws validation loss and held-out accuracy against data size for the dense and MoE models from the committed sweep points, without training.
+include "../lib/scale.mlpl";
+include "../lib/svg.mlpl";
+
+out_dir = if list_len(args()) {
+  unwrap(list_get(args(), 0))
+} else {
+  ""
+};
+writing = str_len(out_dir);
+
+def u:point(name) {
+  "Load one committed sweep point.";
+  unwrap(parse_json(unwrap(read_text(str_concat(str_concat("fixtures/scale/", name), ".json")))))
+}
+
+d120 = u:point("dense-120-200");
+d120x = u:point("dense-120-400");
+d480 = u:point("dense-480-200");
+d960 = u:point("dense-960-200");
+m120 = u:point("moe-120-200");
+m120x = u:point("moe-120-400");
+m480 = u:point("moe-480-200");
+m960 = u:point("moe-960-200");
+sizes = [120, 480, 960];
+dense_val = [d120.final_val, d480.final_val, d960.final_val];
+moe_val = [m120.final_val, m480.final_val, m960.final_val];
+dense_acc = [d120.acc_overall, d480.acc_overall, d960.acc_overall];
+moe_acc = [m120.acc_overall, m480.acc_overall, m960.acc_overall];
+print("WHAT THIS SHOWS -- Whether more data or more epochs moves the held-out columns for DN01 (dense) and MX01 (top-1 MoE).");
+print("DATA -- val loss dense", dense_val, "moe", moe_val, "; overall val accuracy dense", dense_acc, "moe", moe_acc);
+print("EPOCHS -- at 120 examples, 200 -> 400 epochs: dense val", u:svg_round(d120.final_val, 3), "->", u:svg_round(d120x.final_val, 3), "; moe val", u:svg_round(m120.final_val, 3), "->", u:svg_round(m120x.final_val, 3));
+print("COST -- training ms dense 120/480/960:", d120.train_ms, d480.train_ms, d960.train_ms, "; moe:", m120.train_ms, m480.train_ms, m960.train_ms);
+
+def u:family_bars(p, x0, y0, cls) {
+  "Four family accuracy bars for one point, 80 px tall at most.";
+  vals = [p.acc_arith, p.acc_seq, p.acc_mlpl, p.acc_prose];
+  out = "";
+  i = 0;
+  while lt(i, 4) {
+    h = round(take(vals, 0, i) * 80);
+    out = str_concat(out, u:svg_rect(x0 + i * 22, y0 + 80 - h, 18, h + 1, cls));
+    i = i + 1
+  };
+  out
+}
+
+def u:scale_svg() {
+  "Diagram: validation loss against data size for both models (with the doubled-epoch points), overall held-out accuracy against data size, per-family bars at each size, and the cost of each run.";
+  page = u:svg_head("DS01 data scale", "Validation masked loss falls as the number of training examples grows from 120 to 480 to 960 for both the dense model and the top-1 mixture, while doubling the epochs at 120 examples does not help; held-out accuracy per family rises with data and the training cost grows linearly.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "DS01 DATA SCALE -- data moves the held-out columns, epochs do not"));
+  page = str_concat(page, u:svg_text(32, 60, "m", "WHAT: DN01 (gold) and MX01 (pink) at 120, 480, and 960 examples for 200 epochs; hollow marks: 120 examples, 400 epochs"));
+  top = reduce(:max, concat(concat(dense_val, moe_val), [d120x.final_val, m120x.final_val]));
+  xs = 70 + (sizes / 960) * 330;
+  page = str_concat(page, "<line x1=\"70\" y1=\"270\" x2=\"420\" y2=\"270\" class=\"axis\"/><line x1=\"70\" y1=\"96\" x2=\"70\" y2=\"270\" class=\"axis\"/>");
+  page = str_concat(page, u:svg_text(70, 88, "k", str_concat("validation masked loss; top = ", u:svg_num(u:svg_round(top, 2)))));
+  page = str_concat(page, u:svg_polyline(xs, 270 - (dense_val / top) * 170, "l1"));
+  page = str_concat(page, u:svg_polyline(xs, 270 - (moe_val / top) * 170, "l2"));
+  page = str_concat(page, u:svg_rect(take(xs, 0, 0) - 4, 270 - (d120x.final_val / top) * 170 - 4, 8, 8, "cell"));
+  page = str_concat(page, u:svg_rect(take(xs, 0, 0) + 4, 270 - (m120x.final_val / top) * 170 - 4, 8, 8, "cell"));
+  i = 0;
+  while lt(i, 3) {
+    page = str_concat(page, u:svg_text(take(xs, 0, i) - 12, 288, "s", u:svg_num(take(sizes, 0, i))));
+    page = str_concat(page, u:svg_text(take(xs, 0, i) - 14, 270 - (take(dense_val, 0, i) / top) * 170 - 8, "s", u:svg_num(u:svg_round(take(dense_val, 0, i), 2))));
+    page = str_concat(page, u:svg_text(take(xs, 0, i) - 14, 270 - (take(moe_val, 0, i) / top) * 170 + 16, "s", u:svg_num(u:svg_round(take(moe_val, 0, i), 2))));
+    i = i + 1
+  };
+  page = str_concat(page, u:svg_text(70, 306, "m", str_concat(str_concat("examples; hollow marks at 400 epochs: ", u:svg_num(u:svg_round(d120x.final_val, 2))), str_concat(" and ", u:svg_num(u:svg_round(m120x.final_val, 2))))));
+  page = str_concat(page, u:svg_text(70, 326, "m", "three quarters of the examples are training rows"));
+  page = str_concat(page, u:svg_text(480, 88, "k", "held-out accuracy per family (arith, seq, mlpl, prose) by size"));
+  page = str_concat(page, u:svg_text(480, 112, "s", "dense 120"));
+  page = str_concat(page, u:family_bars(d120, 480, 118, "l1"));
+  page = str_concat(page, u:svg_text(580, 112, "s", "dense 480"));
+  page = str_concat(page, u:family_bars(d480, 580, 118, "l1"));
+  page = str_concat(page, u:svg_text(680, 112, "s", "dense 960"));
+  page = str_concat(page, u:family_bars(d960, 680, 118, "l1"));
+  page = str_concat(page, u:svg_text(480, 222, "s", "moe 120"));
+  page = str_concat(page, u:family_bars(m120, 480, 228, "l2"));
+  page = str_concat(page, u:svg_text(580, 222, "s", "moe 480"));
+  page = str_concat(page, u:family_bars(m480, 580, 228, "l2"));
+  page = str_concat(page, u:svg_text(680, 222, "s", "moe 960"));
+  page = str_concat(page, u:family_bars(m960, 680, 228, "l2"));
+  page = str_concat(page, u:svg_text(790, 140, "", "bar height = accuracy,"));
+  page = str_concat(page, u:svg_text(790, 158, "", "full height = 1.0"));
+  page = str_concat(page, u:svg_text(480, 330, "k", "overall held-out accuracy"));
+  page = str_concat(page, u:svg_text(480, 352, "", str_concat("dense  ", u:svg_vec(dense_acc, 3))));
+  page = str_concat(page, u:svg_text(480, 372, "", str_concat("moe    ", u:svg_vec(moe_acc, 3))));
+  page = str_concat(page, u:svg_text(480, 400, "k", "training seconds per run (this machine)"));
+  page = str_concat(page, u:svg_text(480, 422, "", str_concat("dense  ", u:svg_vec(round([d120.train_ms, d480.train_ms, d960.train_ms] / 1000), 0))));
+  page = str_concat(page, u:svg_text(480, 442, "", str_concat("moe    ", u:svg_vec(round([m120.train_ms, m480.train_ms, m960.train_ms] / 1000), 0))));
+  page = str_concat(page, u:svg_rect(30, 462, 900, 74, "panel"));
+  page = str_concat(page, u:svg_text(50, 486, "", "WHY: at 120 examples both models memorize; doubling epochs moves the training column and worsens the held-out loss."));
+  page = str_concat(page, u:svg_text(50, 506, "", "WHY: more examples of the same families teach rules instead of rows; the cost grows linearly with examples times epochs."));
+  page = str_concat(page, u:svg_text(50, 526, "m", "HOW: demos/scale_train.mlpl per point; scripts/run-scale-sweep write is opt-in (minutes); redrawn from fixtures/scale."));
+  str_concat(page, "</svg>")
+}
+
+r1 = if writing {
+  write_atomic(str_concat(out_dir, "/scale-sweep.svg"), u:scale_svg())
+} else {
+  ok(0)
+};
+print("THE POINT -- The lever at microscope scale is data, not epochs; the MoE and dense curves answer whether experts help once there is enough to learn from.");
+if is_ok(r1) {
+  ok("scale diagram written")
+} else {
+  err("scale diagram failed")
+}

@@ -1,4 +1,4 @@
-# F18 reproducer: a shape mismatch that eager evaluation reports as a clean error ("div: expected [3, 4], got [3]") panics the process inside grad; checked by scripts/run-probes.
+# F18 reproducer, resolved upstream (with the 2026-09-13 followups): a shape mismatch inside grad now raises a structured error instead of a Rust panic; scripts/run-probes requires the error and forbids a panic.
 W = param[3, 4]
 W = [[1, 2, 3, 4], [2, 2, 2, 2], [4, 3, 2, 1]]
 grad(reduce_add((W / reduce_add(W, 1)) * [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0]]), W)

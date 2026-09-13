@@ -39,8 +39,9 @@ expect_error f11_nested_param_binding_in_grad "undefined variable: start"
 expect_error f12_size_arithmetic_in_grad "not supported inside grad"
 expect_error f13_attention_weights_residual "no Attention layer found"
 expect_ok f14_fill_in_grad "^fill-in-grad gradient 2 2 2"
-expect_error f15_repeat_param_count "undefined variable: r"
+expect_ok f15_repeat_param_count "^grad 1.5 1.5"
 expect_error f17_record_field_in_grad "expression form not supported inside grad"
-expect_error f18_shape_mismatch_panics_on_tape "panicked"
+expect_error f18_shape_mismatch_panics_on_tape "shape mismatch"
+"$mlpl" --source-dir "$repo_root" "$repo_root/probes/f18_shape_mismatch_panics_on_tape.mlpl" 2>&1 | grep -q panicked && { echo "probe f18: the tape panicked again" >&2; exit 1; }
 
 expect_error d1_silent_zero_grad "the loss does not depend on"

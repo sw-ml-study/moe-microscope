@@ -1,0 +1,14 @@
+# Data-scale helpers: mixtures with a different example count, and the flat point record the sweep fixture stores.
+include "domain.mlpl";
+
+def u:scale_mixture(total) {
+  "The version-zero mixture with its total replaced; ratios, window, split fraction, and seed are unchanged.";
+  base = u:domain_mixture_v0();
+  {seed: base.seed, total: total, window: base.window, train_fraction: base.train_fraction, ratios: base.ratios, version: base.version}
+}
+
+def u:scale_point(kind, total, epochs, curve_e, curve_t, curve_v, acc, train_acc, ms) {
+  "One measured sweep point as a flat record: identity, final metrics, and the checkpoint curves.";
+  n = reduce_mul(shape(curve_e));
+  {kind: kind, total: total, epochs: epochs, curve_len: n, curve_epochs: curve_e, curve_train: curve_t, curve_val: curve_v, final_train: take(curve_t, 0, n - 1), final_val: take(curve_v, 0, n - 1), acc_arith: take(acc, 0, 0), acc_seq: take(acc, 0, 1), acc_mlpl: take(acc, 0, 2), acc_prose: take(acc, 0, 3), acc_overall: take(acc, 0, 4), train_overall: take(train_acc, 0, 4), train_ms: ms}
+}

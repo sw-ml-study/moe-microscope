@@ -1,0 +1,65 @@
+{
+  "schema": "sw-ml-study.moe-microscope-scale-index",
+  "version": 1,
+  "source_revision": "05c3901a25ec73dabf71da8a9e8c4dc701d03cd5",
+  "trainer": "demos/scale_train.mlpl",
+  "trainer_sha256": "bfb8ec5600174daee576bfb1efea15dc9b0d6ac373fe7038cb4990cc2e07b3e1",
+  "points": [
+    {
+      "name": "dense-120-200",
+      "kind": "dense",
+      "total": 120,
+      "epochs": 200,
+      "sha256": "da460d4a0e26d38db9645d6d4e518528b3e9b838a4c87ae2b4c8c0972c2211cf"
+    },
+    {
+      "name": "dense-120-400",
+      "kind": "dense",
+      "total": 120,
+      "epochs": 400,
+      "sha256": "292ac1c5be14c22de7e960df22b82e0868bfbdfc8788a813dcb0cbda80857921"
+    },
+    {
+      "name": "dense-480-200",
+      "kind": "dense",
+      "total": 480,
+      "epochs": 200,
+      "sha256": "049372a197d50260c9e442836a0c0247419ae5e2273c3d4071766a9fdf5b462b"
+    },
+    {
+      "name": "dense-960-200",
+      "kind": "dense",
+      "total": 960,
+      "epochs": 200,
+      "sha256": "2166a42ffdd9d7dbfcdfaf7d6afde16be39c52be52e40068811bdff554d33c95"
+    },
+    {
+      "name": "moe-120-200",
+      "kind": "moe",
+      "total": 120,
+      "epochs": 200,
+      "sha256": "e8be21620eb6bca743d30fce22b03a866bc7213a65e8616fee76b7741ed317e0"
+    },
+    {
+      "name": "moe-120-400",
+      "kind": "moe",
+      "total": 120,
+      "epochs": 400,
+      "sha256": "b0826d066d4ae0c8eb9c39b925603610c4f5b4b25209dd11e163951cb3fa078d"
+    },
+    {
+      "name": "moe-480-200",
+      "kind": "moe",
+      "total": 480,
+      "epochs": 200,
+      "sha256": "254d35292c34c0f257a100a4250de6e7322d21c45ca61afbacd4a05d830b2de0"
+    },
+    {
+      "name": "moe-960-200",
+      "kind": "moe",
+      "total": 960,
+      "epochs": 200,
+      "sha256": "3b5ea92b3714882824bac3b4cfd1c124826ff82f63362d2501a222aab958fc65"
+    }
+  ]
+}

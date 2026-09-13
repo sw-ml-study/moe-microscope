@@ -37,7 +37,7 @@ Gaps with reproducers are written up as upstream work orders in
 | Top-k gate on the tape | `argmax`/`one_hot`/`argtop_k` are stop-gradient constants inside `grad` (F5 resolved), so the mask can live inside the loss; the Switch-style gate `softmax(logits) * mask` gives the router a gradient (a renormalized top-1 gate is identically 1 and gives none) | probes "adam trains a list of expert models..." and "one_hot and argmax act as stop-gradient constants" |
 | Batched sequences | `embed` now accepts `[B, T]` (F9 resolved); lessons still train one example per step so attention never spans examples and positions stay per example | per-example loop |
 | Positional table on the tape | the labeled `sinusoidal_encoding` output trains inside `adam` (F10 resolved) | `u:positions` still strips labels; harmless |
-| Recurrence depth as a runtime value | `repeat` with a literal count unrolls on the tape (F6 resolved); a parameter-bound count does not (F15) | one user function per depth with a literal `repeat` |
+| Recurrence depth as a runtime value | `repeat` unrolls on the tape with a literal or parameter-bound count (F6, F15 resolved) | `repeat r` inside a user function |
 | Models as user-function parameters | models cannot be arguments (F7); they are reached as globals | lesson helpers name their globals |
 | Observation facade | `emit_frame` requires a literal name (F8); no forwarding wrapper is possible | `lib/observe.mlpl` provides naming helpers only |
 | Pre-evaluated loss variables | `grad(l, W)` on an assigned `l` now raises a loud error (D1 resolved) | write the loss as an expression or user-function call |
@@ -59,8 +59,6 @@ Gaps with reproducers are written up as upstream work orders in
 | F11 nested traced call loses an index parameter | `probes/f11_nested_param_binding_in_grad.mlpl` | slice chunks eagerly, pass arrays into the loss |
 | F12 size arithmetic inside `grad` | `probes/f12_size_arithmetic_in_grad.mlpl` | pass sizes as arguments |
 | F13 `attention_weights` and `residual` | `probes/f13_attention_weights_residual.mlpl` | explicit residual with a separate attention sub-model |
-| F15 `repeat` with a parameter count | `probes/f15_repeat_param_count.mlpl` | literal counts |
-| F18 shape mismatch panics on the tape | `probes/f18_shape_mismatch_panics_on_tape.mlpl` | keep shapes explicit; replicate row sums with a ones matmul |
 | F17 record field access inside `grad` | `probes/f17_record_field_in_grad.mlpl` | bind fields to variables eagerly |
 | F16 no include/sandbox/args on `eval_stream` | `scripts/run-emit-frame-loops` | `scripts/bundle-program`, inline mixture twin, guarded writes |
 

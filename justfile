@@ -60,6 +60,10 @@ dispatch mode="check":
 moe2 mode="check":
     ./scripts/run-moe2-demo {{mode}}
 
+# Validate the committed DS01 data-scale points and redraw their diagram; `just scale write` reruns the whole sweep (minutes).
+scale mode="check":
+    ./scripts/run-scale-sweep {{mode}}
+
 # Print the selected sw-MLPL executable.
 mlpl-path:
     ./scripts/select-mlpl

@@ -1,4 +1,4 @@
-# F15 reproducer: repeat whose count is a user-function parameter fails inside grad with an unbound variable; checked by scripts/run-probes.
+# F15 reproducer, resolved upstream (369cfeb1): a repeat count bound to a user-function parameter resolves in the traced scope.
 W = param[2, 2]
 W = [[0.5, 0], [0, 0.5]]
 def u:recurn(x0, r) {
