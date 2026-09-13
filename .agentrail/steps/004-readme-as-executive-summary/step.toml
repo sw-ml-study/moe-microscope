@@ -1,6 +1,6 @@
 number = 4
 slug = "readme-as-executive-summary"
-status = "pending"
+status = "in-progress"
 description = "Rewrite README.md as a two-to-four-screen executive summary: what and why, st..."
 role = "production"
 context_files = []
