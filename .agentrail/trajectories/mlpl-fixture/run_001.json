@@ -1,0 +1,11 @@
+{
+  "task_type": "mlpl-fixture",
+  "state": {
+    "number": 6,
+    "step": "in-repo-teacher-fixture"
+  },
+  "action": "Probed JSON round trip and teacher step cost; found F17; wrote shared helpers with tests; wrote the teacher demo with export, diagram, and row; tuned learning rate by two experiments; wrote run-teacher with write/check modes and index; documented the schema; flipped F14; regenerated the recording index after the DN01 refactor; rendered and trimmed the diagram; gate; commit by name; push.",
+  "result": "success",
+  "reward": 1,
+  "timestamp": "2026-09-12T22:29:34"
+}

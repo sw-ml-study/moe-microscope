@@ -1,9 +1,10 @@
 number = 6
 slug = "in-repo-teacher-fixture"
-status = "in-progress"
+status = "completed"
 description = "Train the larger in-repo dense teacher (same DN01 source at a larger configur..."
 role = "production"
 context_files = []
 created_at = "2026-09-12T17:13:14"
+completed_at = "2026-09-12T22:29:34"
 task_type = "mlpl-fixture"
-commits = []
+commits = ["77caf5d4ad28d159425ee433b174e9a38a4c47a5"]
