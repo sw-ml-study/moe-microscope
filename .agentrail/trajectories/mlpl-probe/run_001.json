@@ -1,0 +1,11 @@
+{
+  "task_type": "mlpl-probe",
+  "state": {
+    "number": 2,
+    "step": "capability-probes"
+  },
+  "action": "Scratchpad probes against release mlpl-repl; fetched upstream and read its moe-microscope-findings saga; wrote mlplunit suites with try/catch pins; wrote probes/ and scripts/run-probes; revised plan/sagas/architecture/AGENTS/README/handoffs/ledger; agentrail insert and plan --update; just check; commit by name; push.",
+  "result": "success",
+  "reward": 1,
+  "timestamp": "2026-09-12T20:28:01"
+}

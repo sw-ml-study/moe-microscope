@@ -1,9 +1,10 @@
 number = 2
 slug = "capability-probes"
-status = "in-progress"
+status = "completed"
 description = "Write native mlplunit probes for the items listed under 'To be probed' in doc..."
 role = "production"
 context_files = []
 created_at = "2026-09-12T17:13:14"
+completed_at = "2026-09-12T20:28:01"
 task_type = "mlpl-probe"
-commits = []
+commits = ["a91bc4533b18186f28743b0287b989086de7afb3"]
