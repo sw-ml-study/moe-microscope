@@ -81,6 +81,25 @@ as much per token; top-2 touches one more expert's worth.
 just budget          # regenerate and check the resource-budget document and diagram
 ```
 
+## How fast is it?
+
+GB01 measures rather than derives: build time, cold and warm time to first
+token, prefill and generation tokens per second, and p50, p95, and maximum
+token latency for DN01, MX01, MX02, and LD01, in
+[`docs/reference/generation-benchmark.md`](docs/reference/generation-benchmark.md).
+At this size the dense model generates on the order of 5,000 tokens per
+second in the interpreter and the sparse-dispatch mixtures roughly 3,000
+(top-1) and 1,900 (top-2), because every token pays the dispatch
+bookkeeping SD01 measured; the packed-delta model matches top-1. The exact
+figures for the committed run are in the document and change a little from
+run to run. Every forward runs the full 28-token
+window; there is no KV cache on this path yet.
+
+```sh
+just benchmark       # validate the committed measurements and document
+just benchmark write # re-measure on this machine (seconds)
+```
+
 ## Synthetic domain microscope
 
 DM01 is the first executable microscope. It shows the three data structures
@@ -388,6 +407,7 @@ just moe2            # run MX02 top-2 routing and the specialization map (about 
 just scale           # validate the DS01 data-scale points and diagram (opt-in sweep: just scale write)
 just delta           # run LD01 low-rank delta experts with a shared FFN (about 80 s)
 just budget          # RB01 resource budget: document and diagram, no training
+just benchmark       # GB01 generation benchmark fixture and document (write to re-measure)
 just mlpl-style      # canonical formatting and docstring checks
 ```
 

@@ -3,7 +3,7 @@
   "version": 1,
   "recording_schema": "fixtures/recordings/recording-schema-v0.json",
   "source_repository": "https://github.com/sw-ml-study/moe-microscope.git",
-  "source_revision": "60b1eb7297a02dfbac2386567ee3f90ea2a9137f",
+  "source_revision": "4972b8b95ebb7179fe5623983aeff5fc3cd1556d",
   "bundler": "scripts/bundle-program",
   "fixtures": [
     {

@@ -72,6 +72,10 @@ delta mode="check":
 budget mode="check":
     ./scripts/run-budget-demo {{mode}}
 
+# Validate the GB01 generation benchmark fixture and document; `just benchmark write` re-measures (seconds).
+benchmark mode="check":
+    ./scripts/run-benchmark {{mode}}
+
 # Print the selected sw-MLPL executable.
 mlpl-path:
     ./scripts/select-mlpl

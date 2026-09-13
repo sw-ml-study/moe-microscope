@@ -1,0 +1,31 @@
+#!/bin/sh
+# write: measure the GB01 generation benchmark (seconds) into fixtures/benchmark/generation-v0.json and render docs/reference/generation-benchmark.md. check: validate the fixture and require the rendered document to match.
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+mlpl=$("$repo_root/scripts/select-mlpl")
+mode=${1:-check}
+fixture="$repo_root/fixtures/benchmark/generation-v0.json"
+doc="$repo_root/docs/reference/generation-benchmark.md"
+tmp_rel="tmp/benchmark"
+mkdir -p "$repo_root/$tmp_rel" "$repo_root/fixtures/benchmark" "$repo_root/docs/reference"
+
+if [ "$mode" = "write" ]; then
+    binary=$("$mlpl" --version 2>/dev/null | head -1 | tr -d '\n')
+    "$mlpl" --source-dir "$repo_root" "$repo_root/demos/generation_benchmark.mlpl" -- measure "fixtures/benchmark/generation-v0.json" "$binary"
+    "$mlpl" --source-dir "$repo_root" "$repo_root/demos/generation_benchmark.mlpl" -- render "docs/reference/generation-benchmark.md"
+    rm -rf "$repo_root/$tmp_rel"
+    echo "PASS generation benchmark measured and rendered"
+    exit 0
+fi
+
+jq -e '
+  .schema == "sw-ml-study.moe-microscope-generation-benchmark" and .version == 0 and
+  (.binary | type) == "string" and .build_ms > 0 and
+  all(.dense, .moe1, .moe2, .delta; .cold_ttft_ms > 0 and .warm_ttft_ms > 0 and .gen_tokens == 60 and .gen_tokens_per_s > 0 and .p50_ms > 0 and .p95_ms >= .p50_ms and .max_ms >= .p95_ms) and
+  .moe2.expert_evals_per_token == 2 and .moe1.expert_evals_per_token == 1
+' "$fixture" >/dev/null
+"$mlpl" --source-dir "$repo_root" "$repo_root/demos/generation_benchmark.mlpl" -- render "$tmp_rel/generation-benchmark.md" >/dev/null
+cmp -s "$repo_root/$tmp_rel/generation-benchmark.md" "$doc" || { echo "docs/reference/generation-benchmark.md is stale; run scripts/run-benchmark write" >&2; exit 1; }
+rm -rf "$repo_root/$tmp_rel"
+echo "PASS generation benchmark fixture and rendered document"

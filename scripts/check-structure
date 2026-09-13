@@ -27,7 +27,8 @@ for path in AGENTS.md CLAUDE.md COPYRIGHT LICENSE README.md justfile mlplunit.co
     lib/scale.mlpl tests/test_scale.mlpl demos/scale_train.mlpl demos/scale_microscope.mlpl \
     scripts/run-scale-sweep scripts/run-scale-diagram fixtures/scale/index-v1.json assets/previews/scale-sweep.svg \
     demos/delta_experts.mlpl scripts/run-delta-demo assets/previews/delta-structure.svg assets/previews/delta-comparison.svg \
-    lib/budget.mlpl tests/test_budget.mlpl demos/resource_budget.mlpl scripts/run-budget-demo docs/resource-budget.md assets/previews/budget-storage.svg; do
+    lib/budget.mlpl tests/test_budget.mlpl demos/resource_budget.mlpl scripts/run-budget-demo docs/resource-budget.md assets/previews/budget-storage.svg \
+    lib/bench.mlpl tests/test_bench.mlpl demos/generation_benchmark.mlpl scripts/run-benchmark fixtures/benchmark/generation-v0.json docs/reference/generation-benchmark.md; do
     if [ ! -e "$repo_dir/$path" ]; then
         echo "missing required file: $path" >&2
         exit 1

@@ -1,6 +1,6 @@
 number = 2
 slug = "generation-benchmark"
-status = "pending"
+status = "in-progress"
 description = "Measured generation benchmark for DN01, MX01, MX02, and LD01: model-open time..."
 role = "production"
 context_files = []

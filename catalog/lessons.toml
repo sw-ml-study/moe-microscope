@@ -151,3 +151,20 @@ memory = "no training; the calculator reproduces every measured parameter count 
 speed = "milliseconds; transfer estimates (E) for HDD, SATA SSD, NVMe, and RAM by latency plus size over bandwidth"
 quality = "every number labeled M, D, or E; mismatches between calculator and results table fail the lesson"
 status = "accepted"
+
+[[lesson]]
+id = "GB01"
+slug = "generation-benchmark"
+title = "Measured time to first token, throughput, and tail latency"
+source = "demos/generation_benchmark.mlpl"
+library = ["lib/bench.mlpl", "lib/dense.mlpl", "lib/moe.mlpl"]
+test = ["tests/test_bench.mlpl"]
+previews = []
+document = "docs/reference/generation-benchmark.md"
+fixture = "fixtures/benchmark/generation-v0.json"
+implementation = "from-scratch"
+observations = []
+memory = "freshly built DN01, MX01, MX02, LD01 models; no training; peak memory not exposed by the interpreter"
+speed = "measured: build, cold and warm time to first token, prefill tokens/s (derived), generation tokens/s over 60 greedy tokens, p50/p95/max token latency; opt-in `just benchmark write` (seconds), gate validates the fixture and rendered document"
+quality = "not applicable; latency does not depend on weight values"
+status = "accepted"

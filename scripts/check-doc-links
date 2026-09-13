@@ -4,7 +4,7 @@ set -eu
 repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 status=0
 
-for file in "$repo_dir"/README.md "$repo_dir"/docs/*.md; do
+for file in "$repo_dir"/README.md "$repo_dir"/docs/*.md "$repo_dir"/docs/*/*.md; do
     targets=$(sed -n 's/.*](\([^):#][^)]*\)).*/\1/p' "$file")
     for target in $targets; do
         target=${target%%#*}

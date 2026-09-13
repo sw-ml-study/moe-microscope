@@ -1,0 +1,23 @@
+# Timing summary contract.
+include "lib/bench.mlpl";
+
+@test {name: "percentiles use nearest rank on sorted values", tags: ["bench"]}
+def u:test_percentile() {
+  "p50 of ten values is the sixth smallest by nearest rank; p95 the tenth.";
+  v = [9, 1, 8, 2, 7, 3, 6, 4, 5, 10];
+  u:assert_eq(u:percentile(v, 0), 1, "minimum")?;
+  u:assert_eq(u:percentile(v, 50), 6, "median by nearest rank")?;
+  u:assert_eq(u:percentile(v, 95), 10, "p95")?;
+  u:assert_eq(u:percentile(v, 100), 10, "maximum")
+}
+
+@test {name: "summary reports count, total, mean, percentiles, max, and throughput", tags: ["bench"]}
+def u:test_summary() {
+  "Four tokens at 1, 2, 3, 4 ms are 10 ms total and 400 tokens per second.";
+  s = u:bench_summary([1, 2, 3, 4]);
+  u:assert_eq([s.count, s.total_ms, s.mean_ms, s.max_ms], [4, 10, 2.5, 4], "basic statistics")?;
+  u:assert_eq(s.p50_ms, 3, "p50 by nearest rank")?;
+  u:assert_approx(s.tokens_per_s, 400, 0.000001, "throughput")
+}
+
+u:run_registered_tests()

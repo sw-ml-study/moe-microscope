@@ -1,0 +1,223 @@
+# GB01 generation benchmark: measure build time, cold and warm time to first token, prefill and generation throughput, and token-latency percentiles for DN01, MX01, MX02, and LD01 on freshly built models; or render the committed measurements as a document.
+include "../lib/dense.mlpl";
+include "../lib/moe.mlpl";
+include "../lib/bench.mlpl";
+include "../lib/results.mlpl";
+
+mode = unwrap(list_get(args(), 0));
+out_path = unwrap(list_get(args(), 1));
+binary = if gt(list_len(args()), 2) {
+  unwrap(list_get(args(), 2))
+} else {
+  "unknown"
+};
+V = 52;
+T = 28;
+dm = 16;
+hidden = 32;
+E = 4;
+E16 = 16;
+r = 4;
+prompts = ["17+25=|", "rev 3 1 4=|", "reduce_add([1,2,3])=|", "the cat sat on the |", "61-5=|", "sort 9 6 5=|", "reduce_mul([2,2,3])=|", "the frog hid on the |", "5*5=|", "rev 2 5 8=|"];
+new_tokens = 6;
+repeats = 20;
+
+def u:pad(ids) {
+  "Right-pad ids to the window.";
+  n = reduce_mul(shape(ids));
+  if lt(n, T) {
+    concat(ids, fill([T - n], 0))
+  } else {
+    ids
+  }
+}
+
+def u:prompt_ids(i) {
+  "Padded ids of prompt i.";
+  u:pad(unwrap(u:domain_encode(unwrap(list_get(prompts, i)))))
+}
+
+def u:measure_model(forward, label, expert_evals) {
+  "Time one model: cold and warm first token, prefill throughput, generation tokens per second and latency percentiles, over the prompt list.";
+  padded = u:prompt_ids(0);
+  t_cold = clock_ms();
+  first = call(forward, padded);
+  cold_ms = clock_ms() - t_cold;
+  warm_total = 0;
+  k = 0;
+  while lt(k, repeats) {
+    padded = u:prompt_ids(mod(k, 10));
+    t0 = clock_ms();
+    x = call(forward, padded);
+    warm_total = warm_total + (clock_ms() - t0);
+    k = k + 1
+  };
+  warm_ms = warm_total / repeats;
+  token_ms = fill([0], 0);
+  i = 0;
+  while lt(i, 10) {
+    seq = unwrap(u:domain_encode(unwrap(list_get(prompts, i))));
+    g = 0;
+    while lt(g, new_tokens) {
+      n = reduce_mul(shape(seq));
+      padded = u:pad(seq);
+      t0 = clock_ms();
+      logits = call(forward, padded);
+      nxt = argmax(take(logits, 0, n - 1));
+      token_ms = concat(token_ms, clock_ms() - t0);
+      seq = concat(seq, nxt);
+      g = g + 1
+    };
+    i = i + 1
+  };
+  s = u:bench_summary(token_ms);
+  {label: label, cold_ttft_ms: cold_ms, warm_ttft_ms: warm_ms, prefill_tokens_per_s: T / warm_ms * 1000, gen_tokens: s.count, gen_tokens_per_s: s.tokens_per_s, p50_ms: s.p50_ms, p95_ms: s.p95_ms, max_ms: s.max_ms, expert_evals_per_token: expert_evals}
+}
+
+if str_eq(mode, "measure") {
+  tb = clock_ms();
+  emb = embed(V, dm, 0);
+  att = chain(rms_norm(dm), causal_attention(dm, 1, 1));
+  ffn = chain(rms_norm(dm), linear(dm, hidden, 2), relu_layer(), linear(hidden, dm, 3));
+  norm = rms_norm(dm);
+  head = linear(dm, V, 4);
+  pre = rms_norm(dm);
+  router = linear(dm, E, 9);
+  ex0 = chain(linear(dm, hidden, 20), relu_layer(), linear(hidden, dm, 21));
+  ex1 = chain(linear(dm, hidden, 22), relu_layer(), linear(hidden, dm, 23));
+  ex2 = chain(linear(dm, hidden, 24), relu_layer(), linear(hidden, dm, 25));
+  ex3 = chain(linear(dm, hidden, 26), relu_layer(), linear(hidden, dm, 27));
+  router16 = linear(dm, E16, 9);
+  A_all = randn(30, [16, 64]) * 0.2;
+  B_all = randn(31, [64, 16]) * 0.1;
+  expand = u:delta_expand(E16, r);
+  ones_ee = fill([E, E], 1);
+  posT = u:positions(T, dm);
+  build_ms = clock_ms() - tb;
+  0
+} else {
+  0
+};
+
+def u:fwd_dense(x1) {
+  "DN01 forward on a full window.";
+  h0 = apply(emb, x1) + posT;
+  h1 = h0 + apply(att, h0);
+  apply(head, apply(norm, h1 + apply(ffn, h1)))
+}
+
+def u:fwd_moe1(x1) {
+  "MX01 forward: sparse dispatch over four experts, top-1.";
+  h0 = apply(emb, x1) + posT;
+  h1 = h0 + apply(att, h0);
+  x = apply(pre, h1);
+  logits = apply(router, x);
+  mask = u:top1_mask(logits, E);
+  gate = u:router_probs(logits) * mask;
+  out = fill([T, dm], 0);
+  e = 0;
+  while lt(e, E) {
+    col = take(mask, 1, e);
+    n_e = reduce_add(col);
+    out = if n_e {
+      out + u:place_rows(u:expert_by(e, u:dispatch_rows(x, col)) * u:dispatch_gate(take(gate, 1, e), col), col, T)
+    } else {
+      out
+    };
+    e = e + 1
+  };
+  apply(head, apply(norm, h1 + out))
+}
+
+def u:expert_by(e, rows) {
+  "Run expert e on rows.";
+  if eq(e, 0) {
+    apply(ex0, rows)
+  } else {
+    if eq(e, 1) {
+      apply(ex1, rows)
+    } else {
+      if eq(e, 2) {
+        apply(ex2, rows)
+      } else {
+        apply(ex3, rows)
+      }
+    }
+  }
+}
+
+def u:fwd_moe2(x1) {
+  "MX02 forward: sparse dispatch over four experts, top-2 with renormalized gates.";
+  h0 = apply(emb, x1) + posT;
+  h1 = h0 + apply(att, h0);
+  x = apply(pre, h1);
+  logits = apply(router, x);
+  mask = u:top2_mask(logits, E);
+  gate = u:top2_gate(logits, E, ones_ee);
+  out = fill([T, dm], 0);
+  e = 0;
+  while lt(e, E) {
+    col = take(mask, 1, e);
+    n_e = reduce_add(col);
+    out = if n_e {
+      out + u:place_rows(u:expert_by(e, u:dispatch_rows(x, col)) * u:dispatch_gate(take(gate, 1, e), col), col, T)
+    } else {
+      out
+    };
+    e = e + 1
+  };
+  apply(head, apply(norm, h1 + out))
+}
+
+def u:fwd_delta(x1) {
+  "LD01 forward: shared FFN plus packed sixteen-delta mixture (two matmuls).";
+  h0 = apply(emb, x1) + posT;
+  h1 = h0 + apply(att, h0);
+  x = apply(pre, h1);
+  apply(head, apply(norm, h1 + apply(ffn, h1) + u:delta_out(x, A_all, B_all, u:switch_gate(apply(router16, x), E16), expand)))
+}
+
+def u:n(v) {
+  "Number as text with four decimals at most.";
+  to_string(round(v * 10000) / 10000)
+}
+
+def u:render(f) {
+  "The benchmark document from a measurements record.";
+  lines = [
+    "# Generation benchmark (GB01)",
+    "",
+    str_concat("Measured with `", str_concat(f.binary, "` on the machine named in `fixtures/benchmark/generation-v0.json`; regenerate with `just benchmark write` (seconds). Legend: **M** measured directly, **D** derived from measured values, **E** estimate. Models are freshly built with the lesson architectures; latency does not depend on weight values. Every forward runs the full 28-token window (the mixture blocks are fixed to the window length), so a generated token costs one window forward; there is no KV cache on this path yet.")),
+    "",
+    u:row(["Model", "Build [M]", "Cold TTFT [M]", "Warm TTFT [M]", "Prefill tok/s [D]", "Gen tok/s [M]", "p50 token [M]", "p95 token [M]", "max token [M]", "Expert evals/token [D]"]),
+    "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+    u:row(["DN01 dense", str_concat(u:n(f.build_ms), " ms"), str_concat(u:n(f.dense.cold_ttft_ms), " ms"), str_concat(u:n(f.dense.warm_ttft_ms), " ms"), u:n(f.dense.prefill_tokens_per_s), u:n(f.dense.gen_tokens_per_s), str_concat(u:n(f.dense.p50_ms), " ms"), str_concat(u:n(f.dense.p95_ms), " ms"), str_concat(u:n(f.dense.max_ms), " ms"), "1 FFN"]),
+    u:row(["MX01 top-1 (sparse dispatch)", "-", str_concat(u:n(f.moe1.cold_ttft_ms), " ms"), str_concat(u:n(f.moe1.warm_ttft_ms), " ms"), u:n(f.moe1.prefill_tokens_per_s), u:n(f.moe1.gen_tokens_per_s), str_concat(u:n(f.moe1.p50_ms), " ms"), str_concat(u:n(f.moe1.p95_ms), " ms"), str_concat(u:n(f.moe1.max_ms), " ms"), "1"]),
+    u:row(["MX02 top-2 (sparse dispatch)", "-", str_concat(u:n(f.moe2.cold_ttft_ms), " ms"), str_concat(u:n(f.moe2.warm_ttft_ms), " ms"), u:n(f.moe2.prefill_tokens_per_s), u:n(f.moe2.gen_tokens_per_s), str_concat(u:n(f.moe2.p50_ms), " ms"), str_concat(u:n(f.moe2.p95_ms), " ms"), str_concat(u:n(f.moe2.max_ms), " ms"), "2"]),
+    u:row(["LD01 shared + 16 deltas (packed)", "-", str_concat(u:n(f.delta.cold_ttft_ms), " ms"), str_concat(u:n(f.delta.warm_ttft_ms), " ms"), u:n(f.delta.prefill_tokens_per_s), u:n(f.delta.gen_tokens_per_s), str_concat(u:n(f.delta.p50_ms), " ms"), str_concat(u:n(f.delta.p95_ms), " ms"), str_concat(u:n(f.delta.max_ms), " ms"), "1 + shared"]),
+    "",
+    "Definitions: build is the time to construct all four models' parameters; cold TTFT is the first forward of an already-encoded padded prompt after building; warm TTFT is the mean of 20 further prompt forwards (encoding excluded); prefill tok/s is the window length over warm TTFT; generation tok/s and the percentiles come from 60 greedy tokens (10 prompts times 6 new tokens), each one full-window forward; expert evaluations per token are by construction. Peak memory is not exposed by the interpreter [M needed]. Model-open time will exist once PK01 writes a packed file.",
+    "",
+    "What to read from it: MX01 and MX02 pay the sparse-dispatch bookkeeping (SD01) on every token, so at this size the mixture is slower than the dense model even though it touches about the same bytes; LD01's packed deltas add two matmuls and no per-expert loop. These are interpreter timings on one machine and say nothing about a compiled runtime; the counted columns in the results table are the portable metric.",
+    ""
+  ];
+  str_join(lines, "\n")
+}
+
+def u:row(cells) {
+  "Markdown table row.";
+  str_concat(str_concat("| ", str_join(cells, " | ")), " |")
+}
+
+if str_eq(mode, "measure") {
+  m_dense = u:measure_model(:u:fwd_dense, "DN01", 1);
+  m_moe1 = u:measure_model(:u:fwd_moe1, "MX01", 1);
+  m_moe2 = u:measure_model(:u:fwd_moe2, "MX02", 2);
+  m_delta = u:measure_model(:u:fwd_delta, "LD01", 1);
+  fixture = {schema: "sw-ml-study.moe-microscope-generation-benchmark", version: 0, binary: binary, window: T, prompts: list_len(prompts), new_tokens: new_tokens, repeats: repeats, build_ms: build_ms, dense: m_dense, moe1: m_moe1, moe2: m_moe2, delta: m_delta};
+  print("MEASURED -- dense gen tok/s", u:n(m_dense.gen_tokens_per_s), "moe1", u:n(m_moe1.gen_tokens_per_s), "moe2", u:n(m_moe2.gen_tokens_per_s), "delta", u:n(m_delta.gen_tokens_per_s), "; p95 ms", u:n(m_dense.p95_ms), u:n(m_moe1.p95_ms), u:n(m_moe2.p95_ms), u:n(m_delta.p95_ms));
+  write_atomic(out_path, unwrap(to_json(fixture)))
+} else {
+  f = unwrap(parse_json(unwrap(read_text("fixtures/benchmark/generation-v0.json"))));
+  write_atomic(out_path, u:render(f))
+}

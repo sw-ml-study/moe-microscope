@@ -1,0 +1,20 @@
+# Timing summaries for the generation benchmark: percentiles, means, and throughput from a vector of per-token milliseconds.
+
+def u:percentile(v, p) {
+  "The p-th percentile (0 to 100) of a rank-one vector by nearest rank on the sorted values.";
+  n = reduce_mul(shape(v));
+  sorted = reshape(gather_rows(reshape(v, [n, 1]), grade_up(v)), [n]);
+  index = reduce(:min, [n - 1, reduce(:max, [0, round(p / 100 * (n - 1))])]);
+  take(sorted, 0, index)
+}
+
+def u:bench_summary(ms) {
+  "Count, total, mean, p50, p95, and max of per-token milliseconds, plus tokens per second.";
+  n = reduce_mul(shape(ms));
+  total = reduce_add(ms);
+  {count: n, total_ms: total, mean_ms: total / n, p50_ms: u:percentile(ms, 50), p95_ms: u:percentile(ms, 95), max_ms: reduce(:max, ms), tokens_per_s: if total {
+      n / total * 1000
+    } else {
+      0
+    }}
+}

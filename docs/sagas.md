@@ -31,6 +31,12 @@ the hierarchy. Source: `research2.txt`.
 6. `wiki-mirror` - the peer wiki mirrors the hierarchy with verified Mermaid
    diagrams and links.
 
+Step 2 status: complete. GB01 measures build, cold and warm time to first
+token, prefill and generation throughput, and p50/p95/max token latency for
+the four models on freshly built weights; committed fixture with the binary
+label, rendered `docs/reference/generation-benchmark.md`, M/D/E legend;
+opt-in measurement, gate-time validation.
+
 Step 1 status: complete. `lib/budget.mlpl` calculator pinned to every
 measured parameter count; RB01 generates `docs/resource-budget.md` (sizes,
 expert cost and statistics, stored versus active, dtype projections,
