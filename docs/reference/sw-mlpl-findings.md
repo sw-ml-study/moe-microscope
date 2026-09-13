@@ -31,8 +31,9 @@ upstream `moe-microscope-followups-2` saga (`mlpl-repl` 08:11, `mlpl-serve`
 | D1 silent zero gradient for an untracked `wrt` leaf | loud error: "the loss does not depend on 'W' (no gradient flows to it)" | upstream `moe-microscope-followups` step 3 | probe "grad of a pre-evaluated loss variable raises a loud error"; `probes/d1_silent_zero_grad.mlpl` expects the error |
 | F5 `one_hot`/`argmax` rejected inside `grad` | index and mask builtins (`argmax`, `one_hot`, `eq`, `gt`, `lt`, `argtop_k`) are stop-gradient constants on the tape | `54ad5849` | probe "one_hot and argmax act as stop-gradient constants"; `probes/f5_one_hot_in_grad.mlpl` now expects success |
 | F12 shape-derived size arithmetic rejected inside `grad` | parameter-independent subexpressions such as `reduce_mul(shape(...))` are constant-folded on the tape | `82e55a6a`, verified against the 12:52 rebuilt binary | probe file expects success ("grad 3 3 3"); `u:masked_ce` keeps its explicit `vocab` argument by choice |
+| F11 nested traced call lost a parameter used in index arithmetic | gather index arithmetic resolves in the traced scope | `813526d6`, verified against the 13:29 rebuilt binary | probe file expects success ("grad rows 0 0 0" then the selected rows of ones); lessons keep eager slicing by choice |
 
-## Open, queued upstream as `moe-microscope-followups` (F7, F8, F11, F13, F16, F17, S1; upstream is working F11 and F13 in `followups-2`)
+## Open, queued upstream as `moe-microscope-followups` (F7, F8, F13, F16, F17, S1; upstream is working F13 in `followups-2`)
 
 ### F7: a model value cannot be a user-function argument
 
@@ -64,23 +65,6 @@ Affects: observation facade, any generated or parameterized observation name
 (per-expert, per-recurrence, per-cache-slot series). Proposed fix: accept any
 string value for the name, or document the literal rule and provide a
 `str`-valued form.
-
-### F11: a nested user-function call inside `grad` loses a parameter used in index arithmetic
-
-```
-def u:rows(M, start, count) { "..."; gather_rows(M, start + range(count)) }
-def u:second_pair(M) { "..."; u:rows(M, 1, 2) }
-u:second_pair(W)                                 # eager: rows 1 and 2
-grad(reduce_add(u:second_pair(W)), W)            # error: undefined variable: start
-```
-
-Reproducer: `probes/f11_nested_param_binding_in_grad.mlpl`. A one-level
-call with plain arithmetic (`u:inner(w, 3)` returning `a * k`) traces fine,
-so the failure is specific to the nested call whose parameter feeds `range`
-and `gather_rows`. Workaround: slice chunks eagerly before the loss and pass
-arrays into the loss function. Affects: any lesson helper that slices inside
-the loss. Proposed fix: bind nested-call parameters in the inliner's scope
-before walking index expressions.
 
 ### F13: `attention_weights` cannot find an attention layer inside `residual(chain(...))`
 

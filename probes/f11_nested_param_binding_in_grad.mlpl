@@ -1,4 +1,4 @@
-# F11 reproducer: a nested user-function call inside grad loses a parameter used in index arithmetic; checked by scripts/run-probes.
+# F11 reproducer: a nested user-function call inside grad with a parameter used in index arithmetic; resolved upstream, so scripts/run-probes expects the gradient selecting rows 1 and 2.
 W = param[4, 3]
 W = reshape(range(12), [4, 3])
 def u:rows(M, start, count) {
