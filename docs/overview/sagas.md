@@ -31,6 +31,13 @@ the hierarchy. Source: `research2.txt`.
 6. `wiki-mirror` - the peer wiki mirrors the hierarchy with verified Mermaid
    diagrams and links.
 
+Step 5 status: complete. `docs/concepts/` holds the learning path (index
+plus nine concept pages, each with a schematic, measurements, and the
+four-sparsities table); `docs/results/current-findings.md` states seven
+claims as evidence, interpretation, and limitation; `docs/results/quality.md`
+collects exact match and validation loss; every experiment stub is now a
+laboratory report citing results rows, diagrams, or findings.
+
 Step 4 status: complete. README rewritten as an executive summary (what and
 why, status, five learned claims with numbers and evidence links, how small,
 how fast, progression, experiments, next); the per-lesson sections moved
@@ -95,6 +102,13 @@ Step 5 status: complete. DS01 data-scale sweep: eight committed points
 epochs), index with hashes, eight results rows, and a diagram redrawn from
 the points in the gate. Data cuts validation loss by two thirds and solves
 prose held-out; doubling epochs at 120 examples makes it worse.
+
+Step 5 status: complete. `docs/concepts/` holds the learning path (index
+plus nine concept pages, each with a schematic, measurements, and the
+four-sparsities table); `docs/results/current-findings.md` states seven
+claims as evidence, interpretation, and limitation; `docs/results/quality.md`
+collects exact match and validation loss; every experiment stub is now a
+laboratory report citing results rows, diagrams, or findings.
 
 Step 4 status: complete. MX02 top-2 (`demos/moe_top2.mlpl`): two-argmax
 mask that traces, gate renormalized by a ones matmul (F18 panic and F11
@@ -193,6 +207,13 @@ epochs), index with hashes, eight results rows, and a diagram redrawn from
 the points in the gate. Data cuts validation loss by two thirds and solves
 prose held-out; doubling epochs at 120 examples makes it worse.
 
+Step 5 status: complete. `docs/concepts/` holds the learning path (index
+plus nine concept pages, each with a schematic, measurements, and the
+four-sparsities table); `docs/results/current-findings.md` states seven
+claims as evidence, interpretation, and limitation; `docs/results/quality.md`
+collects exact match and validation loss; every experiment stub is now a
+laboratory report citing results rows, diagrams, or findings.
+
 Step 4 status: complete. DN01 (`demos/dense_baseline.mlpl`) with
 `lib/dense.mlpl` and `lib/svg.mlpl`; two annotated diagrams; the first
 results row; catalog entry; seven more findings (F9 to F15) filed with
@@ -215,6 +236,13 @@ Step 5 status: complete. DS01 data-scale sweep: eight committed points
 epochs), index with hashes, eight results rows, and a diagram redrawn from
 the points in the gate. Data cuts validation loss by two thirds and solves
 prose held-out; doubling epochs at 120 examples makes it worse.
+
+Step 5 status: complete. `docs/concepts/` holds the learning path (index
+plus nine concept pages, each with a schematic, measurements, and the
+four-sparsities table); `docs/results/current-findings.md` states seven
+claims as evidence, interpretation, and limitation; `docs/results/quality.md`
+collects exact match and validation loss; every experiment stub is now a
+laboratory report citing results rows, diagrams, or findings.
 
 Step 4 status: complete. MX02 top-2 (`demos/moe_top2.mlpl`): two-argmax
 mask that traces, gate renormalized by a ones matmul (F18 panic and F11
@@ -245,6 +273,13 @@ Step 5 status: complete. DS01 data-scale sweep: eight committed points
 epochs), index with hashes, eight results rows, and a diagram redrawn from
 the points in the gate. Data cuts validation loss by two thirds and solves
 prose held-out; doubling epochs at 120 examples makes it worse.
+
+Step 5 status: complete. `docs/concepts/` holds the learning path (index
+plus nine concept pages, each with a schematic, measurements, and the
+four-sparsities table); `docs/results/current-findings.md` states seven
+claims as evidence, interpretation, and limitation; `docs/results/quality.md`
+collects exact match and validation loss; every experiment stub is now a
+laboratory report citing results rows, diagrams, or findings.
 
 Step 4 status: complete. MX02 top-2 (`demos/moe_top2.mlpl`): two-argmax
 mask that traces, gate renormalized by a ones matmul (F18 panic and F11

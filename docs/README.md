@@ -11,17 +11,18 @@ executive summary and this page is the landing page. Three reader journeys:
 - [Delivery plan](overview/plan.md): the sagas, the two scales, the visual
   and measurement contract, the answers on distillation and domain
 - [How experts specialize, how routing decides, how Engram is sized](research/moe-engram-discussion.md)
-- Concept pages arrive in Saga 3 step 5 (`concepts/`)
+- [Concepts](concepts/README.md): the learning path, one mechanism per
+  page with a schematic and the four-sparsities table
 
 ## I want to know whether it works
 
-- [Results](results/README.md): resource economics today, the quality
-  table, and the findings as they are established
+- [Results](results/README.md): the current findings as evidence,
+  interpretation, and limitation; resource economics; the quality table
 - [Full results table](reference/results.md): one row per lesson run
 - [Generation benchmark](reference/generation-benchmark.md): measured
   latency and throughput
-- [Experiments](experiments/README.md): one page per experiment, in
-  sequence
+- [Experiments](experiments/README.md): one laboratory report per
+  experiment, in sequence
 
 ## I want to modify or reproduce it
 

@@ -101,7 +101,8 @@ expert cache, then heterogeneous execution. Four independent sparsities
 organize it: parameter sharing (recurrence), conditional compute (MoE),
 conditional memory (Engram), and residency (cache). The
 [architecture page](docs/overview/architecture.md) has the full picture;
-concept pages in progression order arrive with Saga 3 step 5.
+the [concept pages](docs/concepts/README.md) walk it one mechanism at a
+time.
 
 ## Experiments
 

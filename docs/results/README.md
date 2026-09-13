@@ -2,20 +2,23 @@
 
 Concise answers first; the evidence is one link deeper.
 
-| Question | Current answer | Detail |
-|---|---|---|
-| Does top-1 routing increase stored capacity efficiently? | Yes: 1.86 times the parameters at 1.02 times the active parameters per token | [resource economics](resource-economics.md) |
-| Do experts specialize? | Yes at this synthetic scale: specialization 0.61 for top-1 against a 0.25 blind baseline | [results table](../reference/results.md), MX01 and MX02 rows |
-| Is top-2 clearly better? | No: better training fit and the first held-out MLPL answers, worse validation loss, twice the expert work | MX02 row |
-| Does sparse dispatch save work? | Yes: 13,440 to 3,360 expert row evaluations with exactly equal outputs | SD01 row |
-| Is sparse dispatch faster yet? | No: dispatch bookkeeping outweighs the tiny matmuls it skips at this size | [generation benchmark](../reference/generation-benchmark.md) |
-| Does more training fix low-data behavior? | No: doubling epochs at 120 examples worsens validation loss | DS01 rows |
-| Does more data help? | Yes: eightfold data cuts validation loss by two thirds and solves prose held-out | DS01 rows |
-| Are cheap experts worth it? | Sixteen rank-4 deltas cost half of four full experts and give the best validation losses so far | LD01 rows |
-
+- [Current findings](current-findings.md): what can be concluded today,
+  as evidence, interpretation, and limitation per claim
 - [Resource economics](resource-economics.md): sizes, expert cost, stored
   versus active, projections, residency, transfer estimates (M/D/E)
+- [Quality](quality.md): exact match by task family and validation loss,
+  including the data-scale sweep
 - [Generation benchmark](../reference/generation-benchmark.md): measured
   time to first token, throughput, tail latency
-- [Full results table](../reference/results.md)
-- Current findings and quality pages arrive in Saga 3 step 5.
+- [Full results table](../reference/results.md): every run, every column
+
+| Question | Current answer | Detail |
+|---|---|---|
+| Does top-1 routing increase stored capacity efficiently? | Yes: 1.86 times the parameters at 1.02 times the active parameters per token | [finding 1](current-findings.md) |
+| Do experts specialize? | Yes at this synthetic scale: 0.61 for top-1 against a 0.25 blind baseline | [finding 2](current-findings.md) |
+| Is top-2 clearly better? | No: better fit and the first held-out MLPL answers, worse validation loss, twice the work | [finding 3](current-findings.md) |
+| Does more training fix low-data behavior? | No: doubling epochs at 120 examples worsens validation loss | [finding 4](current-findings.md) |
+| Does more data help? | Yes: eightfold data cuts validation loss by two thirds | [finding 4](current-findings.md) |
+| Does sparse dispatch save work? | Yes: 13,440 to 3,360 expert row evaluations, outputs exactly equal | [finding 5](current-findings.md) |
+| Is sparse dispatch faster yet? | No: dispatch bookkeeping outweighs the tiny matmuls skipped | [finding 5](current-findings.md) |
+| Are cheap experts worth it? | Sixteen rank-4 deltas cost half of four full experts and give the best validation losses so far | [finding 6](current-findings.md) |
