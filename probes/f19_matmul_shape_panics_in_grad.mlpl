@@ -1,0 +1,5 @@
+# F19 reproducer: a matmul inner-dimension mismatch inside grad panics the process (compatible matmul shapes: ShapeMismatch) instead of raising a clean error; checked by scripts/run-probes.
+W = param[8, 8];
+x = reshape(range(8), [1, 8]);
+h = linear(16, 5, 1);
+print("grad", grad(reduce_add(apply(h, matmul(x, W))), W))

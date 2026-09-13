@@ -5,6 +5,7 @@
  "source": "https://software-wrighter-lab.github.io/sw-campus/ as published on 2026-09-13 (mockup catalog); places reduced to the three destinations that exist today and their ancestors",
  "url_base": "https://software-wrighter-lab.github.io/sw-campus/#/campus",
  "excluded": "ibm-1442 and its radio demo are reserved for snapshot B",
+ "maturity_levels": "finished|working|early|planned",
  "ids": [
   "campus",
   "computer-history",
@@ -14,13 +15,19 @@
   "rca-1802",
   "computer-science",
   "language-experiments",
-  "apl"
+  "apl",
+  "computational-sciences",
+  "machine-learning",
+  "moe-microscope"
  ],
  "kinds": [
   "campus",
   "building",
   "wing",
   "exhibit",
+  "wing",
+  "exhibit",
+  "building",
   "wing",
   "exhibit",
   "building",
@@ -36,7 +43,10 @@
   "processors",
   "campus",
   "computer-science",
-  "language-experiments"
+  "language-experiments",
+  "campus",
+  "computational-sciences",
+  "machine-learning"
  ],
  "titles": [
   "Software Wrighter Research Campus",
@@ -47,7 +57,10 @@
   "RCA COSMAC 1802",
   "Computer Science Building",
   "Language Experiments",
-  "APL"
+  "APL",
+  "Computational Sciences Institute",
+  "Machine Learning",
+  "The MoE Microscope"
  ],
  "taglines": [
   "A growing campus of projects, experiments, and ideas.",
@@ -58,9 +71,15 @@
   "COSMAC ELF simulator and input/output on the 1802, in Yew/Rust/WASM.",
   "Embedded systems, architectures, languages, emulators, demos, tools.",
   "Tiny C, Forth, APL, Lisp, and more.",
-  "An APL interpreter on COR24, in the browser."
+  "An APL interpreter on COR24, in the browser.",
+  "Mathematics, machine learning, artificial intelligence.",
+  "Data, models, training, evaluation.",
+  "A tiny mixture-of-experts model you can see all of, and where the docent was trained."
  ],
  "status": [
+  "open",
+  "open",
+  "open",
   "open",
   "open",
   "open",
@@ -80,7 +99,10 @@
   "run=https://sw-comp-history.github.io/rca-1802-rs/|io demo=https://sw-comp-history.github.io/sw-cdp1802-io/|source=https://github.com/sw-comp-history/rca-1802-rs|io source=https://github.com/sw-comp-history/sw-cdp1802-io",
   "",
   "",
-  "run=https://sw-embed.github.io/web-sw-cor24-apl/|source=https://github.com/sw-embed/sw-cor24-apl"
+  "run=https://sw-embed.github.io/web-sw-cor24-apl/|source=https://github.com/sw-embed/sw-cor24-apl",
+  "",
+  "",
+  "source=https://github.com/sw-ml-study/moe-microscope|run=https://sw-ml-study.github.io/moe-microscope/"
  ],
  "aliases": [
   "the campus|software wrighter campus|research campus|this place",
@@ -91,7 +113,10 @@
   "rca 1802|the 1802|cdp1802|cosmac|cosmac elf|rca processor|the 1802 demo|1802 assembly emulator|1802 io demo",
   "computer science building|the cs building|computer science",
   "language experiments|languages wing|the languages wing|programming languages wing",
-  "apl|the apl demo|apl interpreter|array programming|the array language|apl on cor24"
+  "apl|the apl demo|apl interpreter|array programming|the array language|apl on cor24",
+  "computational sciences institute|the institute|computational sciences|the ml building",
+  "machine learning wing|the ml wing|ml wing",
+  "moe microscope|the moe microscope|mixture of experts demo|the moe demo|tiny moe|moe live demo|the docent lab"
  ],
  "concepts": [
   "campus map|buildings|getting around",
@@ -102,18 +127,24 @@
   "microprocessor|8-bit|1970s hobby computing|assembly language|input and output|cmos|spacecraft computers",
   "programming|embedded systems|software tools|languages",
   "programming languages|interpreters|compilers",
-  "array programming|notation|glyphs|mathematical notation|interactive programming|iverson"
+  "array programming|notation|glyphs|mathematical notation|interactive programming|iverson",
+  "machine learning|mathematics|artificial intelligence|array language",
+  "training|models|datasets|neural networks|checkpoints",
+  "mixture of experts|routing|experts|sparse models|tiny models|the docent"
  ],
  "queries": [
-  "navigate:where am i|explain:what is this campus|recommend:what is worth seeing",
-  "navigate:where is the museum|explain:what is in the computer history museum|recommend:i like old machines",
-  "navigate:where is the 1130 wing|explain:what is in the 1130 wing",
-  "navigate:show me the ibm 1130|navigate:where is the minicomputer demo|navigate:i want to see the console|explain:what is the ibm 1130|explain:what did people use the 1130 for|story:tell me about the 1130",
-  "navigate:where is the processors wing|explain:what is the processors wing about",
-  "navigate:show me the rca processor|navigate:where is the cosmac demo|navigate:i want to see an early microprocessor|explain:what is the rca 1802|explain:what is the cosmac elf|story:tell me about the 1802",
-  "navigate:where is the computer science building|explain:what is in the computer science building|recommend:i want something about programming",
-  "navigate:where are the programming languages|explain:what languages are in the languages wing",
-  "navigate:where can i try apl|navigate:show me array programming|navigate:i want a programming language with glyphs|explain:what is apl|explain:why does apl use symbols|story:tell me about apl"
+  "navigate:where am i|explain:what is this campus|recommend:what is worth seeing|status:is the campus finished",
+  "navigate:where is the museum|explain:what is in the computer history museum|recommend:i like old machines|status:how complete is the museum",
+  "navigate:where is the 1130 wing|explain:what is in the 1130 wing|status:what works in the 1130 wing",
+  "navigate:show me the ibm 1130|navigate:where is the minicomputer demo|navigate:i want to see the console|explain:what is the ibm 1130|explain:what did people use the 1130 for|story:tell me about the 1130|status:is the 1130 emulator finished",
+  "navigate:where is the processors wing|explain:what is the processors wing about|status:how far along is the processors wing",
+  "navigate:show me the rca processor|navigate:where is the cosmac demo|navigate:i want to see an early microprocessor|explain:what is the rca 1802|explain:what is the cosmac elf|story:tell me about the 1802|status:does the 1802 demo work yet",
+  "navigate:where is the computer science building|explain:what is in the computer science building|recommend:i want something about programming|status:what is finished in the computer science building",
+  "navigate:where are the programming languages|explain:what languages are in the languages wing|status:which languages work",
+  "navigate:where can i try apl|navigate:show me array programming|navigate:i want a programming language with glyphs|explain:what is apl|explain:why does apl use symbols|story:tell me about apl|status:is apl ready to try",
+  "navigate:where is the institute|explain:what is in the computational sciences institute|recommend:i am interested in machine learning|status:how complete is the institute",
+  "navigate:where is the machine learning wing|explain:what is in the machine learning wing|status:what works in the ml wing",
+  "navigate:where is the moe microscope|navigate:show me the mixture of experts demo|explain:what is a mixture of experts|explain:where was the docent trained|story:tell me about the moe microscope|status:is the moe live demo ready"
  ],
  "story_ids": [
   "campus-arrival",
@@ -136,7 +167,14 @@
   "languages-why",
   "apl-arrival",
   "apl-glyphs",
-  "apl-interactive"
+  "apl-interactive",
+  "csi-arrival",
+  "csi-language",
+  "ml-arrival",
+  "ml-bench",
+  "moe-arrival",
+  "moe-docent",
+  "moe-experts"
  ],
  "story_places": [
   "campus",
@@ -159,7 +197,14 @@
   "language-experiments",
   "apl",
   "apl",
-  "apl"
+  "apl",
+  "computational-sciences",
+  "computational-sciences",
+  "machine-learning",
+  "machine-learning",
+  "moe-microscope",
+  "moe-microscope",
+  "moe-microscope"
  ],
  "story_kinds": [
   "arrival",
@@ -182,7 +227,14 @@
   "detail",
   "arrival",
   "feature",
-  "detail"
+  "detail",
+  "arrival",
+  "detail",
+  "arrival",
+  "feature",
+  "arrival",
+  "detail",
+  "feature"
  ],
  "story_titles": [
   "Welcome to the campus",
@@ -205,7 +257,14 @@
   "Why implement so many",
   "Notation as a tool of thought",
   "One symbol per idea",
-  "Interactive from the start"
+  "Interactive from the start",
+  "Ideas become understanding",
+  "One language for the whole building",
+  "Watching models learn",
+  "A lab bench in the browser",
+  "A model you can see all of",
+  "Where the docent comes from",
+  "Experts that specialise on their own"
  ],
  "story_concepts": [
   "campus map|getting around",
@@ -228,7 +287,14 @@
   "compilers|interpreters",
   "notation|iverson|mathematical notation",
   "glyphs|array programming",
-  "interactive programming|notation"
+  "interactive programming|notation",
+  "machine learning|mathematics",
+  "array language|artificial intelligence",
+  "training|models",
+  "neural networks|datasets",
+  "mixture of experts|tiny models",
+  "the docent|routing",
+  "experts|sparse models"
  ],
  "story_texts": [
   "You are on a painted map of the Software Wrighter projects. Each building is a field, each wing a subject, and each exhibit is real work you can run in your browser. Hover a building to see what it holds and click to walk in.",
@@ -251,7 +317,14 @@
   "Implementing a language is the surest way to understand it. Each interpreter in this wing is small enough to read, and the differences between them show what each language decided to make easy.",
   "APL began as a mathematical notation invented by Kenneth Iverson in the late 1950s for describing algorithms. It became a programming language when IBM implemented it in the 1960s, and its one-symbol operators still look like nothing else.",
   "Each APL glyph is a whole operation on an array: reverse, sort, sum along an axis. A program that would be a page in another language is often a single line, which is why APL keyboards and fonts became part of its culture.",
-  "APL was one of the first languages used at a terminal, typing an expression and seeing the answer at once. The exhibit keeps that feel: type a line, get an array back."
+  "APL was one of the first languages used at a terminal, typing an expression and seeing the answer at once. The exhibit keeps that feel: type a line, get an array back.",
+  "This institute holds the sw-ml-study family: an array language built for machine learning, and the mathematics, algorithms, and machine learning experiments written in it. Every exhibit here can run in your browser.",
+  "Every exhibit in this building is written in sw-MLPL, an array language made for machine learning. The same interpreter that runs on a laptop also runs in the browser, which is how the demos travel.",
+  "This wing keeps microscopes: programs that record every intermediate value of a training run so you can watch a model learn instead of reading about it. It also holds a lab bench that trains tiny networks in your browser.",
+  "The neural network lab bench trains small networks on AND, OR, XOR, and a quadrant task while you watch the weights move. It is the simplest honest picture of what training is.",
+  "The MoE Microscope is a mixture-of-experts language model of a few thousand parameters, built one mechanism at a time so that every router decision and every expert can be looked at. Larger models hide these parts; this one is small enough to show them.",
+  "The docent you are talking to was trained in the microscope on sentences generated from this campus catalog. It predicts only what you want and where to send you; every word it says comes from the catalog, which is why it cannot invent an exhibit.",
+  "Nobody assigns subjects to the experts. The model is trained, the routing is measured, and the experts turn out to have split the work between themselves; the microscope shows that map rather than assuming it."
  ],
  "ambiguous_queries": [
   "show me an old computer",
@@ -262,7 +335,9 @@
   "which exhibit if i like both old processors and programming languages",
   "i want to see a whole minicomputer",
   "i want to see an early single chip processor",
-  "something historical"
+  "something historical",
+  "something about machine learning and old computers",
+  "where can i watch a model learn"
  ],
  "ambiguous_dests": [
   "ibm-1130-emulator,rca-1802",
@@ -273,7 +348,37 @@
   "rca-1802,apl",
   "ibm-1130-emulator,rca-1802",
   "rca-1802,ibm-1130-emulator",
-  "computer-history,ibm-1130-emulator"
+  "computer-history,ibm-1130-emulator",
+  "computational-sciences,computer-history",
+  "moe-microscope,machine-learning"
+ ],
+ "maturity": [
+  "early",
+  "working",
+  "working",
+  "working",
+  "early",
+  "working",
+  "early",
+  "working",
+  "working",
+  "working",
+  "working",
+  "early"
+ ],
+ "status_texts": [
+  "The campus is a painted mockup today: you can hover, click, and follow directories, and the interactive application that replaces it is planned.",
+  "Three wings are open with running emulators; the other wings and the lobby exhibits are placeholders that say opening soon.",
+  "The 1130 system emulator runs; the wing's other peripherals, the 1442 card reader and its radio demo among them, are still being added.",
+  "The emulator runs the 1130 system in the browser today; it is usable, and it keeps gaining peripherals and polish.",
+  "One installation so far, the RCA CDP1802; other instruction sets are planned.",
+  "Both demos run today: the COSMAC ELF assembly emulator and the input and output demo.",
+  "Several wings are open with live demos on the COR24 processor, and the building's hardware interfaces wing is still planned.",
+  "Most languages in this wing run in the browser today; a few, such as the Fortran compiler, are research-phase.",
+  "The APL interpreter runs on the emulated COR24 in the browser today and is usable; it is a small interpreter, not a full APL system.",
+  "Several wings are open: the sw-MLPL playground, the mathematics wings, and the machine learning wing with two browser demos; the MoE Microscope live demo for this lobby is planned.",
+  "Two demos run in the browser today, the serial-MoE FPGA emulator and the neural network lab bench; the two microscopes are in progress.",
+  "The repository is public with its diagrams and measured results, and the docent you are talking to was trained there; the live demo page that steps through the model is planned and not published yet."
  ],
  "unsupported_queries": [
   "what is the weather today",
@@ -285,7 +390,37 @@
   "translate this to french",
   "what time is it",
   "book me a table for two",
-  "what is the capital of france"
+  "what is the capital of france",
+  "how do i cook rice",
+  "what is the meaning of life",
+  "set a timer for ten minutes",
+  "play some music",
+  "what is the stock price of ibm today",
+  "how tall is the eiffel tower",
+  "send an email to my boss",
+  "convert five miles to kilometers",
+  "what is your name",
+  "are you a real person",
+  "who made you",
+  "recommend a good restaurant nearby",
+  "what movies are playing tonight",
+  "how do i fix my car",
+  "what is the best phone to buy",
+  "tell me the news",
+  "how many calories in an apple",
+  "what is seven times eight",
+  "open my calendar",
+  "call my mother",
+  "what is the population of tokyo",
+  "write a poem about spring",
+  "explain quantum physics",
+  "how do i lose weight",
+  "is it going to rain tomorrow",
+  "what year is it",
+  "how do i get to the airport",
+  "order a pizza",
+  "what day of the week is it",
+  "help me with my homework"
  ],
  "generic_story_queries": [
   "tell me a story",
@@ -295,5 +430,13 @@
   "what else is interesting here",
   "any stories here",
   "tell me more"
+ ],
+ "generic_status_queries": [
+  "what works here",
+  "what is finished",
+  "is this ready",
+  "what is still planned",
+  "which exhibits are done",
+  "how far along is this"
  ]
 }

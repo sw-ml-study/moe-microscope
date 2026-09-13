@@ -1,0 +1,229 @@
+# Campus docent model helpers: hashed word and bigram features, the pooled embedding, intent and destination heads, losses, evaluation, and the docent results table.
+include "campus.mlpl";
+include "results.mlpl";
+
+def u:docent_slots() {
+  "Number of hash slots in the feature table.";
+  512
+}
+
+def u:docent_max_features() {
+  "Padded feature count per query: up to 12 words plus their 11 bigrams (the corpus maximum is 11 words).";
+  24
+}
+
+def u:docent_hash(s) {
+  "Base-31 rolling checksum of a string's bytes modulo 2147483647, as a number.";
+  bytes = tokenize_bytes(s);
+  n = reduce_mul(shape(bytes));
+  h = 7;
+  i = 0;
+  while lt(i, n) {
+    h = mod(h * 31 + take(bytes, 0, i), 2147483647);
+    i = i + 1
+  };
+  h
+}
+
+def u:docent_slot(s, slots) {
+  "Hash slot of a word or bigram: the checksum modulo the slot count.";
+  mod(u:docent_hash(s), slots)
+}
+
+def u:docent_features(text, slots) {
+  "Feature record for one lowercase query: padded slot ids [F], a mask [F], and the feature count (words first, then adjacent bigrams joined by an underscore; extra features beyond F are dropped).";
+  words = str_split(text, " ");
+  nw = list_len(words);
+  f = u:docent_max_features();
+  ids = fill([f], 0);
+  mask = fill([f], 0);
+  n = 0;
+  i = 0;
+  while lt(i, nw) {
+    w = u:lg(words, i);
+    keep = gt(str_len(w), 0) * lt(n, f);
+    ids = if keep {
+      scatter(ids, n, u:docent_slot(w, slots))
+    } else {
+      ids
+    };
+    mask = if keep {
+      scatter(mask, n, 1)
+    } else {
+      mask
+    };
+    n = n + keep;
+    i = i + 1
+  };
+  i = 0;
+  while lt(i, nw - 1) {
+    bigram = str_concat(str_concat(u:lg(words, i), "_"), u:lg(words, i + 1));
+    keep = lt(n, f);
+    ids = if keep {
+      scatter(ids, n, u:docent_slot(bigram, slots))
+    } else {
+      ids
+    };
+    mask = if keep {
+      scatter(mask, n, 1)
+    } else {
+      mask
+    };
+    n = n + keep;
+    i = i + 1
+  };
+  {ids: ids, mask: mask, n: n}
+}
+
+def u:docent_matrix(queries, slots) {
+  "Feature matrices for a string list of queries: ids [N, F], mask [N, F], counts [N].";
+  nq = list_len(queries);
+  f = u:docent_max_features();
+  ids = fill([nq * f], 0);
+  mask = fill([nq * f], 0);
+  counts = fill([nq], 0);
+  i = 0;
+  while lt(i, nq) {
+    r = u:docent_features(u:lg(queries, i), slots);
+    j = 0;
+    while lt(j, f) {
+      ids = scatter(ids, i * f + j, take(r.ids, 0, j));
+      mask = scatter(mask, i * f + j, take(r.mask, 0, j));
+      j = j + 1
+    };
+    counts = scatter(counts, i, r.n);
+    i = i + 1
+  };
+  {ids: reshape(ids, [nq, f]), mask: reshape(mask, [nq, f]), counts: counts}
+}
+
+def u:docent_labels(c, intents, dests) {
+  "Numeric label vectors for parallel intent and destination name lists.";
+  n = list_len(intents);
+  yi = fill([n], 0);
+  yd = fill([n], 0);
+  i = 0;
+  while lt(i, n) {
+    yi = scatter(yi, i, u:intent_index(u:lg(intents, i)));
+    yd = scatter(yd, i, u:dest_index(c, u:lg(dests, i)));
+    i = i + 1
+  };
+  {yi: yi, yd: yd}
+}
+
+def u:docent_pooled(ids, mask, n) {
+  "Mean embedding of the masked feature slots of one query, as a [1, d] row (docent_emb is the caller's global embedding model; the shape literal is 24 = u:docent_max_features() because a call inside a shape literal is not traced).";
+  matmul(reshape(mask, [1, 24]), apply(docent_emb, ids)) / n
+}
+
+def u:docent_hidden(ids, mask, n) {
+  "Hidden representation of one query through the caller's global docent_body.";
+  apply(docent_body, u:docent_pooled(ids, mask, n))
+}
+
+def u:docent_ce(logits, y, k) {
+  "Cross-entropy of one [1, k] logit row against a scalar label.";
+  0 - reduce_add(one_hot(fill([1], y), k) * log(softmax(logits)))
+}
+
+def u:docent_loss(ids, mask, n, yi, yd, ni, nd) {
+  "Intent plus destination cross-entropy for one query through the caller's global heads docent_head_i and docent_head_d.";
+  hdn = u:docent_hidden(ids, mask, n);
+  u:docent_ce(apply(docent_head_i, hdn), yi, ni) + u:docent_ce(apply(docent_head_d, hdn), yd, nd)
+}
+
+def u:docent_logits(ids, mask, n) {
+  "Intent and destination logit rows for one query.";
+  hdn = u:docent_hidden(ids, mask, n);
+  {intent: apply(docent_head_i, hdn), dest: apply(docent_head_d, hdn)}
+}
+
+def u:docent_eval(X, M, counts, yi, yd, rows, ni, nd) {
+  "Evaluate the selected rows: mean loss, intent accuracy, destination accuracy, top-3 destination accuracy, and per-row predictions and hits.";
+  nr = reduce_mul(shape(rows));
+  total = 0;
+  pred_i = fill([0], 0);
+  pred_d = fill([0], 0);
+  hit_i = fill([0], 0);
+  hit_d = fill([0], 0);
+  hit_3 = fill([0], 0);
+  k = 0;
+  while lt(k, nr) {
+    r = take(rows, 0, k);
+    ids = take(X, 0, r);
+    mask = take(M, 0, r);
+    n = take(counts, 0, r);
+    ti = take(yi, 0, r);
+    td = take(yd, 0, r);
+    lg = u:docent_logits(ids, mask, n);
+    total = total + u:docent_ce(lg.intent, ti, ni) + u:docent_ce(lg.dest, td, nd);
+    pi = argmax(lg.intent);
+    pd = argmax(lg.dest);
+    top3 = argtop_k(reshape(lg.dest, [nd]), 3);
+    pred_i = concat(pred_i, pi);
+    pred_d = concat(pred_d, pd);
+    hit_i = concat(hit_i, eq(pi, ti));
+    hit_d = concat(hit_d, eq(pd, td));
+    hit_3 = concat(hit_3, gt(reduce_add(eq(top3, td)), 0));
+    k = k + 1
+  };
+  {loss: total / nr, intent_acc: reduce_add(hit_i) / nr, dest_acc: reduce_add(hit_d) / nr, top3_acc: reduce_add(hit_3) / nr, pred_i: pred_i, pred_d: pred_d, hit_i: hit_i, hit_d: hit_d, count: nr}
+}
+
+def u:acc_where(hits, labels, label) {
+  "Accuracy over the rows whose label equals the given label (zero when there are none).";
+  sel = eq(labels, label);
+  denom = reduce_add(sel);
+  if denom {
+    reduce_add(hits * sel) / denom
+  } else {
+    0
+  }
+}
+
+def u:confusion(truth, pred, k) {
+  "Confusion matrix [k, k] with true labels on rows and predictions on columns.";
+  n = reduce_mul(shape(truth));
+  flat = fill([k * k], 0);
+  i = 0;
+  while lt(i, n) {
+    at = take(truth, 0, i) * k + take(pred, 0, i);
+    flat = scatter(flat, at, take(flat, 0, at) + 1);
+    i = i + 1
+  };
+  reshape(flat, [k, k])
+}
+
+def u:top2_set_hits(X, M, counts, rows, expected_a, expected_b, nd) {
+  "Fraction of the given rows whose top-2 destination set equals the expected pair (order-free).";
+  nr = reduce_mul(shape(rows));
+  hits = 0;
+  k = 0;
+  while lt(k, nr) {
+    r = take(rows, 0, k);
+    lg = u:docent_logits(take(X, 0, r), take(M, 0, r), take(counts, 0, r));
+    top2 = argtop_k(reshape(lg.dest, [nd]), 2);
+    a = take(expected_a, 0, k);
+    b = take(expected_b, 0, k);
+    hits = hits + gt(reduce_add(eq(top2, a)), 0) * gt(reduce_add(eq(top2, b)), 0);
+    k = k + 1
+  };
+  hits / nr
+}
+
+def u:docent_columns() {
+  "Record keys of the docent results columns, in table order.";
+  ["lesson", "config", "binary", "params", "active_params", "bytes_f64", "bytes_int8", "ms_per_query", "train_loss", "val_loss", "intent_acc", "dest_acc", "top3_acc", "exhibit_acc", "ambiguous_top2", "unsupported_recall", "paraphrase_acc", "paraphrase_intent_acc", "expert_evals", "router_entropy", "balance", "specialization"]
+}
+
+def u:docent_row(row) {
+  "Format a record as one markdown table row with every docent column.";
+  keys = u:docent_columns();
+  out = "|";
+  i = 0;
+  while lt(i, list_len(keys)) {
+    out = str_concat(str_concat(str_concat(out, " "), u:results_cell(row, u:lg(keys, i))), " |");
+    i = i + 1
+  };
+  out
+}

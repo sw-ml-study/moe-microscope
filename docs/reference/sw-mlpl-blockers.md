@@ -36,6 +36,7 @@ Gaps with reproducers are written up as upstream work orders in
 | Sparse expert dispatch | no batched gather across experts on the tape; per-token loops in the interpreter (16 routing decisions measured well under a millisecond) | dense-masked training plus forward-only sparse dispatch with parity assertion |
 | Top-k gate on the tape | `argmax`/`one_hot`/`argtop_k` are stop-gradient constants inside `grad` (F5 resolved), so the mask can live inside the loss; the Switch-style gate `softmax(logits) * mask` gives the router a gradient (a renormalized top-1 gate is identically 1 and gives none) | probes "adam trains a list of expert models..." and "one_hot and argmax act as stop-gradient constants" |
 | Batched sequences | `embed` now accepts `[B, T]` (F9 resolved); lessons still train one example per step so attention never spans examples and positions stay per example | per-example loop |
+| `attention_weights` through `residual(chain(...))` | probe file `probes/f13_attention_weights_residual.mlpl` expects success (F13 resolved) | DN01 keeps the explicit residual by choice |
 | Nested user-function calls with index arithmetic inside `grad` | probe file `probes/f11_nested_param_binding_in_grad.mlpl` expects success (F11 resolved) | helpers may slice inside the loss; lessons keep eager slicing by choice |
 | Size arithmetic derived from `shape` inside `grad` | probe file `probes/f12_size_arithmetic_in_grad.mlpl` expects success (F12 resolved) | loss helpers may derive sizes from shapes; `u:masked_ce` keeps `vocab` explicit by choice |
 | Positional table on the tape | the labeled `sinusoidal_encoding` output trains inside `adam` (F10 resolved) | `u:positions` still strips labels; harmless |
@@ -58,7 +59,7 @@ Gaps with reproducers are written up as upstream work orders in
 |---|---|---|
 | F7 model as user-function argument | probe "a model value cannot be a user-function argument"; `probes/f7_model_argument.mlpl` | globals |
 | F8 `emit_frame` literal name | probe "emit_frame rejects a name held in a variable"; `probes/f8_emit_frame_name.mlpl` | literal names |
-| F13 `attention_weights` and `residual` | `probes/f13_attention_weights_residual.mlpl` | explicit residual with a separate attention sub-model |
+| F19 matmul inner-dimension mismatch inside `grad` panics | `probes/f19_matmul_shape_panics_in_grad.mlpl` | check widths eagerly before tracing |
 | F17 record field access inside `grad` | `probes/f17_record_field_in_grad.mlpl` | bind fields to variables eagerly |
 | F16 no include/sandbox/args on `eval_stream` | `scripts/run-emit-frame-loops` | `scripts/bundle-program`, inline mixture twin, guarded writes |
 

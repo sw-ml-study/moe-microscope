@@ -102,7 +102,7 @@ def u:campus_hash(text) {
 
 def u:intent_names() {
   "Intent labels in label order.";
-  ["navigate", "explain", "recommend", "story", "unsupported"]
+  ["navigate", "explain", "recommend", "story", "status", "unsupported"]
 }
 
 def u:intent_index(name) {
@@ -110,7 +110,7 @@ def u:intent_index(name) {
   names = u:intent_names();
   found = -1;
   i = 0;
-  while lt(i, 5) {
+  while lt(i, 6) {
     found = if str_eq(u:lg(names, i), name) {
       i
     } else {
@@ -148,6 +148,21 @@ def u:explain_templates() {
 def u:story_templates() {
   "Story query templates over an alias (A).";
   ["tell me a story about A", "any anecdotes about A"]
+}
+
+def u:status_templates() {
+  "Status query templates over an alias (A): how finished a place is.";
+  ["is A finished", "does A work yet", "how far along is A"]
+}
+
+def u:campus_maturity(c, id) {
+  "Maturity level of a place: finished, working, early, or planned.";
+  u:lg(c.maturity, u:campus_index(c, id))
+}
+
+def u:campus_status_text(c, id) {
+  "The canned work-in-progress sentence of a place, the docent's answer to a status question.";
+  u:lg(c.status_texts, u:campus_index(c, id))
 }
 
 def u:recommend_templates() {
@@ -191,7 +206,7 @@ def u:row_join(acc, row) {
 }
 
 def u:campus_corpus(c) {
-  "Deterministic corpus: for each place in snapshot order, navigate, explain, and story rows per alias, recommend rows per uniquely owned concept, then the authored queries; then the ambiguous, generic story, and unsupported rows. Parallel lists of queries, intents, destinations, kinds, and source places.";
+  "Deterministic corpus: for each place in snapshot order, navigate, explain, story, and status rows per alias, recommend rows per uniquely owned concept, then the authored queries; then the ambiguous, generic story, generic status, and unsupported rows. Parallel lists of queries, intents, destinations, kinds, and source places.";
   n = u:campus_count(c);
   q = "";
   it = "";
@@ -228,6 +243,15 @@ def u:campus_corpus(c) {
       while lt(t, 2) {
         q = u:row_join(q, u:fill_template(u:lg(u:story_templates(), t), "A", alias));
         it = u:row_join(it, "story");
+        ds = u:row_join(ds, id);
+        kd = u:row_join(kd, "alias");
+        pl = u:row_join(pl, id);
+        t = t + 1
+      };
+      t = 0;
+      while lt(t, 3) {
+        q = u:row_join(q, u:fill_template(u:lg(u:status_templates(), t), "A", alias));
+        it = u:row_join(it, "status");
         ds = u:row_join(ds, id);
         kd = u:row_join(kd, "alias");
         pl = u:row_join(pl, id);
@@ -283,6 +307,16 @@ def u:campus_corpus(c) {
   while lt(k, ng) {
     q = u:row_join(q, u:lg(c.generic_story_queries, k));
     it = u:row_join(it, "story");
+    ds = u:row_join(ds, "none");
+    kd = u:row_join(kd, "generic");
+    pl = u:row_join(pl, "");
+    k = k + 1
+  };
+  ns = list_len(c.generic_status_queries);
+  k = 0;
+  while lt(k, ns) {
+    q = u:row_join(q, u:lg(c.generic_status_queries, k));
+    it = u:row_join(it, "status");
     ds = u:row_join(ds, "none");
     kd = u:row_join(kd, "generic");
     pl = u:row_join(pl, "");

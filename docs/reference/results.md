@@ -23,4 +23,4 @@ No rows yet. DN01 adds the first row in Saga 1 step 4.
 | MX01@960 | moe 960ex 200ep lr0.003 (DS01) | mlpl-repl 0.22.0 | 7096 | 3064 | - | - | 1 | - | - | 0.047 | 1.2226 | 3.4 | 0.091 | 0.025 | 0.081 | 0.75 | - | - | - | - |
 | LD01 | shared ffn + 16 rank4 deltas top1 d16 T28 120ex 300ep lr0.003 alpha0.01 routerMACs272 | mlpl-repl 0.22.0 | 6132 | 3396 | 1024 | - | 1 | 27168 | - | 0.0496 | 3.456 | 31.69 | 0 | 0 | 0 | 0 | - | 1.682 | 1.528 | 0.241 |
 | LD01r | 16 rank4 deltas only top1 d16 T28 120ex 300ep lr0.003 alpha0.01 routerMACs272 | mlpl-repl 0.22.0 | 5060 | 2324 | 1024 | - | 1 | 18592 | - | 0.0443 | 3.3652 | 28.94 | 0 | 0 | 0 | 0 | - | - | - | - |
-| CD00 | campus snapshot A: 9 places, 21 stories, 563 rows (422 train, 141 val), hash 1170810982, no model | mlpl-repl 0.22.0 | - | - | - | - | - | - | - | 0.216 | - | - | - | - | - | - | - | - | - | - |
+| CD00 | campus snapshot A: 12 places, 28 stories, 965 rows (724 train, 241 val), hash 1356782549, no model | mlpl-repl 0.22.0 | - | - | - | - | - | - | - | 0.2993 | - | - | - | - | - | - | - | - | - | - |

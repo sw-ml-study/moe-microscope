@@ -11,6 +11,9 @@ Concise answers first; the evidence is one link deeper.
 - [Generation benchmark](../reference/generation-benchmark.md): measured
   time to first token, throughput, tail latency
 - [Full results table](../reference/results.md): every run, every column
+- [Docent results table](../reference/docent-results.md): the campus
+  docent runs (CD series), including the held-out paraphrase columns where
+  value over the deterministic matcher is measured
 
 | Question | Current answer | Detail |
 |---|---|---|

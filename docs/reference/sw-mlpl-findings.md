@@ -32,8 +32,9 @@ upstream `moe-microscope-followups-2` saga (`mlpl-repl` 08:11, `mlpl-serve`
 | F5 `one_hot`/`argmax` rejected inside `grad` | index and mask builtins (`argmax`, `one_hot`, `eq`, `gt`, `lt`, `argtop_k`) are stop-gradient constants on the tape | `54ad5849` | probe "one_hot and argmax act as stop-gradient constants"; `probes/f5_one_hot_in_grad.mlpl` now expects success |
 | F12 shape-derived size arithmetic rejected inside `grad` | parameter-independent subexpressions such as `reduce_mul(shape(...))` are constant-folded on the tape | `82e55a6a`, verified against the 12:52 rebuilt binary | probe file expects success ("grad 3 3 3"); `u:masked_ce` keeps its explicit `vocab` argument by choice |
 | F11 nested traced call lost a parameter used in index arithmetic | gather index arithmetic resolves in the traced scope | `813526d6`, verified against the 13:29 rebuilt binary | probe file expects success ("grad rows 0 0 0" then the selected rows of ones); lessons keep eager slicing by choice |
+| F13 `attention_weights` could not find an attention layer inside `residual(chain(...))` | the walk now enters `residual` and nested `chain` blocks | `8282cd6a`, verified against the 14:37 rebuilt binary | probe file expects success ("weights 5 5"); DN01 keeps its explicit residual by choice, for readability |
 
-## Open, queued upstream as `moe-microscope-followups` (F7, F8, F13, F16, F17, S1; upstream is working F13 in `followups-2`)
+## Open, queued upstream as `moe-microscope-followups` (F7, F8, F16, F17, F19, S1; upstream `followups-2` is closing)
 
 ### F7: a model value cannot be a user-function argument
 
@@ -66,20 +67,23 @@ Affects: observation facade, any generated or parameterized observation name
 string value for the name, or document the literal rule and provide a
 `str`-valued form.
 
-### F13: `attention_weights` cannot find an attention layer inside `residual(chain(...))`
+### F19: a matmul inner-dimension mismatch inside `grad` panics the process
 
 ```
-body = chain(residual(chain(rms_norm(8), causal_attention(8, 1, 1))), linear(8, 20, 2))
-attention_weights(body, h)
-# error: unsupported: attention_weights: no Attention layer found in model
+W = param[8, 8]
+h = linear(16, 5, 1)
+grad(reduce_add(apply(h, matmul(x, W))), W)
+# thread 'main' panicked at .../mlpl-autograd/src/tensor_shape.rs:62:22:
+# compatible matmul shapes: ShapeMismatch { source: 8, target: 16 }
 ```
 
-Reproducer: `probes/f13_attention_weights_residual.mlpl`. Workaround: keep
-the attention sub-model as its own global and write the residual by hand
-(`h1 = h0 + apply(att, h0)`); `attention_weights(att, h0)` then works and the
-weights are shared because the same model value is applied. This spelling is
-also more readable for the microscope. Affects: DN01 attention diagram.
-Proposed fix: walk `residual` and nested `chain` blocks in `attention_weights`.
+Reproducer: `probes/f19_matmul_shape_panics_in_grad.mlpl`. Met while
+building the docent's pooled embedding (a head applied to the wrong width).
+F18 made elementwise shape mismatches a clean error ("shape mismatch: 16 vs
+8 elements"); the matmul path still panics. Workaround: check widths
+eagerly before tracing (`apply` the same expression outside `grad` first).
+Affects: every lesson that composes user-written layers. Proposed fix:
+route the matmul shape check through the same structured error as F18.
 
 ### F16: the `eval_stream` surface has no source provider, sandbox, or arguments
 

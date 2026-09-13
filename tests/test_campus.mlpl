@@ -6,16 +6,16 @@ def u:snap() {
   u:campus_load("fixtures/campus/snapshot-a.json")
 }
 
-@test {name: "snapshot A has nine places with parents, three exhibits, and twenty-one stories", tags: ["campus", "snapshot"]}
+@test {name: "snapshot A has twelve places with parents, four exhibits, and twenty-eight stories", tags: ["campus", "snapshot"]}
 def u:test_snapshot_shape() {
   "Parallel lists agree in length; every parent exists; exhibits are the destinations that exist today.";
   c = u:snap();
-  u:assert_eq(u:campus_count(c), 9, "places")?;
-  u:assert_eq(list_len(c.titles), 9, "titles")?;
-  u:assert_eq(list_len(c.aliases), 9, "aliases")?;
-  u:assert_eq(u:story_count(c), 21, "stories")?;
-  u:assert_eq(list_len(c.story_texts), 21, "story texts")?;
-  u:assert_eq(u:count_label(c.kinds, "exhibit"), 3, "three exhibits")?;
+  u:assert_eq(u:campus_count(c), 12, "places")?;
+  u:assert_eq(list_len(c.titles), 12, "titles")?;
+  u:assert_eq(list_len(c.aliases), 12, "aliases")?;
+  u:assert_eq(u:story_count(c), 28, "stories")?;
+  u:assert_eq(list_len(c.story_texts), 28, "story texts")?;
+  u:assert_eq(u:count_label(c.kinds, "exhibit"), 4, "four exhibits: three that run today and the planned MoE Microscope")?;
   u:assert_eq(u:campus_index(c, "rca-1802"), 5, "rca-1802 position")?;
   u:assert_eq(u:campus_index(c, "ibm-1442"), -1, "1442 is reserved for snapshot B")?;
   u:assert_text_eq(u:campus_parent(c, "apl"), "language-experiments", "apl parent")?;
@@ -51,18 +51,19 @@ def u:test_corpus() {
   c = u:snap();
   k = u:campus_corpus(c);
   k2 = u:campus_corpus(c);
-  u:assert_eq(k.n, 563, "row count")?;
+  u:assert_eq(k.n, 965, "row count")?;
   u:assert_eq(list_len(k.intents), k.n, "intents parallel")?;
   u:assert_eq(list_len(k.dests), k.n, "dests parallel")?;
   u:assert_text_eq(u:lg(k.queries, 17), u:lg(k2.queries, 17), "deterministic")?;
-  u:assert_eq(u:count_label(k.intents, "navigate"), 187, "navigate rows")?;
-  u:assert_eq(u:count_label(k.intents, "explain"), 141, "explain rows")?;
-  u:assert_eq(u:count_label(k.intents, "recommend"), 129, "recommend rows")?;
-  u:assert_eq(u:count_label(k.intents, "story"), 96, "story rows")?;
-  u:assert_eq(u:count_label(k.intents, "unsupported"), 10, "unsupported rows")?;
-  u:assert_eq(u:count_label(k.kinds, "ambiguous"), 9, "ambiguous rows")?;
-  u:assert_eq(u:count_label(k.kinds, "generic"), 7, "generic story rows")?;
-  u:assert_eq(u:count_label(k.dests, "none"), 17, "none destinations are the generic and unsupported rows")?;
+  u:assert_eq(u:count_label(k.intents, "navigate"), 247, "navigate rows")?;
+  u:assert_eq(u:count_label(k.intents, "explain"), 187, "explain rows")?;
+  u:assert_eq(u:count_label(k.intents, "recommend"), 177, "recommend rows")?;
+  u:assert_eq(u:count_label(k.intents, "story"), 125, "story rows")?;
+  u:assert_eq(u:count_label(k.intents, "status"), 189, "status rows: three per alias plus one authored per place plus six generic")?;
+  u:assert_eq(u:count_label(k.intents, "unsupported"), 40, "unsupported rows")?;
+  u:assert_eq(u:count_label(k.kinds, "ambiguous"), 11, "ambiguous rows")?;
+  u:assert_eq(u:count_label(k.kinds, "generic"), 13, "generic story and status rows")?;
+  u:assert_eq(u:count_label(k.dests, "none"), 53, "none destinations are the generic and unsupported rows")?;
   bad = 0;
   i = 0;
   while lt(i, k.n) {
@@ -101,11 +102,11 @@ def u:test_concepts() {
 @test {name: "the split is seeded, three quarters training, and stable", tags: ["campus", "split"]}
 def u:test_split() {
   "Membership vector from the shared seeded split.";
-  m = u:corpus_split(563, 0);
-  u:assert_shape(m, [563], "one flag per row")?;
-  u:assert_eq(reduce_add(m), 422, "training rows")?;
-  u:assert_eq(reduce_add(u:corpus_split(563, 0) - m), 0, "stable")?;
-  u:assert_eq(take(m, 0, 0), take(u:corpus_split(563, 0), 0, 0), "same first flag")
+  m = u:corpus_split(965, 0);
+  u:assert_shape(m, [965], "one flag per row")?;
+  u:assert_eq(reduce_add(m), 724, "training rows")?;
+  u:assert_eq(reduce_add(u:corpus_split(965, 0) - m), 0, "stable")?;
+  u:assert_eq(take(m, 0, 0), take(u:corpus_split(965, 0), 0, 0), "same first flag")
 }
 
 @test {name: "story policy: arrival once, no repeat unless asked, another while untold remain, cleared context starts over", tags: ["campus", "stories"]}
@@ -135,6 +136,18 @@ def u:test_story_policy() {
   u:assert_text_eq(u:story_arrival(c, "computer-history", told), "museum-arrival", "cleared context starts over")?;
   u:assert_text_eq(u:told_last(told), "", "no last story after clearing")?;
   u:assert_text_eq(u:story_title(c, "1802-elf"), "The ELF on the kitchen table", "story title lookup")
+}
+
+@test {name: "every place has a maturity level and a status sentence, and status queries are labeled", tags: ["campus", "status"]}
+def u:test_status() {
+  "The work-in-progress answer comes from the catalog, never from weights.";
+  c = u:snap();
+  u:assert_text_eq(u:campus_maturity(c, "rca-1802"), "working", "1802 maturity")?;
+  u:assert_text_eq(u:campus_maturity(c, "campus"), "early", "campus maturity")?;
+  u:assert_true(gt(str_len(u:campus_status_text(c, "apl")), 40), "status sentence present")?;
+  u:assert_eq(list_len(c.status_texts), 12, "one sentence per place")?;
+  u:assert_eq(u:intent_index("status"), 4, "status is the fifth intent")?;
+  u:assert_eq(u:intent_index("unsupported"), 5, "unsupported is the sixth")
 }
 
 u:run_registered_tests()

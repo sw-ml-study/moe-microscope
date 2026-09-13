@@ -1,4 +1,4 @@
-# F13 reproducer: attention_weights does not find an attention layer nested inside residual(chain(...)); checked by scripts/run-probes.
+# F13 reproducer: attention_weights over an attention layer nested inside residual(chain(...)); resolved upstream, so scripts/run-probes expects the [5, 5] weights.
 body = chain(residual(chain(rms_norm(8), causal_attention(8, 1, 1))), linear(8, 20, 2))
 h = randn(1, [5, 8])
 print("apply ok", shape(apply(body, h)))

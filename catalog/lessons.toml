@@ -180,7 +180,23 @@ previews = ["assets/previews/campus-snapshot.svg", "assets/previews/campus-corpu
 fixture = "fixtures/campus/snapshot-a.json"
 implementation = "from-scratch"
 observations = ["campus/intent-counts", "campus/dest-counts", "campus/split/member", "campus/visit/told"]
-memory = "snapshot A is 9 places and 21 stories in 12,868 bytes; the generated corpus is 563 rows (422 train, 141 validation) of parallel string lists"
+memory = "snapshot A is 12 places, 28 stories, and 12 status sentences in 20,274 bytes; the generated corpus is 965 rows (724 train, 241 validation) of parallel string lists; 54 held-out paraphrases"
 speed = "corpus generation and split run in about 0.1 s in the interpreter; the content hash walks every byte once"
-quality = "labels by construction: 5 intents, 9 places plus none; 9 authored ambiguous rows carry an expected top-2 set; the story policy is asserted on a scripted visit"
+quality = "labels by construction: 6 intents, 12 places plus none; 9 authored ambiguous rows carry an expected top-2 set; the story policy is asserted on a scripted visit"
+status = "accepted"
+
+[[lesson]]
+id = "CD01"
+slug = "docent-dense"
+title = "A flat classifier over hashed features predicts intent and destination"
+source = "demos/docent_dense.mlpl"
+library = ["lib/docent.mlpl", "lib/campus.mlpl"]
+test = ["tests/test_docent.mlpl"]
+previews = ["assets/previews/docent-features.svg", "assets/previews/docent-model.svg", "assets/previews/docent-run.svg"]
+fixture = "fixtures/campus/corpus-a.json"
+implementation = "builtin"
+observations = ["docent/loss/train", "docent/loss/val", "docent/acc/intent", "docent/acc/dest", "docent/confusion/val"]
+memory = "26,003 parameters (embedding 24,576); about 1,664 active per query; 208,024 bytes at f64, 26,003 at INT8 (projected)"
+speed = "about 46 s to train 724 rows for 40 epochs in the interpreter; 0.91 ms per query at inference"
+quality = "held-out intent 0.938, destination 0.925, top-3 0.963, exhibit 0.927; paraphrases 0.296 destination and 0.481 intent; unsupported recall 0.3; ambiguous top-2 0.091"
 status = "accepted"

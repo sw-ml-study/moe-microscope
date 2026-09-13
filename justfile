@@ -24,6 +24,10 @@ domain mode="check":
 campus mode="check":
     ./scripts/run-campus-demo {{mode}}
 
+# Run CD01, the docent dense classifier (about a minute), and check its diagrams and docent row; `just docent write` regenerates them.
+docent mode="check":
+    ./scripts/run-docent-demo {{mode}}
+
 # Run the DN01 dense baseline (about 16 seconds) and check its diagrams and results row; `just dense write` regenerates them.
 dense mode="check":
     ./scripts/run-dense-demo {{mode}}

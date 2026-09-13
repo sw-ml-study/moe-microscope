@@ -1,0 +1,94 @@
+# Campus docent model contract: hashed features, feature matrices, labels, one-row training, evaluation helpers, and the docent results row.
+include "lib/docent.mlpl";
+
+docent_emb = embed(512, 24, 1);
+docent_body = chain(linear(24, 32, 2), relu_layer());
+docent_head_i = linear(32, 6, 3);
+docent_head_d = linear(32, 13, 4);
+
+@test {name: "hashed features are deterministic, bounded, and include bigrams", tags: ["docent", "features"]}
+def u:test_features() {
+  "Words first, then adjacent bigrams; every slot is below the slot count; the mask marks exactly n features.";
+  r = u:docent_features("where is the cosmac demo", 512);
+  r2 = u:docent_features("where is the cosmac demo", 512);
+  u:assert_eq(r.n, 9, "5 words and 4 bigrams")?;
+  u:assert_shape(r.ids, [24], "padded ids")?;
+  u:assert_eq(reduce_add(r.mask), 9, "mask count")?;
+  u:assert_eq(reduce_add(r.ids - r2.ids), 0, "deterministic")?;
+  u:assert_true(lt(reduce(:max, r.ids), 512), "slots below the table size")?;
+  u:assert_eq(take(r.ids, 0, 5), u:docent_slot("where_is", 512), "first bigram slot")?;
+  u:assert_eq(take(r.ids, 0, 0), u:docent_slot("where", 512), "first word slot")?;
+  u:assert_eq(u:docent_features("a", 512).n, 1, "one word, no bigram")
+}
+
+@test {name: "unseen words get a slot and long queries are truncated to the feature budget", tags: ["docent", "features"]}
+def u:test_features_edges() {
+  "No error on unknown words; at most 24 features.";
+  r = u:docent_features("zebra quokka", 512);
+  u:assert_eq(r.n, 3, "two unseen words and their bigram")?;
+  long = u:docent_features("a b c d e f g h i j k l m n o p", 512);
+  u:assert_eq(long.n, 24, "capped at the feature budget")?;
+  u:assert_eq(reduce_add(long.mask), 24, "mask full")
+}
+
+@test {name: "feature matrices and labels are parallel to the corpus rows", tags: ["docent", "matrix"]}
+def u:test_matrix_labels() {
+  "Shapes follow the query count; labels resolve to known indices.";
+  c = u:campus_load("fixtures/campus/snapshot-a.json");
+  q = str_split("where is the campus|take me to apl|what is the weather today", "|");
+  f = u:docent_matrix(q, 512);
+  u:assert_shape(f.ids, [3, 24], "ids")?;
+  u:assert_shape(f.mask, [3, 24], "mask")?;
+  u:assert_eq(f.counts, [7, 7, 9], "feature counts")?;
+  lab = u:docent_labels(c, str_split("navigate|navigate|unsupported", "|"), str_split("campus|apl|none", "|"));
+  u:assert_eq(lab.yi, [0, 0, 5], "intent labels")?;
+  u:assert_eq(lab.yd, [0, 8, 12], "destination labels: apl is place 8, none is 12")
+}
+
+@test {name: "one row trains: the loss falls and the row decodes to its labels", tags: ["docent", "train"]}
+def u:test_train_one_row() {
+  "Forty Adam steps on one row drive its loss well below the initial value.";
+  q = str_split("where is the campus", "|");
+  f = u:docent_matrix(q, 512);
+  ids = take(f.ids, 0, 0);
+  mask = take(f.mask, 0, 0);
+  n = take(f.counts, 0, 0);
+  before = u:docent_loss(ids, mask, n, 0, 0, 6, 13);
+  s = 0;
+  while lt(s, 40) {
+    adam(u:docent_loss(ids, mask, n, 0, 0, 6, 13), [docent_emb, docent_body, docent_head_i, docent_head_d], 0.01, 0.9, 0.999, 0.00000001);
+    s = s + 1
+  };
+  after = u:docent_loss(ids, mask, n, 0, 0, 6, 13);
+  u:assert_lt(after, before / 4, "loss fell")?;
+  ev = u:docent_eval(f.ids, f.mask, f.counts, [0], [0], [0], 6, 13);
+  u:assert_eq(ev.intent_acc, 1, "intent decoded")?;
+  u:assert_eq(ev.dest_acc, 1, "destination decoded")?;
+  u:assert_eq(ev.top3_acc, 1, "top-3 contains the label")?;
+  u:assert_eq(ev.pred_d, [0], "prediction vector")
+}
+
+@test {name: "evaluation helpers: accuracy where, confusion matrix, top-2 set hits", tags: ["docent", "eval"]}
+def u:test_helpers() {
+  "Pure helpers over small vectors.";
+  u:assert_eq(u:acc_where([1, 0, 1, 1], [4, 4, 0, 4], 4), 2 / 3, "accuracy on label 4")?;
+  u:assert_eq(u:acc_where([1, 1], [0, 0], 4), 0, "no rows of the label")?;
+  m = u:confusion([0, 0, 2], [0, 1, 2], 3);
+  u:assert_shape(m, [3, 3], "square")?;
+  u:assert_eq(reduce_add(m), 3, "one count per row")?;
+  u:assert_eq(take(take(m, 0, 0), 0, 1), 1, "one confusion of 0 as 1")?;
+  u:assert_eq(take(take(m, 0, 2), 0, 2), 1, "diagonal hit")
+}
+
+@test {name: "the docent results row has every column and dashes for missing values", tags: ["docent", "results"]}
+def u:test_row() {
+  "Twenty columns in table order.";
+  row = u:docent_row({lesson: "CD01", params: 13583, intent_acc: 0.95});
+  u:assert_eq(list_len(str_split(row, "|")), 24, "22 cells between 23 bars")?;
+  u:assert_text_eq(str_slice(row, 0, 7), "| CD01 ", "lesson first")?;
+  u:assert_true(gt(str_find(row, "| 13583 |"), -1), "params rendered")?;
+  u:assert_true(gt(str_find(row, "| 0.95 |"), -1), "accuracy rendered")?;
+  u:assert_eq(list_len(u:docent_columns()), 22, "column count")
+}
+
+u:run_registered_tests()

@@ -1,0 +1,43 @@
+#!/bin/sh
+# Run CD01, the docent dense classifier, into a temporary directory; check (or write) its diagrams and the deterministic columns of its docent results row.
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+mlpl=$("$repo_root/scripts/select-mlpl")
+mode=${1:-check}
+tmp_rel="tmp/docent-demo"
+mkdir -p "$repo_root/$tmp_rel"
+binary=$("$mlpl" --version 2>/dev/null | head -1 | tr -d '\n')
+
+"$mlpl" --source-dir "$repo_root" "$repo_root/demos/docent_dense.mlpl" -- "$tmp_rel" "$binary"
+
+for name in docent-features docent-model docent-run; do
+    generated="$repo_root/$tmp_rel/$name.svg"
+    committed="$repo_root/assets/previews/$name.svg"
+    [ -s "$generated" ] || { echo "docent demo did not write $name.svg" >&2; exit 1; }
+    if [ "$mode" = "write" ]; then
+        cp "$generated" "$committed"
+    elif ! cmp -s "$generated" "$committed"; then
+        echo "$name.svg preview is stale; run scripts/run-docent-demo write" >&2
+        exit 1
+    fi
+done
+
+# The row's deterministic columns (everything except binary and ms/query) must match docs/reference/docent-results.md.
+table="$repo_root/docs/reference/docent-results.md"
+row=$(cat "$repo_root/$tmp_rel/results-row.md")
+key=$(printf '%s\n' "$row" | awk -F'|' '{ $4=""; $9=""; print }')
+if [ "$mode" = "write" ]; then
+    grep -q '^| CD01 |' "$table" && sed -i '' '/^| CD01 |/d' "$table"
+    printf '%s\n' "$row" >> "$table"
+else
+    committed_key=$(grep '^| CD01 |' "$table" | awk -F'|' '{ $4=""; $9=""; print }')
+    [ "$key" = "$committed_key" ] || {
+        echo "CD01 results row differs from $table; run scripts/run-docent-demo write" >&2
+        echo "generated: $key" >&2
+        echo "committed: $committed_key" >&2
+        exit 1
+    }
+fi
+rm -rf "$repo_root/$tmp_rel"
+echo "PASS docent dense contract, previews, and results row ($mode)"

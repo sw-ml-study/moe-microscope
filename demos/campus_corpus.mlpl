@@ -4,7 +4,7 @@ include "../lib/svg.mlpl";
 include "../lib/results.mlpl";
 
 print("WHAT THIS SHOWS -- How the campus catalog snapshot (places with aliases, concepts, queries, and canned stories) becomes a labeled docent corpus, how it splits, and which story the docent tells when.");
-print("SHAPES -- places:[P] parallel string lists, stories:[S], corpus:[N] parallel string lists, split member:[N], intent counts:[5], destination counts:[P+1].");
+print("SHAPES -- places:[P] parallel string lists, stories:[S], corpus:[N] parallel string lists, split member:[N], intent counts:[6], destination counts:[P+1].");
 
 out_dir = unwrap(list_get(args(), 0));
 binary = unwrap(list_get(args(), 1));
@@ -26,9 +26,9 @@ n_val = k.n - n_train;
 def u:intent_counts() {
   "Rows per intent label, in label order.";
   names = u:intent_names();
-  v = fill([5], 0);
+  v = fill([6], 0);
   i = 0;
-  while lt(i, 5) {
+  while lt(i, 6) {
     v = scatter(v, i, u:count_label(k.intents, u:lg(names, i)));
     i = i + 1
   };
@@ -86,7 +86,7 @@ def u:place_total(place) {
 
 def u:snapshot_svg() {
   "Diagram: the snapshot tree with each place's docent block sizes.";
-  page = u:svg_head("Campus snapshot A data structure", "Nine places from the live campus catalog as flat parallel lists; each place carries a docent block of aliases, concepts, authored queries, and canned stories. The 1442 and its radio demo are excluded on purpose for snapshot B.");
+  page = u:svg_head("Campus snapshot A data structure", "Twelve places from the live campus catalog as flat parallel lists; each place carries a docent block of aliases, concepts, authored queries, and canned stories. The 1442 and its radio demo are excluded on purpose for snapshot B.");
   page = str_concat(page, u:svg_text(32, 36, "h", "CAMPUS SNAPSHOT A -- places, parents, and docent blocks"));
   page = str_concat(page, u:svg_text(32, 60, "m", str_concat(str_concat(str_concat("WHAT: ", to_string(np)), " places as parallel string lists (ids, kinds, parents, titles, taglines, links, aliases, concepts, queries), "), str_concat(to_string(ns), " stories;"))));
   page = str_concat(page, u:svg_text(32, 78, "m", str_concat(str_concat("content hash ", catalog_hash), str_concat(str_concat(" over ", to_string(catalog_bytes)), " bytes; a place's URL is derived from its ancestor chain, never stored"))));
@@ -107,14 +107,14 @@ def u:snapshot_svg() {
     page = str_concat(page, u:svg_text(862, y, "k", to_string(u:place_total(id))));
     i = i + 1
   };
-  page = str_concat(page, u:svg_rect(30, 320, 900, 200, "panel"));
-  page = str_concat(page, u:svg_text(50, 348, "", "WHY: the model must predict meaning (intent, destination) while the catalog stays the authority for titles, URLs,"));
-  page = str_concat(page, u:svg_text(50, 370, "", "     breadcrumbs, and stories; a stale model can then never invent an exhibit. The docent block is reviewable text."));
-  page = str_concat(page, u:svg_text(50, 396, "", "WHY: the language has no lists of records, so a place is an index into parallel lists and sub-lists are pipe-joined."));
-  page = str_concat(page, u:svg_text(50, 422, "", "HOW: u:campus_load parses the JSON; u:campus_path walks parents to the root; u:campus_url prefixes the fixture's base;"));
-  page = str_concat(page, u:svg_text(50, 444, "", "     u:campus_hash is a base-31 rolling checksum over the bytes (no hash builtin), the revision id a manifest will carry."));
-  page = str_concat(page, u:svg_text(50, 470, "m", str_concat("rca-1802 resolves to ", u:campus_url(c, "rca-1802"))));
-  page = str_concat(page, u:svg_text(50, 494, "m", "Source: the live mockup catalog on 2026-09-13, reduced to the three exhibits that exist today and their ancestors."));
+  page = str_concat(page, u:svg_rect(30, 372, 900, 160, "panel"));
+  page = str_concat(page, u:svg_text(50, 396, "", "WHY: the model must predict meaning (intent, destination) while the catalog stays the authority for titles, URLs,"));
+  page = str_concat(page, u:svg_text(50, 414, "", "     breadcrumbs, and stories; a stale model can then never invent an exhibit. The docent block is reviewable text."));
+  page = str_concat(page, u:svg_text(50, 436, "", "WHY: the language has no lists of records, so a place is an index into parallel lists and sub-lists are pipe-joined."));
+  page = str_concat(page, u:svg_text(50, 458, "", "HOW: u:campus_load parses the JSON; u:campus_path walks parents to the root; u:campus_url prefixes the fixture's base;"));
+  page = str_concat(page, u:svg_text(50, 476, "", "     u:campus_hash is a base-31 rolling checksum over the bytes (no hash builtin), the revision id a manifest will carry."));
+  page = str_concat(page, u:svg_text(50, 500, "m", str_concat("rca-1802 resolves to ", u:campus_url(c, "rca-1802"))));
+  page = str_concat(page, u:svg_text(50, 520, "m", "Source: the live mockup catalog on 2026-09-13: three exhibits that run today, the planned MoE Microscope, their ancestors."));
   str_concat(page, "</svg>")
 }
 
@@ -143,16 +143,17 @@ def u:corpus_svg() {
   page = str_concat(page, u:svg_text(840, 212, "k", "rca-1802"));
   page = str_concat(page, u:svg_text(840, 234, "k", "rca-1802"));
   page = str_concat(page, u:svg_text(840, 256, "k", "rca-1802"));
-  page = str_concat(page, u:svg_text(40, 286, "m", str_concat(str_concat("This place yields ", to_string(u:place_total("rca-1802"))), " rows: 9 aliases x (4 + 3 + 2) templates + 7 unique concepts x 3 + 6 authored.")));
+  page = str_concat(page, u:svg_text(40, 286, "m", str_concat(str_concat("This place yields ", to_string(u:place_total("rca-1802"))), " rows: 9 aliases x (4 + 3 + 2 + 3) templates + 7 unique concepts x 3 + 7 authored.")));
   page = str_concat(page, u:svg_rect(30, 310, 900, 210, "panel"));
   page = str_concat(page, u:svg_text(50, 338, "", "WHY: a few hundred inspectable rows beat thousands of generated ones; a visitor can read the whole training set."));
   page = str_concat(page, u:svg_text(50, 360, "", "WHY: a concept owned by two places (computer history) would give one text two labels, so it makes no rows;"));
-  page = str_concat(page, u:svg_text(50, 382, "", "     ambiguity is authored instead: 9 rows carry an expected top-2 set for the ambiguity panel of CD04."));
-  page = str_concat(page, u:svg_text(50, 408, "", "HOW: u:campus_corpus walks places in snapshot order and templates in fixed order (no randomness); rows accumulate"));
-  page = str_concat(page, u:svg_text(50, 430, "", "     as newline-joined strings and split once at the end, because string lists cannot be appended in place."));
-  page = str_concat(page, u:svg_text(50, 456, "", "HOW: generic story rows (tell me that again, another story) and unsupported rows (weather, jokes) have destination none;"));
-  page = str_concat(page, u:svg_text(50, 478, "", "     the intent label space is navigate, explain, recommend, story, unsupported; destinations are the 9 places plus none."));
-  page = str_concat(page, u:svg_text(50, 504, "m", "Everything the model will see is lowercase by construction; tests/test_campus.mlpl asserts the counts and labels."));
+  page = str_concat(page, u:svg_text(50, 382, "", "     ambiguity is authored instead: 9 rows carry an expected top-2 set for the ambiguity panel of CD04. Status rows"));
+  page = str_concat(page, u:svg_text(50, 408, "", "     (is A finished, does A work yet) are answered by each place's canned status sentence and maturity level."));
+  page = str_concat(page, u:svg_text(50, 396, "", "HOW: u:campus_corpus walks places in snapshot order and templates in fixed order (no randomness); rows accumulate"));
+  page = str_concat(page, u:svg_text(50, 418, "", "     as newline-joined strings and split once at the end, because string lists cannot be appended in place."));
+  page = str_concat(page, u:svg_text(50, 444, "", "HOW: generic story rows (tell me that again, another story) and unsupported rows (weather, jokes) have destination none;"));
+  page = str_concat(page, u:svg_text(50, 466, "", "     intents are navigate, explain, recommend, story, status, unsupported; destinations are the 9 places plus none."));
+  page = str_concat(page, u:svg_text(50, 494, "m", "Everything the model will see is lowercase by construction; tests/test_campus.mlpl asserts the counts and labels."));
   str_concat(page, "</svg>")
 }
 
@@ -170,31 +171,31 @@ def u:split_svg() {
   page = str_concat(page, u:svg_text(32, 60, "m", str_concat(str_concat(str_concat("WHAT: ", to_string(k.n)), " rows; "), str_concat(str_concat(to_string(n_train), " train, "), str_concat(to_string(n_val), " validation; seed 0, fraction 0.75, the same u:domain_split as the language lessons.")))));
   page = str_concat(page, str_concat(u:svg_text(40, 92, "k", "intent"), str_concat(u:svg_text(160, 92, "k", "train"), u:svg_text(210, 92, "k", "val"))));
   i = 0;
-  while lt(i, 5) {
-    y = 108 + i * 24;
+  while lt(i, 6) {
+    y = 108 + i * 22;
     name = u:lg(names, i);
     tr = u:count_masked(k.intents, name, member);
     total = take(intent_counts, 0, i);
     page = str_concat(page, u:svg_text(40, y + 13, "", name));
     page = str_concat(page, u:svg_text(160, y + 13, "", to_string(tr)));
     page = str_concat(page, u:svg_text(210, y + 13, "", to_string(total - tr)));
-    page = str_concat(page, u:bar(260, y, tr * 2.4, 16, "tr"));
-    page = str_concat(page, u:bar(260 + tr * 2.4, y, (total - tr) * 2.4, 16, "va"));
+    page = str_concat(page, u:bar(260, y, tr * 1.3, 16, "tr"));
+    page = str_concat(page, u:bar(260 + tr * 1.3, y, (total - tr) * 1.3, 16, "va"));
     i = i + 1
   };
-  page = str_concat(page, str_concat(u:svg_text(40, 252, "k", "destination"), str_concat(u:svg_text(200, 252, "k", "train"), u:svg_text(250, 252, "k", "val"))));
+  page = str_concat(page, str_concat(u:svg_text(40, 258, "k", "destination"), str_concat(u:svg_text(220, 258, "k", "train"), u:svg_text(268, 258, "k", "val"))));
   m = list_len(dests);
   i = 0;
   while lt(i, m) {
-    y = 266 + i * 20;
+    y = 270 + i * 20;
     name = u:lg(dests, i);
     tr = u:count_masked(k.dests, name, member);
     total = take(dest_counts, 0, i);
     page = str_concat(page, u:svg_text(40, y + 12, "", name));
-    page = str_concat(page, u:svg_text(200, y + 12, "", to_string(tr)));
-    page = str_concat(page, u:svg_text(250, y + 12, "", to_string(total - tr)));
-    page = str_concat(page, u:bar(300, y, tr * 2.4, 14, "tr"));
-    page = str_concat(page, u:bar(300 + tr * 2.4, y, (total - tr) * 2.4, 14, "va"));
+    page = str_concat(page, u:svg_text(220, y + 12, "", to_string(tr)));
+    page = str_concat(page, u:svg_text(268, y + 12, "", to_string(total - tr)));
+    page = str_concat(page, u:bar(312, y, tr * 1.9, 14, "tr"));
+    page = str_concat(page, u:bar(312 + tr * 1.9, y, (total - tr) * 1.9, 14, "va"));
     i = i + 1
   };
   page = str_concat(page, u:svg_rect(600, 92, 330, 150, "panel"));
@@ -209,8 +210,8 @@ def u:split_svg() {
   page = str_concat(page, u:svg_text(600, 340, "", "Held-out rows are the usefulness-bar"));
   page = str_concat(page, u:svg_text(600, 360, "", "evidence of CD01 to CD03: destination"));
   page = str_concat(page, u:svg_text(600, 380, "", "and intent accuracy at or above 0.9."));
-  page = str_concat(page, u:svg_text(600, 410, "m", "The 17 rows with destination none are"));
-  page = str_concat(page, u:svg_text(600, 428, "m", "the generic story and unsupported rows."));
+  page = str_concat(page, u:svg_text(600, 410, "m", "The 53 rows with destination none are"));
+  page = str_concat(page, u:svg_text(600, 428, "m", "the generic story, status, and unsupported rows."));
   str_concat(page, "</svg>")
 }
 
@@ -280,7 +281,7 @@ w2 = write_atomic(str_concat(out_dir, "/campus-corpus.svg"), u:corpus_svg());
 w3 = write_atomic(str_concat(out_dir, "/campus-split.svg"), u:split_svg());
 w4 = write_atomic(str_concat(out_dir, "/campus-stories.svg"), u:stories_svg());
 
-row = {lesson: "CD00", config: str_concat(str_concat("campus snapshot A: 9 places, 21 stories, 563 rows (422 train, 141 val), hash ", catalog_hash), ", no model"), binary: binary, ms_per_token: u:svg_round(gen_ms / k.n, 4)};
+row = {lesson: "CD00", config: str_concat(str_concat("campus snapshot A: 12 places, 28 stories, 965 rows (724 train, 241 val), hash ", catalog_hash), ", no model"), binary: binary, ms_per_token: u:svg_round(gen_ms / k.n, 4)};
 w5 = write_atomic(str_concat(out_dir, "/results-row.md"), str_concat(u:results_row(row), "\n"));
 
 print("MEMORY -- catalog bytes", catalog_bytes, "corpus bytes", corpus_bytes, "rows", k.n, "places", np, "stories", ns);
