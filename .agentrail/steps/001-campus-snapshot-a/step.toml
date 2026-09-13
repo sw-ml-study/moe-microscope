@@ -1,9 +1,10 @@
 number = 1
 slug = "campus-snapshot-a"
-status = "pending"
+status = "completed"
 description = "CD00 campus snapshot A and the docent corpus. Author fixtures/campus/snapshot..."
 role = "production"
 context_files = []
 created_at = "2026-09-13T13:46:51"
+completed_at = "2026-09-13T14:39:24"
 task_type = "mlpl-lesson"
-commits = []
+commits = ["0922cffc7bffdfc46cc834763828251215213ecf"]
