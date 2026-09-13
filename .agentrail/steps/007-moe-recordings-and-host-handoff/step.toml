@@ -1,4 +1,4 @@
-number = 6
+number = 7
 slug = "moe-recordings-and-host-handoff"
 status = "pending"
 description = "Record MX01 and MX02 over live mlpl-serve SSE under the peer schema through s..."

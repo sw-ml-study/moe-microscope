@@ -25,9 +25,13 @@ experts, and the MoE recordings for the generic host.
    against the dense-masked path; expert evaluations and bytes per token.
 4. `top2-and-specialization-map` - MX02 top-2 routing, the family-by-expert
    heatmap, and the specialization score.
-5. `low-rank-delta-experts` - shared FFN plus low-rank deltas for 16 to 32
+5. `data-scale-sweep` - DS01: DN01 and MX01 at 120, 480, and 960 examples
+   under a fixed epoch budget, opt-in (minutes); measured points committed as
+   a fixture so the diagram regenerates without retraining; answers whether
+   data or epochs move the held-out columns.
+6. `low-rank-delta-experts` - shared FFN plus low-rank deltas for 16 to 32
    experts; byte accounting; quality comparison.
-6. `moe-recordings-and-host-handoff` - MX01 and MX02 recorded over live SSE,
+7. `moe-recordings-and-host-handoff` - MX01 and MX02 recorded over live SSE,
    pinned, and handed to the generic host.
 
 Step 3 status: complete. SD01 sparse dispatch (`demos/dispatch_microscope.mlpl`):

@@ -344,12 +344,18 @@ triple, a results row, and a pinned recording; the teacher fixture exists.
 4. **top-2 and specialization map (MX02).** Top-2 routing, the task-by-expert
    routing heatmap, and the specialization score. Results rows for MX01 and
    MX02 next to DN01.
-5. **low-rank-delta-experts.** Experts as shared FFN plus `A_e B_e` deltas,
+5. **data-scale-sweep (DS01).** DN01 and MX01 trained at 120, 480, and 960
+   examples under a fixed epoch budget, opt-in and outside the gate (minutes).
+   The measured points are a committed fixture so the diagram (validation
+   loss and per-family accuracy against data size, dense beside MoE) is
+   regenerated without retraining. It answers whether data or epochs move the
+   held-out columns: at 120 examples, longer training only memorizes.
+6. **low-rank-delta-experts.** Experts as shared FFN plus `A_e B_e` deltas,
    allowing 16 to 32 experts at microscope scale; byte accounting per expert;
    quality comparison with full experts. Add a `shared` always-on expert
    count (DeepSeek-V3 layout) and compare shared only, routed only, and both;
    record router multiply-adds per token as a counted cost.
-6. **moe-recordings-and-host-handoff.** MX01 and MX02 recordings pinned; the
+7. **moe-recordings-and-host-handoff.** MX01 and MX02 recordings pinned; the
    router mask, dispatch table, and specialization map proven in the generic
    host.
 
