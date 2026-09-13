@@ -322,13 +322,14 @@ them to the generic `../demo-extensions` microscope; see the visualization
 track in [`plan.md`](plan.md).
 
 - Saga 4 `campus-docent-v0` (next): the second training area, from
-  [`research3.txt`](../research/research3.txt). A tiny MoE that runs, trains,
-  and retrains in the browser and directs visitors of the sw-campus site:
+  [`research3.txt`](../research/research3.txt). A tiny MoE trained in batch
+  here and run in the browser to direct visitors of the sw-campus site:
   snapshot A of the campus catalog (IBM 1130, APL, RCA 1802) with a
   deterministic corpus generator, the dense classifier CD01, the routed
   docent CD02 with its specialization map CD03 and ambiguity panel CD04,
-  export with manifest, the in-browser "train the docent" page CD05 on the
-  proven `mlpl-wasm` bridge, and the easel handoff to sw-campus.
+  the `just docent` batch export with manifest, the inference-first docent
+  page CD05 on the proven `mlpl-wasm` bridge with a budgeted live-training
+  probe, and the inference-only easel handoff to sw-campus.
 - Saga 5 `campus-docent-v1`: when the campus adds the 1442 card reader and
   its radio demo, the stale-model, retraining-versus-forgetting, and
   quantization study (CD06 to CD08) and the revision comparison page.

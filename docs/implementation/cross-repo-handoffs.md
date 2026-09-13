@@ -49,8 +49,12 @@ the capability is unavailable.
 ## `../../software-wrighter-lab/sw-campus`: the campus docent easel
 
 Trigger: the campus docent saga (`docs/overview/plan.md`, Saga 4). This
-repository trains the docent model and publishes the "train the docent"
-page; the campus site hosts inference only. The campus agent should:
+repository trains the docent in batch (`just docent`), commits the export
+under `fixtures/campus/`, and publishes the docent lesson page; the campus
+site hosts inference only and never trains. Updating the docent after a
+catalog change is a batch procedure here: regenerate the corpus, rerun the
+recipe, commit the new weights and manifest, and the campus site picks up
+the new files on its next build. The campus agent should:
 
 1. adopt `fixtures/campus/snapshot-a.json` as the shape of a reviewable
    docent block on `Place` (aliases, concepts, example queries) without

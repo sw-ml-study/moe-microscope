@@ -112,8 +112,8 @@ inventory is [`catalog/lessons.toml`](catalog/lessons.toml).
 
 ## Next
 
-A second training area first: a campus docent, a tiny MoE that trains and
-retrains in the browser and directs visitors of the Software Wrighter
+A second training area first: a campus docent, a tiny MoE trained in batch
+here and run in the browser to direct visitors of the Software Wrighter
 research campus site, with the campus catalog as the authority for facts
 and the model predicting only intent and destination. Then whether
 recurrence, Engram, distillation, and quantization move the quality and

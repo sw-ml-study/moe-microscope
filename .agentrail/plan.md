@@ -437,9 +437,10 @@ research campus (`../../software-wrighter-lab/sw-campus`, live at
 walk into: campus, building, wing, exhibit, demo, every place with its own
 URL. Each lobby gets an easel that features an exhibit and, when asked,
 answers "where is", "what is", and "what should I see" with a tiny MoE that
-runs, trains, and retrains in the browser. This is the second training area
-of the microscope and the first one whose domain is a real, evolving
-artifact.
+runs in the browser. The docent is trained in batch here, in MLPL, and its
+exported weights ship with the campus site; the easel is inference only.
+This is the second training area of the microscope and the first one whose
+domain is a real, evolving artifact.
 
 Design decisions, taken from the research and kept here so the steps do not
 relitigate them:
@@ -466,6 +467,11 @@ relitigate them:
 - Experts are not assigned subjects. Train, measure the routing distribution
   per destination and per concept, and annotate what each expert appears to
   have learned; the "why this?" panel shows the router's choice and signals.
+- Training is a batch process. `just docent` trains snapshot A natively,
+  deterministic and gate-checked like every other lesson, and writes the
+  weights, labels, manifest, and metrics under `fixtures/campus/`. A catalog
+  change means: regenerate the corpus, rerun the recipe, commit the export,
+  bump the manifest version. The campus site never trains.
 - Browser execution is MLPL itself. sw-MLPL's `mlpl-wasm` crate runs the same
   evaluator, Model DSL, autograd, and `train` loop as the terminal REPL; the
   proven way to reach it from a page is `../demo-abstract-algebra`'s
@@ -473,7 +479,16 @@ relitigate them:
   same-origin iframe and calls its `WasmSession` (blocker B7 there asks
   upstream for a headless `--target web` build of `mlpl-wasm` alone). That
   bridge is adapted, not rewritten; no Rust model code is written for the
-  docent, so `sw-checklist` scope is unchanged.
+  docent, so `sw-checklist` scope is unchanged. The page loads the exported
+  weights and answers queries; it does not need to train.
+- Live training in the page is an opt-in lesson mode with a budget, not the
+  product path. Its value is educational: watching accuracy and expert
+  utilization move over data a visitor can read in full, and the v1
+  demonstration of teaching a stale model one new exhibit with a few epochs
+  from the shipped weights. It is kept only if measured to fit the budget
+  (at most one second per epoch and ten seconds for a full train through the
+  WASM session); otherwise the page keeps the recorded batch run for replay
+  and the short fine-tune, and drops full live training.
 - Provenance is first-class: every snapshot keeps its catalog, corpus,
   weights, manifest (model, version, catalog hash, experts, top-k, params,
   quantization), and metrics, so revisions can be compared.
@@ -500,17 +515,22 @@ relitigate them:
    specialization map per destination and per concept, expert annotations
    derived from measured distributions, entropy and balance, and the
    ambiguous-query panel (top-2 comparison, CD04) as a recorded lesson.
-4. **docent-export (CD08 first half).** The packed weights, labels, and
+4. **docent-batch-export.** The `just docent` recipe: native batch
+   training of the chosen configuration, the packed weights, labels, and
    manifest written by MLPL (`write_atomic`, `to_json`), INT8 projection with
-   measured file sizes, and an MLPL inference twin that reloads the export
-   and asserts parity with the trained model on every corpus row.
-5. **docent-in-browser (CD05).** The "train the docent" page under `learn/`:
-   the adapted iframe bridge, the corpus inlined into the program (the WASM
-   surface has no filesystem sandbox), train and retrain controls, per-epoch
-   accuracy and expert utilization, the "why this?" panel, export to
-   IndexedDB; measured browser load, per-query inference latency, and
-   training time per epoch, recorded as CD06's browser benchmark row.
-   Published on GitHub Pages from this repository.
+   measured file sizes, the recorded training run for replay, and an MLPL
+   inference twin that reloads the export and asserts parity with the trained
+   model on every corpus row. The gate checks the export against the pinned
+   fixture the way it checks every other lesson.
+5. **docent-in-browser (CD05).** The docent page under `learn/`, inference
+   first: the adapted iframe bridge loads the exported weights (inlined into
+   the program, since the WASM surface has no filesystem sandbox), answers
+   queries with the "why this?" panel, replays the recorded batch run; measured
+   browser load and per-query latency. Then the budgeted live-training probe:
+   time per epoch and for a full train through the WASM session, recorded as
+   the CD06 browser benchmark row, deciding whether the "teach one epoch" and
+   "teach a new exhibit" controls stay on the page. Published on GitHub Pages
+   from this repository.
 6. **easel-handoff.** The work order for sw-campus: the easel component
    (passive featured exhibit, interactive docent), loading the exported
    model, catalog-hash comparison with a stale badge, the local
@@ -518,8 +538,9 @@ relitigate them:
    queries) in IndexedDB, and the link back to the microscope; recordings
    pinned for the generic host.
 
-Exit: a browser-resident tiny MoE trained in the page navigates among the
-three destinations with explainable routing and catalog-backed responses;
+Exit: a batch-trained tiny MoE, loaded in the page, navigates among the
+three destinations with explainable routing and catalog-backed responses,
+and the live-training budget has a measured answer;
 dense, four-expert, and eight-expert rows sit in the results table with the
 docent metrics; snapshot A is preserved with its provenance; sw-campus has an
 implementation-ready easel handoff.
@@ -534,7 +555,8 @@ snapshot B as a handoff fixture first and reruns when the real content lands.
    retraining; the runtime catalog reports "no sufficiently specific
    destination" rather than inventing one; the version-mismatch badge.
 2. **retraining (CD07).** Incremental retraining from model A versus full
-   retraining on snapshot B: destination scores before and after, expert
+   retraining on snapshot B, both as batch runs, with the short fine-tune
+   also shown live in the page if the CD06 budget allowed it: destination scores before and after, expert
    maps before and after (did a new specialization emerge or did an existing
    expert absorb the material), old-domain and new-domain accuracy,
    forgetting measured per destination, training time.
