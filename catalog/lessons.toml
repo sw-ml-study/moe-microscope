@@ -84,3 +84,19 @@ memory = "same MX01 model; sparse dispatch touches the shared 3,064 minus one ex
 speed = "row evaluations over 120 windows: 13,440 dense-masked versus 3,360 sparse (exact counts); interpreter ms per window recorded as the machine-dependent secondary metric"
 quality = "max absolute output difference between the two paths below 1e-9 on every window: the same model"
 status = "accepted"
+
+[[lesson]]
+id = "MX02"
+slug = "moe-top2-specialization"
+title = "Top-2 routing and the specialization map"
+source = "demos/moe_top2.mlpl"
+library = ["lib/moe.mlpl", "lib/dense.mlpl", "lib/domain.mlpl", "lib/evaluate.mlpl", "lib/results.mlpl", "lib/svg.mlpl"]
+test = ["tests/test_moe.mlpl"]
+previews = ["assets/previews/moe2-specialization.svg", "assets/previews/moe2-cost.svg"]
+fixture = "fixtures/moe/mx01-family-by-expert.json"
+implementation = "from-scratch"
+observations = ["moe2/config", "moe2/loss/train", "moe2/loss/val", "moe2/load", "moe2/entropy", "moe2/balance", "moe2/family-by-expert", "moe2/specialization", "moe2/accuracy/train", "moe2/accuracy/val", "moe2/route/example"]
+memory = "same 7,096-parameter model as MX01; 4,136 active per token with two experts; 33,088 bytes per token at f64"
+speed = "27,000 one-example Adam steps, dense-masked; about 36 seconds; two expert evaluations per token at inference"
+quality = "validation masked loss 3.92 (MX01 3.76); validation accuracy mlpl 0.286, prose 0; training exact match 0.86; specialization score 0.42 for top-2 against 0.61 for MX01's top-1 (0.25 is family-blind)"
+status = "accepted"

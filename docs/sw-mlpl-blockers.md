@@ -60,6 +60,7 @@ Gaps with reproducers are written up as upstream work orders in
 | F12 size arithmetic inside `grad` | `probes/f12_size_arithmetic_in_grad.mlpl` | pass sizes as arguments |
 | F13 `attention_weights` and `residual` | `probes/f13_attention_weights_residual.mlpl` | explicit residual with a separate attention sub-model |
 | F15 `repeat` with a parameter count | `probes/f15_repeat_param_count.mlpl` | literal counts |
+| F18 shape mismatch panics on the tape | `probes/f18_shape_mismatch_panics_on_tape.mlpl` | keep shapes explicit; replicate row sums with a ones matmul |
 | F17 record field access inside `grad` | `probes/f17_record_field_in_grad.mlpl` | bind fields to variables eagerly |
 | F16 no include/sandbox/args on `eval_stream` | `scripts/run-emit-frame-loops` | `scripts/bundle-program`, inline mixture twin, guarded writes |
 

@@ -152,6 +152,30 @@ DN01's (3.76 against 3.79) with more total but similar active parameters,
 and prose is again the only family that generalizes. The family-by-expert
 counts are recorded now; the specialization map is drawn in MX02.
 
+## Top-2 routing and the specialization map
+
+MX02 routes every token to its two best experts with renormalized gates,
+doubling active expert compute, and draws the measurement the plan promised
+instead of assuming: for each task family, the share of its answer tokens
+each expert receives, for top-1 (MX01) and top-2 (MX02) side by side. The
+router never saw a family tag; any structure in the map is emergent.
+
+![MX02 specialization map: family-by-expert share heatmaps for top-1 and top-2 routing with their specialization scores](assets/previews/moe2-specialization.svg)
+
+![MX02 cost: top-1 versus top-2 on active parameters, expert evaluations, bytes, validation loss, accuracy, entropy, balance, and specialization](assets/previews/moe2-cost.svg)
+
+```sh
+just moe2            # run MX02 and check its diagrams and results row
+```
+
+The specialization score (mean over families of the largest expert share,
+0.25 when routing ignores the family) is 0.61 for top-1 and 0.42 for top-2,
+so at 90 training rows the experts do separate by family under top-1, with
+prose and arithmetic each leaning on one expert, while top-2 spreads tokens
+by construction. Top-2 fits the training rows better (0.86 exact match) and
+answers two of seven held-out MLPL prompts, the first non-prose held-out
+successes in the table, at the cost of a worse validation loss.
+
 ## Sparse dispatch
 
 SD01 evaluates the same mixture two ways and proves they are one model.
@@ -268,6 +292,7 @@ just teacher         # validate the committed TE01 fixture without retraining
 just router          # run the MX01 routing microscope and check its diagram
 just moe             # run MX01 training (about 36 s) and check its diagrams and results row
 just dispatch        # run SD01 sparse dispatch with exact parity (about 5 s)
+just moe2            # run MX02 top-2 routing and the specialization map (about 36 s)
 just mlpl-style      # canonical formatting and docstring checks
 ```
 

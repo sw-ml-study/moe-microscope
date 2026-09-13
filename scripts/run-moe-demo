@@ -23,6 +23,14 @@ for name in moe-run moe-balance; do
     fi
 done
 
+mkdir -p "$repo_root/fixtures/moe"
+if [ "$mode" = "write" ]; then
+    cp "$repo_root/$tmp_rel/family-by-expert.json" "$repo_root/fixtures/moe/mx01-family-by-expert.json"
+elif ! cmp -s "$repo_root/$tmp_rel/family-by-expert.json" "$repo_root/fixtures/moe/mx01-family-by-expert.json"; then
+    echo "MX01 family-by-expert fixture is stale; run scripts/run-moe-demo write" >&2
+    exit 1
+fi
+
 # The row's deterministic columns (everything except binary and ms/token) must match docs/results.md.
 row=$(cat "$repo_root/$tmp_rel/results-row.md")
 key=$(printf '%s\n' "$row" | awk -F'|' '{ $4=""; $12=""; print }')

@@ -41,5 +41,6 @@ expect_error f13_attention_weights_residual "no Attention layer found"
 expect_ok f14_fill_in_grad "^fill-in-grad gradient 2 2 2"
 expect_error f15_repeat_param_count "undefined variable: r"
 expect_error f17_record_field_in_grad "expression form not supported inside grad"
+expect_error f18_shape_mismatch_panics_on_tape "panicked"
 
 expect_error d1_silent_zero_grad "the loss does not depend on"

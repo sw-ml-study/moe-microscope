@@ -179,6 +179,11 @@ r_row = if writing {
 } else {
   ok(0)
 };
+r_fam = if writing {
+  write_atomic(str_concat(out_dir, "/family-by-expert.json"), unwrap(to_json({lesson: "MX01", routing: "top-1", experts: E, families: u:domain_tag_names(), counts: reshape(final.family, [4 * E]), load: final.load, entropy: u:svg_round(final.entropy, 6), balance: u:svg_round(final.balance, 6), val_loss: u:svg_round(final_val, 6), val_accuracy: val_acc, train_accuracy: train_acc})))
+} else {
+  ok(0)
+};
 print("MEMORY -- params", params, "active/token", active, "bytes/token (f64)", active * 8);
 print("SPEED -- ms/token", u:svg_round(ms_per_token, 4), "expert evals/token 1 of", E, "(", binary, ")");
 print("QUALITY -- train loss", u:svg_round(final_train, 4), "val loss", u:svg_round(final_val, 4), "val acc", val_acc, "train acc", train_acc, "entropy", u:svg_round(final.entropy, 3), "balance", u:svg_round(final.balance, 3));
@@ -282,7 +287,7 @@ print("THE POINT -- Conditional compute at microscope scale: one of four experts
 print("BOUNDARY -- Dense-masked training evaluates every expert; the sparse dispatch that saves compute is the next lesson.");
 min_share = reduce(:min, final.load) / reduce_add(final.load);
 contract = lt(final_train, 0.3) * gt(min_share, 0.05) * lt(final.balance, 2.5);
-if contract * is_ok(r1) * is_ok(r2) * is_ok(r_row) {
+if contract * is_ok(r1) * is_ok(r2) * is_ok(r_row) * is_ok(r_fam) {
   ok("moe baseline written")
 } else {
   err("moe baseline contract failed")

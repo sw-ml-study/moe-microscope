@@ -10,5 +10,6 @@ be read straight down.
 No rows yet. DN01 adds the first row in Saga 1 step 4.
 | TE01 | dense d32 h64 2blocks 1head T28 120ex 300ep lr0.001 | mlpl-repl 0.22.0 | 19956 | 18324 | - | - | 2 | 146592 | - | 0.0791 | 4.1355 | 62.52 | 0 | 0 | 0 | 0 | - | - | - | - |
 | DN01 | dense d16 h32 1head T28 120ex 300ep lr0.003 | mlpl-repl 0.22.0 | 3812 | 2996 | - | - | 1 | 23968 | - | 0.0202 | 3.7888 | 44.2 | 0 | 0 | 0 | 0.667 | - | - | - | - |
-| MX01 | moe E4 top1 d16 h32 1head T28 120ex 300ep lr0.003 alpha0.01 | mlpl-repl 0.22.0 | 7096 | 3064 | - | - | 1 | 24512 | - | 0.0461 | 3.7641 | 43.12 | 0 | 0 | 0 | 0.667 | - | 0.623 | 1.166 | - |
 | SD01 | MX01 sparse dispatch, 40ep, inference over 120 windows | mlpl-repl 0.22.0 | 7096 | 3064 | 8576 | - | 1 | 24512 | - | 0.0246 | - | - | - | - | - | - | - | - | - | - |
+| MX01 | moe E4 top1 d16 h32 1head T28 120ex 300ep lr0.003 alpha0.01 | mlpl-repl 0.22.0 | 7096 | 3064 | - | - | 1 | 24512 | - | 0.046 | 3.7641 | 43.12 | 0 | 0 | 0 | 0.667 | - | 0.623 | 1.166 | - |
+| MX02 | moe E4 top2 d16 h32 1head T28 120ex 300ep lr0.003 alpha0.01 | mlpl-repl 0.22.0 | 7096 | 4136 | - | - | 2 | 33088 | - | 0.047 | 3.9157 | 50.18 | 0 | 0 | 0.286 | 0 | - | 0.506 | 0.53 | - |

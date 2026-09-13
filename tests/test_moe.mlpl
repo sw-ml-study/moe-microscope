@@ -82,4 +82,33 @@ def u:test_dispatch_cost() {
   u:assert_eq(c.evals_dense, 4, "four evaluations per token")
 }
 
+@test {name: "top-2 mask from two argmax passes equals the eager top-k mask and its gate renormalizes", tags: ["moe", "top2"]}
+def u:test_top2_mask_gate() {
+  "Two experts per token, agreeing with argtop_k, and gate rows that sum to one; the router still gets gradient.";
+  m = u:top2_mask(fixture_logits, 4);
+  u:assert_eq(m, u:topk_mask(fixture_logits, 2, 4), "agrees with the eager top-k mask")?;
+  ones4 = fill([4, 4], 1);
+  g = u:top2_gate(fixture_logits, 4, ones4);
+  u:assert_approx(reduce_add(take(g, 0, 2)), 1, 0.000000001, "renormalized")?;
+  u:assert_eq(reduce_add(gt(g, 0), 1), [2, 2, 2, 2], "exactly two nonzero gates per token")?;
+  Wr = param[3, 4];
+  Wr = randn(1, [3, 4]);
+  br = param[4];
+  br = fill([4], 0);
+  h = randn(2, [5, 3]);
+  weights = randn(3, [5, 4]);
+  u:assert_gt(reduce_add(abs(grad(reduce_add(u:top2_gate(u:router_logits(h, Wr, br), 4, ones4) * weights), Wr))), 0, "router gradient through the top-2 gate")
+}
+
+@test {name: "specialization score is 1/E for family-blind routing and 1 for one expert per family", tags: ["moe", "specialization"]}
+def u:test_specialization() {
+  "Row shares and the purity score at both extremes.";
+  blind = fill([4, 4], 5);
+  u:assert_approx(u:specialization_score(blind), 0.25, 0.000001, "blind routing")?;
+  pure = [[9, 0, 0, 0], [0, 7, 0, 0], [0, 0, 4, 0], [0, 0, 0, 2]];
+  u:assert_eq(u:specialization_score(pure), 1, "one expert per family")?;
+  u:assert_eq(take(u:row_normalize([[2, 2, 0, 0], [0, 0, 0, 0]]), 0, 0), [0.5, 0.5, 0, 0], "row shares")?;
+  u:assert_eq(take(u:row_normalize([[2, 2, 0, 0], [0, 0, 0, 0]]), 0, 1), [0, 0, 0, 0], "empty family stays zero")
+}
+
 u:run_registered_tests()

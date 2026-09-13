@@ -34,6 +34,13 @@ experts, and the MoE recordings for the generic host.
 7. `moe-recordings-and-host-handoff` - MX01 and MX02 recorded over live SSE,
    pinned, and handed to the generic host.
 
+Step 4 status: complete. MX02 top-2 (`demos/moe_top2.mlpl`): two-argmax
+mask that traces, gate renormalized by a ones matmul (F18 panic and F11
+avoided), family-by-expert maps for MX01 (from its committed fixture) and
+MX02 with specialization scores 0.61 and 0.42, a cost comparison diagram,
+and the MX02 results row. Future sagas 8 to 10 added at the user's request:
+configuration frontier, CUDA with host-resident experts, final report.
+
 Step 3 status: complete. SD01 sparse dispatch (`demos/dispatch_microscope.mlpl`):
 compress, per-expert sub-batches, selection-matrix scatter; exact parity
 (max difference 0) over 120 windows; 3,360 versus 13,440 row evaluations;
@@ -93,10 +100,24 @@ Step 4 status: complete. DN01 (`demos/dense_baseline.mlpl`) with
 results row; catalog entry; seven more findings (F9 to F15) filed with
 reproducers, two of which (F5, F6) upstream fixed the same evening.
 
+Step 4 status: complete. MX02 top-2 (`demos/moe_top2.mlpl`): two-argmax
+mask that traces, gate renormalized by a ones matmul (F18 panic and F11
+avoided), family-by-expert maps for MX01 (from its committed fixture) and
+MX02 with specialization scores 0.61 and 0.42, a cost comparison diagram,
+and the MX02 results row. Future sagas 8 to 10 added at the user's request:
+configuration frontier, CUDA with host-resident experts, final report.
+
 Step 3 status: complete. `lib/domain.mlpl`, `lib/evaluate.mlpl`, and
 `lib/results.mlpl` with 28 native tests; the 120-example mixture fixture;
 the DM01 domain microscope with three annotated diagrams (window, tags,
 split) freshness-checked by `just check`; catalog entry DM01.
+
+Step 4 status: complete. MX02 top-2 (`demos/moe_top2.mlpl`): two-argmax
+mask that traces, gate renormalized by a ones matmul (F18 panic and F11
+avoided), family-by-expert maps for MX01 (from its committed fixture) and
+MX02 with specialization scores 0.61 and 0.42, a cost comparison diagram,
+and the MX02 results row. Future sagas 8 to 10 added at the user's request:
+configuration frontier, CUDA with host-resident experts, final report.
 
 Step 3 status: complete. SD01 sparse dispatch (`demos/dispatch_microscope.mlpl`):
 compress, per-expert sub-batches, selection-matrix scatter; exact parity
@@ -132,3 +153,11 @@ track in [`plan.md`](plan.md).
   q-star transfer/compute split, expert banks, and the 256 MB budget report.
 - Saga 7 `interactive-microscope-host`: systems recordings, live-demo
   acceptance (the only `sw-checklist` scope), and the pocket-helper demo.
+- Saga 8 `configuration-frontier`: one harness over configuration records;
+  sweeps of expert count, top-k, shared always-on experts, Engram slots, and
+  recurrence depth; a Pareto frontier with smallest, fastest, and best picks.
+- Saga 9 `cuda-and-host-resident-experts`: backend probes for CUDA and MLX,
+  lab-scale training on the GPU, expert weights in host RAM with a bounded
+  GPU cache, CPU execution of missing experts, and a VRAM-budget report.
+- Saga 10 `findings-and-recommendations`: `docs/report.md` with findings,
+  recommendations, and ranked future improvements, every claim cited.

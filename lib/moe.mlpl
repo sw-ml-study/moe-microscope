@@ -85,3 +85,36 @@ def u:dispatch_cost(mask, p_expert, p_shared) {
   k = reduce_add(mask) / T;
   {sparse: p_shared + k * p_expert, dense: p_shared + E * p_expert, evals_sparse: k, evals_dense: E}
 }
+
+def u:top2_mask(logits, E) {
+  "0/1 [T, E] selecting each token's two highest-scoring experts, built from two argmax passes so it traces as a constant on the tape.";
+  first = one_hot(argmax(logits, 1), E);
+  second = one_hot(argmax(logits - first * 1000000000, 1), E);
+  first + second
+}
+
+def u:top2_gate(logits, E, ones_ee) {
+  "Top-2 gate [T, E]: the two selected probabilities renormalized per token; ones_ee is a constant [E, E] ones matrix passed in so row sums replicate by matmul (nested shape arguments are not traced, F11).";
+  probs = u:router_probs(logits);
+  kept = probs * u:top2_mask(logits, E);
+  kept / matmul(kept, ones_ee)
+}
+
+def u:row_normalize(counts) {
+  "Each row of a count matrix divided by its row total (rows with no counts become zero).";
+  totals = reduce_add(counts, 1);
+  counts / reshape(totals + eq(totals, 0), [reduce_mul(shape(totals)), 1])
+}
+
+def u:specialization_score(counts) {
+  "Mean over families of the largest expert share of that family's tokens; 1/E when routing ignores the family, 1 when each family uses one expert.";
+  shares = u:row_normalize(counts);
+  n = reduce_mul(shape(take(shares, 1, 0)));
+  total = 0;
+  i = 0;
+  while lt(i, n) {
+    total = total + reduce(:max, take(shares, 0, i));
+    i = i + 1
+  };
+  total / n
+}

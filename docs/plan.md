@@ -453,6 +453,70 @@ claim.
 Exit: every recorded lesson renders in the generic host without lesson-
 specific Rust, and the pocket helper runs end to end.
 
+## Saga 8: configuration frontier
+
+After the mechanisms exist, compare configurations on the dimensions the
+results table already records and produce a size, speed, quality frontier.
+
+1. **experiment-harness.** One MLPL harness that takes a configuration
+   record (experts, top-k, shared always-on experts, expert width or delta
+   rank, recurrence depth, Engram slots, data size, epochs) and produces a
+   results row and a recording, so a sweep is a list of records.
+2. **expert-count-and-k sweep.** 4, 8, 16, 32 experts with k in 1, 2, 4
+   and 0, 1, 2 shared experts; quality against active parameters and
+   expert evaluations per token.
+3. **memory-and-depth sweep.** Engram slots and recurrence depth against
+   quality and bytes.
+4. **frontier report.** Pareto front of the sweep on (bytes per token,
+   expert evaluations per token, validation loss, per-family accuracy),
+   drawn with `pareto_front`, with three named picks: smallest, fastest,
+   best, each with a packed size and a measured decode cost.
+
+Exit: a frontier diagram whose every point is a results row and a
+recording.
+
+## Saga 9: CUDA system and CPU-resident expert weights
+
+Today every lesson runs in the f64 CPU interpreter; `device("mlx")` and the
+CUDA backend in sw-MLPL are unused here. This saga moves the lab-scale runs
+to a CUDA machine and reproduces the FreeToken split: non-expert weights on
+the GPU, expert weights in host RAM, experts either transferred into a GPU
+cache or executed on the CPU.
+
+1. **backend-probes.** The MoE loss under `device("cuda") { }` and
+   `device("mlx") { }`: what traces, what is forward-only, parity with CPU,
+   and the measured speedup at lab scale; findings filed upstream as before.
+2. **lab-scale-training.** DN01, MX01, and MX02 at lab scale (vocabulary
+   1,024 to 4,096, `d_model` 128 to 256, 32 to 64 experts) on the GPU with
+   the same source; results rows with GPU timings.
+3. **host-resident-experts.** Expert weights kept in host RAM and moved into
+   a bounded GPU expert cache on demand (the XC01 simulator made real);
+   measured bytes transferred, hit rate, and VRAM in use against cache
+   capacity.
+4. **cpu-expert-execution.** Missing experts executed on the CPU while
+   resident ones run on the GPU, summed exactly (the HY01 q-star split made
+   real); measured tokens per second against the transfer-only policy and
+   against all-GPU, with VRAM held below a chosen ceiling.
+5. **vram-budget-report.** The smallest VRAM that serves each frontier pick
+   from Saga 8 at a stated tokens-per-second, with the CPU/GPU split that
+   achieves it.
+
+Exit: a lab-scale MoE runs on CUDA with expert weights in host RAM at a
+documented VRAM ceiling, and the sw-MLPL backend findings are filed.
+
+## Saga 10: findings, recommendations, and future work
+
+The closing document, `docs/report.md`, written from the results table,
+the recordings, the findings ledger, and the frontier: what was built, what
+each mechanism measurably bought at each scale, the language findings and
+which were fixed upstream, recommendations for anyone building a small MoE
+with Engram on constrained hardware, and a ranked list of future
+improvements with the evidence that motivates each. Every claim cites a
+results row, a diagram, or a finding.
+
+Exit: the report is complete, linked from the README, and reviewed against
+the results table for every number it states.
+
 ## Cross-cutting gates
 
 - Every executable behavior starts with native mlplunit coverage; `just check`

@@ -56,6 +56,10 @@ moe mode="check":
 dispatch mode="check":
     ./scripts/run-dispatch-demo {{mode}}
 
+# Run MX02, top-2 routing with the specialization map (about 36 seconds); `just moe2 write` regenerates its diagrams and row.
+moe2 mode="check":
+    ./scripts/run-moe2-demo {{mode}}
+
 # Print the selected sw-MLPL executable.
 mlpl-path:
     ./scripts/select-mlpl

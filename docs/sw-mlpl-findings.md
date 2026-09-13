@@ -29,7 +29,7 @@ upstream `moe-microscope-followups-2` saga (`mlpl-repl` 22:35, `mlpl-serve`
 | D1 silent zero gradient for an untracked `wrt` leaf | loud error: "the loss does not depend on 'W' (no gradient flows to it)" | upstream `moe-microscope-followups` step 3 | probe "grad of a pre-evaluated loss variable raises a loud error"; `probes/d1_silent_zero_grad.mlpl` expects the error |
 | F5 `one_hot`/`argmax` rejected inside `grad` | index and mask builtins (`argmax`, `one_hot`, `eq`, `gt`, `lt`, `argtop_k`) are stop-gradient constants on the tape | `54ad5849` | probe "one_hot and argmax act as stop-gradient constants"; `probes/f5_one_hot_in_grad.mlpl` now expects success |
 
-## Open, queued upstream as `moe-microscope-followups` (F7, F8, F11, F12, F13, F15, F16, F17, S1; upstream is working F11 to F15 in `followups-2`)
+## Open, queued upstream as `moe-microscope-followups` (F7, F8, F11, F12, F13, F15, F16, F17, F18, S1; upstream is working F11 to F15 in `followups-2`)
 
 ### F7: a model value cannot be a user-function argument
 
@@ -149,6 +149,22 @@ variable index is accepted, so the gap is the `r.field` expression form.
 Workaround: bind fields to variables eagerly before the loss. Affects: every
 lesson that keeps windows in a record. Proposed fix: evaluate field access
 as a constant (or trace it when the record holds a tracked value).
+
+### F18: a shape mismatch inside `grad` panics instead of erroring
+
+```
+W / reduce_add(W, 1)                       # eager: error: div: expected [3, 4], got [3]
+grad(reduce_add((W / reduce_add(W, 1)) * M), W)
+# thread 'main' panicked at .../mlpl-autograd/src/tensor_ops.rs:43:18: broadcastable shapes: ...
+```
+
+Reproducer: `probes/f18_shape_mismatch_panics_on_tape.mlpl`. The eager path
+reports a structured error; the tape path hits an `expect` and aborts the
+process, which is the same failure class as the original F10 panic. Met
+while renormalizing a top-2 gate. Workaround: replicate row sums with a
+ones matmul (`kept / matmul(kept, fill([E, E], 1))`), which also avoids
+passing T into a nested helper (F11). Proposed fix: route every tape shape
+check through the same structured error as eager evaluation.
 
 ### S1: the adjacent `mlpl-serve` binary was stale
 
