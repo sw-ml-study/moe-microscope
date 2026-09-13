@@ -1,0 +1,11 @@
+{
+  "task_type": "mlpl-lesson",
+  "state": {
+    "number": 3,
+    "step": "synthetic-domain-and-evaluation"
+  },
+  "action": "Probed string/list/gather idioms; wrote three lib modules with mlplunit tests first; fixed window expectation, mixture window size, record_get unwrap; wrote SVG-generating demo with args() output dir and write_atomic; rendered previews with headless Chrome to verify fit; wired demo and catalog into the gate; commit by name; push.",
+  "result": "success",
+  "reward": 1,
+  "timestamp": "2026-09-12T20:44:49"
+}

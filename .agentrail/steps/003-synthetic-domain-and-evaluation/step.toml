@@ -1,9 +1,10 @@
 number = 3
 slug = "synthetic-domain-and-evaluation"
-status = "pending"
+status = "completed"
 description = "Implement deterministic seeded generators in lib/ for the four task families ..."
 role = "production"
 context_files = []
 created_at = "2026-09-12T17:13:14"
+completed_at = "2026-09-12T20:44:49"
 task_type = "mlpl-lesson"
-commits = []
+commits = ["f5f1b8a35c47f730f561b945cc6d86cb30d7e24e"]
