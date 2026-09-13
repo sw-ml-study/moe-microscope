@@ -143,43 +143,34 @@ def u:test_model_argument_blocked() {
   u:assert_true(1 - u:text_equal(outcome, "accepted"), "expected a hard error; if this fails, F7 was fixed upstream and blocks can be parameters")
 }
 
-@test {name: "one_hot and argmax are rejected inside a traced function (F5 blocked)", tags: ["probe", "blocked", "moe"]}
-def u:test_one_hot_inside_grad_blocked() {
-  "Pins current behavior: index and mask builtins are not stop-gradient constants on the tape.";
+@test {name: "one_hot and argmax act as stop-gradient constants inside a traced function (F5 resolved)", tags: ["probe", "supported", "moe"]}
+def u:test_one_hot_inside_grad() {
+  "A top-1 router mask can be built inside the loss; gradient flows to the selected logits, never through the mask.";
   W = param[3, 2];
   W = randn(1, [3, 2]);
   x = randn(2, [4, 3]);
-  outcome = try {
-    grad(reduce_add(softmax(matmul(x, W)) * one_hot(argmax(matmul(x, W), 1), 2)), W);
-    "traced"
-  } catch e {
-    e.kind
-  };
-  u:assert_true(1 - u:text_equal(outcome, "traced"), "expected a hard error; if this fails, F5 was fixed upstream and the mask can move inside the loss")
+  g = grad(reduce_add(softmax(matmul(x, W)) * one_hot(argmax(matmul(x, W), 1), 2)), W);
+  u:assert_shape(g, [3, 2], "gradient reaches the router weights")?;
+  u:assert_gt(reduce_add(abs(g)), 0, "gradient is nonzero")
 }
 
-@test {name: "repeat inside a traced function is rejected (F6 blocked)", tags: ["probe", "blocked", "recurrence"]}
-def u:test_repeat_inside_grad_blocked() {
-  "Pins current behavior: recurrence depth is a source-level unroll, not a runtime argument.";
+@test {name: "repeat with a literal count unrolls inside a traced function (F6 resolved)", tags: ["probe", "supported", "recurrence"]}
+def u:test_repeat_inside_grad() {
+  "Recurrence depth can be spelled with repeat when the count is a literal.";
   W = param[2, 2];
   W = [[0.5, 0], [0, 0.5]];
-  outcome = try {
-    grad(reduce_add(u:recurn(W, [[1, 1], [1, 1]], 3)), W);
-    "traced"
-  } catch e {
-    e.kind
-  };
-  u:assert_true(1 - u:text_equal(outcome, "traced"), "expected a hard error; if this fails, F6 was fixed upstream and repeat can express depth")
+  u:assert_eq(grad(reduce_add(u:recur3_repeat(W, [[1, 1], [1, 1]])), W), grad(reduce_add(matmul(matmul(matmul([[1, 1], [1, 1]], W), W), W)), W), "repeat form equals nested form")
 }
 
-def u:recurn(W, x0, r) {
-  "Apply a matrix r times using repeat; used only by the F6 probe.";
+def u:recur3_repeat(W, x0) {
+  "Apply W three times using repeat; used only by the F6 probe.";
   s = x0;
-  repeat r {
+  repeat 3 {
     s = matmul(s, W)
   };
   s
 }
+
 
 @test {name: "grad of a pre-evaluated loss variable is silently zero (documentation note)", tags: ["probe", "awkward", "autograd"]}
 def u:test_pre_evaluated_loss_is_constant() {

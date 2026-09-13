@@ -1,0 +1,232 @@
+# DN01 dense baseline: one transformer block trained per example on the synthetic domain, with recorded observations, diagrams, and the memory/speed/quality triple.
+include "../lib/dense.mlpl";
+include "../lib/observe.mlpl";
+include "../lib/svg.mlpl";
+include "../lib/results.mlpl";
+
+print("WHAT THIS SHOWS -- A dense 3.8K-parameter transformer trained on 90 examples memorizes them but generalizes only where a local pattern exists (prose).");
+print("SHAPES -- ids:[T], embedding:[T,16], attention:[T,16], logits:[T,52]; T=28 window, 120 examples, 90 train / 30 validation.");
+
+out_dir = unwrap(list_get(args(), 0));
+binary = unwrap(list_get(args(), 1));
+m = unwrap(u:domain_load_mixture(u:domain_mixture_path()));
+d = u:domain_build(m);
+w = unwrap(u:domain_windows(d.texts, m.window));
+s = u:domain_split(d.count, m.train_fraction, m.seed);
+V = u:domain_vocab_size();
+T = m.window;
+dm = 16;
+hidden = 32;
+epochs = 300;
+lr = 0.003;
+every = 25;
+ntrain = reduce_mul(shape(s.train));
+nval = reduce_mul(shape(s.val));
+train_x = gather_rows(w.x, s.train);
+train_y = gather_rows(w.y, s.train);
+train_m = gather_rows(w.mask, s.train);
+val_x = gather_rows(w.x, s.val);
+val_y = gather_rows(w.y, s.val);
+val_m = gather_rows(w.mask, s.val);
+posT = u:positions(T, dm);
+config = emit_frame("dense/config", 0, [dm, hidden, T, epochs, ntrain, nval]);
+
+emb = embed(V, dm, 0);
+att = chain(rms_norm(dm), causal_attention(dm, 1, 1));
+ffn = chain(rms_norm(dm), linear(dm, hidden, 2), relu_layer(), linear(hidden, dm, 3));
+norm = rms_norm(dm);
+head = linear(dm, V, 4);
+
+def u:body(h0) {
+  "Explicit residual block (attention, then FFN), final norm, and the vocabulary head.";
+  h1 = h0 + apply(att, h0);
+  h2 = h1 + apply(ffn, h1);
+  apply(head, apply(norm, h2))
+}
+
+def u:forward(x1) {
+  "Logits for one sequence: embedding plus positions 0..n-1 through the body.";
+  u:body(apply(emb, x1) + u:positions(reduce_mul(shape(x1)), dm))
+}
+
+def u:set_loss(X, Y, M, rows) {
+  "Masked next-token loss averaged over every answer target in the row set.";
+  total = 0;
+  count = 0;
+  i = 0;
+  while lt(i, rows) {
+    mrow = take(M, 0, i);
+    total = total + u:masked_ce(u:forward(take(X, 0, i)), take(Y, 0, i), mrow, V) * reduce_add(mrow);
+    count = count + reduce_add(mrow);
+    i = i + 1
+  };
+  total / count
+}
+
+p_emb = param_count(emb);
+p_att = param_count(att);
+p_ffn = param_count(ffn);
+p_norm = param_count(norm);
+p_head = param_count(head);
+params = p_emb + p_att + p_ffn + p_norm + p_head;
+active = params - p_emb + dm;
+print("MODEL -- params", params, "of which embedding", p_emb, "attention", p_att, "ffn", p_ffn, "head", p_head, "; active per token", active);
+
+curve_e = fill([0], 0);
+curve_t = fill([0], 0);
+curve_v = fill([0], 0);
+t0 = clock_ms();
+train_ms = 0;
+e = 0;
+while lt(e, epochs) {
+  ts = clock_ms();
+  i = 0;
+  while lt(i, ntrain) {
+    x1 = take(train_x, 0, i);
+    y1 = take(train_y, 0, i);
+    m1 = take(train_m, 0, i);
+    adam(u:masked_ce(u:body(apply(emb, x1) + posT), y1, m1, V), [emb, att, ffn, norm, head], lr, 0.9, 0.999, 0.00000001);
+    i = i + 1
+  };
+  train_ms = train_ms + (clock_ms() - ts);
+  e = e + 1;
+  if eq(mod(e, every), 0) {
+    tl = emit_frame("dense/loss/train", e, u:set_loss(train_x, train_y, train_m, ntrain));
+    vl = emit_frame("dense/loss/val", e, u:set_loss(val_x, val_y, val_m, nval));
+    curve_e = concat(curve_e, e);
+    curve_t = concat(curve_t, tl);
+    curve_v = concat(curve_v, vl);
+    print("epoch", e, "train loss", u:svg_round(tl, 4), "val loss", u:svg_round(vl, 4))
+  } else {
+    0
+  }
+};
+steps = epochs * ntrain;
+ms_per_step = train_ms / steps;
+ms_per_token = train_ms / (steps * T);
+
+td = clock_ms();
+rv = u:evaluate_prompts(:u:forward, d, s.val, 12);
+decode_ms = clock_ms() - td;
+rt = u:evaluate_prompts(:u:forward, d, s.train, 12);
+val_acc = emit_frame("dense/accuracy/val", epochs, [rv.accuracy.arithmetic, rv.accuracy.sequence, rv.accuracy.mlpl, rv.accuracy.prose, rv.accuracy.overall]);
+train_acc = emit_frame("dense/accuracy/train", epochs, [rt.accuracy.arithmetic, rt.accuracy.sequence, rt.accuracy.mlpl, rt.accuracy.prose, rt.accuracy.overall]);
+final_val = take(curve_v, 0, reduce_mul(shape(curve_v)) - 1);
+final_train = take(curve_t, 0, reduce_mul(shape(curve_t)) - 1);
+ppl = exp(final_val);
+gen_tokens = reduce_add(u:exact_match(rv.preds, rv.preds)) * 0 + nval * 4;
+
+example = "2+3=|5.";
+ex_ids = unwrap(u:domain_encode(example));
+ex_logits = u:forward(ex_ids);
+ex_pred = emit_frame("dense/logits/example-argmax", epochs, argmax(ex_logits, 1));
+ex_att = emit_frame("dense/attention/example", epochs, attention_weights(att, apply(emb, ex_ids) + u:positions(7, dm)));
+val_prompt = unwrap(list_get(d.prompts, take(s.val, 0, 0)));
+val_answer = unwrap(list_get(d.answers, take(s.val, 0, 0)));
+val_pred = unwrap(list_get(rv.preds, 0));
+prose_index = compress(eq(reshape(gather_rows(reshape(d.tags, [d.count, 1]), s.val), [nval]), 3), s.val);
+prose_prompt = unwrap(list_get(d.prompts, take(prose_index, 0, 0)));
+prose_answer = unwrap(list_get(d.answers, take(prose_index, 0, 0)));
+prose_pred = u:answer_text(u:greedy(:u:forward, unwrap(u:domain_encode(str_concat(prose_prompt, "|"))), 12));
+
+row = {lesson: "DN01", config: "dense d16 h32 1head T28 120ex 300ep lr0.003", binary: binary, params: params, active_params: active, expert_evals: 1, bytes_per_token: active * 8, ms_per_token: u:svg_round(ms_per_token, 4), val_loss: u:svg_round(final_val, 4), ppl: u:svg_round(ppl, 2), arith_acc: u:svg_round(rv.accuracy.arithmetic, 3), seq_acc: u:svg_round(rv.accuracy.sequence, 3), mlpl_acc: u:svg_round(rv.accuracy.mlpl, 3), prose_acc: u:svg_round(rv.accuracy.prose, 3)};
+r_row = write_atomic(str_concat(out_dir, "/results-row.md"), str_concat(u:results_row(row), "\n"));
+print("MEMORY -- params", params, "active/token", active, "bytes/token (f64)", active * 8);
+print("SPEED -- ms/step", u:svg_round(ms_per_step, 3), "ms/token", u:svg_round(ms_per_token, 4), "greedy decode ms for", nval, "prompts", u:svg_round(decode_ms, 1), "(", binary, ")");
+print("QUALITY -- val loss", u:svg_round(final_val, 4), "ppl", u:svg_round(ppl, 2), "val acc [arith seq mlpl prose all]", val_acc, "train acc", train_acc);
+
+def u:pred_text(pred_ids) {
+  "Characters for a vector of predicted ids.";
+  u:domain_decode(pred_ids)
+}
+
+def u:model_svg() {
+  "Diagram: one token window's path through embedding, positions, attention, FFN, norm, head, and loss, with real shapes and parameter counts.";
+  page = u:svg_head("DN01 dense model transformation", "The example 2+3=|5. flows through the embedding, positional addition, a residual attention block, a residual feed-forward block, a final norm, and the vocabulary head; each stage shows its shape and parameter count and the final row shows the argmax prediction beside the target.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "DN01 DENSE BASELINE -- one window through the model"));
+  page = str_concat(page, u:svg_text(32, 60, "m", str_concat(str_concat("WHAT: ", u:svg_num(params)), " parameters, all read for every token (dense) except the unread embedding rows")));
+  page = str_concat(page, u:svg_box(32, 80, 130, 64, "ids [T]", "52-symbol alphabet", "0 params"));
+  page = str_concat(page, u:svg_box(180, 80, 150, 64, "embed [T,16]", "row lookup by id", str_concat(u:svg_num(p_emb), " params")));
+  page = str_concat(page, u:svg_box(348, 80, 150, 64, "+ positions", "sinusoidal, unlabeled", "0 params"));
+  page = str_concat(page, u:svg_box(516, 80, 200, 64, "h1 = h0 + att(h0)", "rms_norm, causal attention", str_concat(u:svg_num(p_att), " params")));
+  page = str_concat(page, u:svg_box(734, 80, 196, 64, "h2 = h1 + ffn(h1)", "rms_norm, 16->32 relu 32->16", str_concat(u:svg_num(p_ffn), " params")));
+  page = str_concat(page, u:svg_box(516, 160, 200, 64, "norm + head", "rms_norm, linear 16->52", str_concat(u:svg_num(p_norm + p_head), " params")));
+  page = str_concat(page, u:svg_box(734, 160, 196, 64, "logits [T,52]", "masked cross-entropy on", "answer and stop targets"));
+  page = str_concat(page, u:svg_text(32, 258, "k", str_concat("example  ", example)));
+  page = str_concat(page, u:svg_chars(example, 260, 241, 30));
+  page = str_concat(page, u:svg_text(32, 298, "k", "ids"));
+  page = str_concat(page, u:svg_cells(ex_ids, 260, 281, 30, fill([7], 0)));
+  page = str_concat(page, u:svg_text(32, 338, "k", "argmax prediction"));
+  page = str_concat(page, u:svg_chars(u:pred_text(ex_pred), 260, 321, 30));
+  page = str_concat(page, u:svg_text(32, 378, "k", "target (next char)"));
+  page = str_concat(page, u:svg_chars(str_concat(str_slice(example, 1, 6), "~"), 260, 361, 30));
+  page = str_concat(page, u:svg_rect(30, 400, 900, 120, "panel"));
+  page = str_concat(page, u:svg_text(50, 428, "", "WHY: a dense block spends every parameter on every token; it is the reference that MoE, recurrence, and Engram must beat."));
+  page = str_concat(page, u:svg_text(50, 453, "", "WHY: the residual is written by hand (h1 = h0 + att(h0)) so attention_weights can still reach the attention sub-model (F13)."));
+  page = str_concat(page, u:svg_text(50, 478, "", "HOW: u:body applies the att, ffn, norm, head globals; u:masked_ce scores answer and stop targets; adam updates all five."));
+  page = str_concat(page, u:svg_text(50, 503, "m", "Prediction cells are teacher-forced: each position sees the true prefix; only positions after the bar are scored."));
+  str_concat(page, "</svg>")
+}
+
+def u:bars(vals, x0, y0, wd, cls) {
+  "Vertical bars for accuracy values in [0, 1], 100 px tall at most.";
+  n = reduce_mul(shape(vals));
+  out = "";
+  i = 0;
+  while lt(i, n) {
+    h = round(take(vals, 0, i) * 100);
+    out = str_concat(out, u:svg_rect(x0 + i * 80, y0 + 100 - h, wd, h + 1, cls));
+    out = str_concat(out, u:svg_text(x0 + i * 80, y0 + 100 - h - 4, "s", u:svg_num(u:svg_round(take(vals, 0, i), 2))));
+    i = i + 1
+  };
+  out
+}
+
+def u:run_svg() {
+  "Diagram: training and validation loss over epochs, per-family accuracy, the attention map of one example, and one validation decode.";
+  page = u:svg_head("DN01 training run", "Training loss falls toward zero while validation loss rises after the first checkpoints, the per-family accuracy bars show memorization on training rows and prose-only generalization on validation rows, and the attention heatmap and a decoded validation prompt show the trained model at work.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "DN01 RUN -- loss, accuracy, attention, decode"));
+  page = str_concat(page, u:svg_text(32, 60, "m", str_concat(str_concat(str_concat("WHAT: ", u:svg_num(steps)), " one-example Adam steps, "), str_concat(str_concat(u:svg_num(epochs), " epochs; every "), str_concat(u:svg_num(every), " epochs masked loss is measured on all train and validation rows")))));
+  n = reduce_mul(shape(curve_e));
+  top = reduce(:max, concat(curve_t, curve_v));
+  xs = 60 + (curve_e / epochs) * 360;
+  yt = 300 - (curve_t / top) * 200;
+  yv = 300 - (curve_v / top) * 200;
+  page = str_concat(page, str_concat("<line x1=\"60\" y1=\"300\" x2=\"420\" y2=\"300\" class=\"axis\"/><line x1=\"60\" y1=\"100\" x2=\"60\" y2=\"300\" class=\"axis\"/>", ""));
+  page = str_concat(page, u:svg_polyline(xs, yt, "l1"));
+  page = str_concat(page, u:svg_polyline(xs, yv, "l2"));
+  page = str_concat(page, u:svg_text(60, 92, "k", str_concat("masked loss (nats); top of axis = ", u:svg_num(u:svg_round(top, 3)))));
+  page = str_concat(page, u:svg_text(60, 318, "m", str_concat(str_concat("epoch 0 .. ", u:svg_num(epochs)), "   gold = train, pink = validation")));
+  page = str_concat(page, u:svg_text(300, 318, "l1", ""));
+  page = str_concat(page, u:svg_text(60, 336, "", str_concat(str_concat("final train ", u:svg_num(u:svg_round(final_train, 4))), str_concat("   final val ", str_concat(u:svg_num(u:svg_round(final_val, 4)), str_concat("   ppl ", u:svg_num(u:svg_round(ppl, 2))))))));
+  page = str_concat(page, u:svg_text(480, 92, "k", "exact-match accuracy: blue = train rows, pink = validation rows"));
+  page = str_concat(page, u:bars(train_acc, 480, 100, 30, "tr"));
+  page = str_concat(page, u:bars(val_acc, 514, 100, 30, "va"));
+  page = str_concat(page, str_concat(str_concat(u:svg_text(480, 218, "s", "arith"), u:svg_text(560, 218, "s", "seq")), str_concat(str_concat(u:svg_text(640, 218, "s", "mlpl"), u:svg_text(720, 218, "s", "prose")), u:svg_text(800, 218, "s", "overall"))));
+  page = str_concat(page, u:svg_text(480, 250, "k", str_concat("attention weights for ", example)));
+  page = str_concat(page, u:svg_heat(ex_att, 480, 258, 26));
+  page = str_concat(page, u:svg_text(680, 275, "", "rows attend to columns;"));
+  page = str_concat(page, u:svg_text(680, 293, "", "causal: nothing right of"));
+  page = str_concat(page, u:svg_text(680, 311, "", "the diagonal is nonzero"));
+  page = str_concat(page, u:svg_text(680, 345, "k", "validation decode"));
+  page = str_concat(page, u:svg_text(680, 365, "", str_concat(str_concat(val_prompt, "| -> "), str_concat(val_pred, str_concat("  (", str_concat(val_answer, ")"))))));
+  page = str_concat(page, u:svg_text(680, 385, "", str_concat(str_concat(prose_prompt, "| -> "), str_concat(prose_pred, str_concat("  (", str_concat(prose_answer, ")"))))));
+  page = str_concat(page, u:svg_text(680, 405, "m", "(expected answer in parentheses)"));
+  page = str_concat(page, u:svg_rect(30, 452, 900, 76, "panel"));
+  page = str_concat(page, u:svg_text(50, 476, "", "WHY: rising validation loss with falling training loss is memorization; arithmetic, sequence, mlpl need rules 90 rows lack."));
+  page = str_concat(page, u:svg_text(50, 498, "", "HOW: every value here is an emitted observation (dense/loss/*, dense/accuracy/*, dense/attention/example) or a results cell."));
+  page = str_concat(page, u:svg_text(50, 518, "m", "Prose generalizes because its answer is a local pattern (animal -> place): the seam Engram will later fill without a network."));
+  str_concat(page, "</svg>")
+}
+
+r1 = write_atomic(str_concat(out_dir, "/dense-model.svg"), u:model_svg());
+r2 = write_atomic(str_concat(out_dir, "/dense-run.svg"), u:run_svg());
+print("NUMERICAL CONTRACT -- training loss ends below 0.3 while validation loss ends above 1.0; validation prose accuracy is at least 0.5; every other validation family is below 0.5.");
+print("THE POINT -- Dense capacity memorizes; only locally patterned answers survive to held-out rows.");
+print("BOUNDARY -- 90 training rows and one 16-wide block; this is the reference row for every later mechanism, not a claim about transformers in general.");
+contract = lt(final_train, 0.3) * gt(final_val, 1) * gt(rv.accuracy.prose, 0.49) * lt(rv.accuracy.arithmetic, 0.5) * lt(rv.accuracy.sequence, 0.5) * lt(rv.accuracy.mlpl, 0.5);
+if contract * is_ok(r1) * is_ok(r2) * is_ok(r_row) {
+  ok("dense baseline written")
+} else {
+  err("dense baseline contract failed")
+}

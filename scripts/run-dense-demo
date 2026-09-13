@@ -1,0 +1,42 @@
+#!/bin/sh
+# Run DN01 into a temporary directory; check (or write) its diagrams and the deterministic columns of its results row.
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+mlpl=$("$repo_root/scripts/select-mlpl")
+mode=${1:-check}
+tmp_rel="tmp/dense-demo"
+mkdir -p "$repo_root/$tmp_rel"
+binary=$("$mlpl" --version 2>/dev/null | head -1 | tr -d '\n')
+
+"$mlpl" --source-dir "$repo_root" "$repo_root/demos/dense_baseline.mlpl" -- "$tmp_rel" "$binary"
+
+for name in dense-model dense-run; do
+    generated="$repo_root/$tmp_rel/$name.svg"
+    committed="$repo_root/assets/previews/$name.svg"
+    [ -s "$generated" ] || { echo "dense demo did not write $name.svg" >&2; exit 1; }
+    if [ "$mode" = "write" ]; then
+        cp "$generated" "$committed"
+    elif ! cmp -s "$generated" "$committed"; then
+        echo "$name.svg preview is stale; run scripts/run-dense-demo write" >&2
+        exit 1
+    fi
+done
+
+# The row's deterministic columns (everything except binary and ms/token) must match docs/results.md.
+row=$(cat "$repo_root/$tmp_rel/results-row.md")
+key=$(printf '%s\n' "$row" | awk -F'|' '{ $4=""; $12=""; print }')
+if [ "$mode" = "write" ]; then
+    grep -q '^| DN01 |' "$repo_root/docs/results.md" && sed -i '' '/^| DN01 |/d' "$repo_root/docs/results.md"
+    printf '%s\n' "$row" >> "$repo_root/docs/results.md"
+else
+    committed_key=$(grep '^| DN01 |' "$repo_root/docs/results.md" | awk -F'|' '{ $4=""; $12=""; print }')
+    [ "$key" = "$committed_key" ] || {
+        echo "DN01 results row differs from docs/results.md; run scripts/run-dense-demo write" >&2
+        echo "generated: $key" >&2
+        echo "committed: $committed_key" >&2
+        exit 1
+    }
+fi
+rm -rf "$repo_root/$tmp_rel"
+echo "PASS dense baseline contract, previews, and results row ($mode)"

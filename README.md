@@ -86,6 +86,32 @@ exact-match harness reports accuracy per family and overall, and the results
 writer appends one fixed-column row per lesson run to
 [`docs/results.md`](docs/results.md).
 
+## Dense baseline microscope
+
+DN01 trains the reference model every later mechanism must beat: one
+transformer block with 16-wide embeddings, one causal attention head, and a
+32-wide feed-forward layer, 3,812 parameters in all, trained one example at a
+time on the 90 training rows for 300 epochs. The run takes about 16 seconds
+on a laptop and is deterministic, so its diagrams and results row are checked
+for freshness by the gate.
+
+![DN01 model: the example window through embedding, positions, residual attention, residual FFN, norm, head, and the argmax prediction beside the target](assets/previews/dense-model.svg)
+
+![DN01 run: training and validation loss over 300 epochs, per-family exact-match bars, the attention heatmap of one example, and two decoded validation prompts](assets/previews/dense-run.svg)
+
+```sh
+just dense           # run DN01 and check its diagrams and results row
+just dense write     # regenerate the committed diagrams and the DN01 results row
+```
+
+The result is the honest dense baseline: training loss falls to 0.19 while
+validation loss rises to 3.79, training rows are reproduced 70 percent of the
+time, and on held-out rows only the prose family (a local animal-to-place
+pattern) is answered correctly, two times in three. Arithmetic, sequence, and
+MLPL answers need rules this model cannot learn from 90 rows. The numbers are
+one row in [`docs/results.md`](docs/results.md), and the residual is written
+by hand so `attention_weights` can show the trained attention map.
+
 ## What is here
 
 ```text
@@ -127,12 +153,14 @@ just check           # the complete pre-commit gate
 just tests           # native mlplunit tests (arguments filter paths or tags)
 just probes          # re-run the upstream-finding reproducers
 just domain          # run DM01 and check its diagrams
+just dense           # run DN01 (about 16 s) and check its diagrams and results row
 just mlpl-style      # canonical formatting and docstring checks
 ```
 
 `just check` validates repository structure, documentation links,
 peer-identical license files, the generated Agentrail briefing, MLPL style,
-the native probe suites, and the pinned reproducers. Each lesson extends the
+the native test suites, the pinned reproducers, and the DM01 and DN01 lessons
+with their diagrams and results row (about half a minute in total). Each lesson extends the
 gate with its own demo run, preview freshness check, recording check, and
 catalog check.
 

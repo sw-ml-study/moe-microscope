@@ -20,6 +20,10 @@ probes:
 domain mode="check":
     ./scripts/run-domain-demo {{mode}}
 
+# Run the DN01 dense baseline (about 16 seconds) and check its diagrams and results row; `just dense write` regenerates them.
+dense mode="check":
+    ./scripts/run-dense-demo {{mode}}
+
 # Print the selected sw-MLPL executable.
 mlpl-path:
     ./scripts/select-mlpl

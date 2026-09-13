@@ -1,6 +1,6 @@
 number = 4
 slug = "dense-baseline-lesson"
-status = "pending"
+status = "in-progress"
 description = "Implement DN01, the dense tiny transformer baseline at microscope scale (voca..."
 role = "production"
 context_files = []

@@ -1,0 +1,13 @@
+# F15 reproducer: repeat whose count is a user-function parameter fails inside grad with an unbound variable; checked by scripts/run-probes.
+W = param[2, 2]
+W = [[0.5, 0], [0, 0.5]]
+def u:recurn(x0, r) {
+  "Apply W r times with repeat.";
+  s = x0;
+  repeat r {
+    s = matmul(s, W)
+  };
+  s
+}
+print("eager", u:recurn([[1, 1], [1, 1]], 3))
+print("grad", grad(reduce_add(u:recurn([[1, 1], [1, 1]], 3)), W))

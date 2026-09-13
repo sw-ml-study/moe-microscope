@@ -17,10 +17,29 @@ expect_error() {
     echo "PASS probe $name still reproduces: $pattern"
 }
 
-expect_error f5_one_hot_in_grad "not supported inside grad"
-expect_error f6_repeat_in_grad "not supported inside grad"
+expect_ok() {
+    name=$1
+    pattern=$2
+    output=$("$mlpl" --source-dir "$repo_root" "$repo_root/probes/$name.mlpl" 2>&1) || {
+        echo "probe $name: expected success; it now fails" >&2
+        printf '%s\n' "$output" | tail -3 >&2
+        exit 1
+    }
+    printf '%s\n' "$output" | grep -q -- "$pattern" || { echo "probe $name: expected '$pattern'" >&2; exit 1; }
+    echo "PASS probe $name resolved upstream: $pattern"
+}
+
+expect_ok f5_one_hot_in_grad "^mask-in-loss gradient"
+expect_ok f6_repeat_in_grad "^repeat-in-grad gradient"
 expect_error f7_model_argument "must be an array, Result, string"
 expect_error f8_emit_frame_name "name must be a string literal"
+expect_error f9_embed_batch "tokens must be a 1-D"
+expect_error f10_labeled_axes_on_tape "LabelMismatch"
+expect_error f11_nested_param_binding_in_grad "undefined variable: start"
+expect_error f12_size_arithmetic_in_grad "not supported inside grad"
+expect_error f13_attention_weights_residual "no Attention layer found"
+expect_error f14_fill_in_grad "not supported inside grad"
+expect_error f15_repeat_param_count "undefined variable: r"
 
 output=$("$mlpl" --source-dir "$repo_root" "$repo_root/probes/d1_silent_zero_grad.mlpl" 2>&1)
 printf '%s\n' "$output" | grep -q '^pre-evaluated 0 0$' || { echo "probe d1: silent zero gradient no longer reproduces" >&2; exit 1; }

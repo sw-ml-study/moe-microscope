@@ -34,8 +34,10 @@ Gaps with reproducers are written up as upstream work orders in
 | Capability | Why awkward | Downstream experiment |
 |---|---|---|
 | Sparse expert dispatch | no batched gather across experts on the tape; per-token loops in the interpreter (16 routing decisions measured well under a millisecond) | dense-masked training plus forward-only sparse dispatch with parity assertion |
-| Top-k gate on the tape | `argmax`/`one_hot`/`argtop_k` are rejected inside `grad` (F5), so the mask is computed eagerly each step and passed in as a constant; the Switch-style gate `softmax(logits) * mask` then gives the router a gradient (a renormalized top-1 gate is identically 1 and gives none) | probe "adam trains a list of expert models..." |
-| Recurrence depth as a runtime value | `repeat` is rejected inside a traced function (F6) | one user function per depth, nested `apply` |
+| Top-k gate on the tape | `argmax`/`one_hot`/`argtop_k` are stop-gradient constants inside `grad` (F5 resolved), so the mask can live inside the loss; the Switch-style gate `softmax(logits) * mask` gives the router a gradient (a renormalized top-1 gate is identically 1 and gives none) | probes "adam trains a list of expert models..." and "one_hot and argmax act as stop-gradient constants" |
+| Batched sequences | `embed` accepts rank-one tokens only (F9) | flatten a chunk of `B` windows into one `B * T` sequence, as the upstream tiny LM demo does; attention spans the chunk |
+| Positional table on the tape | the labeled `sinusoidal_encoding` output panics inside `adam` (F10) | `reshape(sinusoidal_encoding(L, d), [L, d])` strips the labels |
+| Recurrence depth as a runtime value | `repeat` with a literal count unrolls on the tape (F6 resolved); a parameter-bound count does not (F15) | one user function per depth with a literal `repeat` |
 | Models as user-function parameters | models cannot be arguments (F7); they are reached as globals | lesson helpers name their globals |
 | Observation facade | `emit_frame` requires a literal name (F8); no forwarding wrapper is possible | `lib/observe.mlpl` provides naming helpers only |
 | Pre-evaluated loss variables | `grad(l, W)` on an assigned `l` is silently zero (D1) | always write the loss as an expression or user-function call |
@@ -52,16 +54,21 @@ Gaps with reproducers are written up as upstream work orders in
 
 | Finding | Pinned by | Workaround in use |
 |---|---|---|
-| F5 index/mask builtins inside `grad` | probe "one_hot and argmax are rejected inside a traced function"; `probes/f5_one_hot_in_grad.mlpl` | eager mask passed as a constant |
-| F6 `repeat` inside a traced function | probe "repeat inside a traced function is rejected"; `probes/f6_repeat_in_grad.mlpl` | nested `apply` |
 | F7 model as user-function argument | probe "a model value cannot be a user-function argument"; `probes/f7_model_argument.mlpl` | globals |
 | F8 `emit_frame` literal name | probe "emit_frame rejects a name held in a variable"; `probes/f8_emit_frame_name.mlpl` | literal names |
 | D1 silent zero gradient | probe "grad of a pre-evaluated loss variable is silently zero"; `probes/d1_silent_zero_grad.mlpl` | expression-form losses |
+| F9 batched `embed` | `probes/f9_embed_batch.mlpl` | flattened chunks |
+| F10 labeled table panics on the tape | `probes/f10_labeled_axes_on_tape.mlpl` | `reshape` strips labels |
+| F11 nested traced call loses an index parameter | `probes/f11_nested_param_binding_in_grad.mlpl` | slice chunks eagerly, pass arrays into the loss |
+| F12 size arithmetic inside `grad` | `probes/f12_size_arithmetic_in_grad.mlpl` | pass sizes as arguments |
+| F13 `attention_weights` and `residual` | `probes/f13_attention_weights_residual.mlpl` | explicit residual with a separate attention sub-model |
+| F14 `fill`/`zeros` inside `grad` | `probes/f14_fill_in_grad.mlpl` | build constants eagerly |
+| F15 `repeat` with a parameter count | `probes/f15_repeat_param_count.mlpl` | literal counts |
 
 ## Still to be probed
 
-1. Whether `emit_frame` inside `train { }` streams every step or only the
-   final one on the connect path (Saga 1 step 6).
+1. Whether `emit_frame` inside a training loop streams every checkpoint in
+   order on the connect path (Saga 1 step 5).
 2. The user-function MoE loss under `device("mlx") { }` at lab scale.
 
 A confirmed blocker must add a minimal `.mlpl` reproducer, the configured

@@ -1,6 +1,7 @@
 # Domain microscope: the token window, task tags, and split data structures drawn from real generated values.
 include "../lib/domain.mlpl";
 include "../lib/observe.mlpl";
+include "../lib/svg.mlpl";
 
 print("WHAT THIS SHOWS -- How prompt|answer. text becomes padded token windows, how task tags label examples, and how a seeded split holds rows out.");
 print("SHAPES -- alphabet:[V], window x/y/mask:[N,T], tags:[N], split keys/order:[N].");
@@ -17,75 +18,6 @@ mask = emit_frame("data/window/mask", 1, w.mask);
 s = u:domain_split(sample.total, sample.train_fraction, sample.seed);
 keys = emit_frame("data/split/keys", 2, s.keys);
 order = emit_frame("data/split/order", 2, s.order);
-
-def u:svg_head(title, desc) {
-  "Open an SVG document with a title, description, and the shared style.";
-  str_concat(str_concat(str_concat("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" width=\"960\" height=\"540\" role=\"img\"><title>", title), "</title><desc>"), str_concat(desc, "</desc><style>text{font-family:ui-monospace,monospace;fill:#dbeafe;font-size:12px}.h{font-size:20px}.k{fill:#fbbf24}.s{font-size:9px}.m{fill:#a5b4fc}.panel{fill:#172033;stroke:#52627a;stroke-width:2}.cell{fill:#0f172a;stroke:#52627a}.pad{fill:#1e293b;stroke:#334155}.on{fill:#db2777}.t0{fill:#2563eb}.t1{fill:#16a34a}.t2{fill:#d97706}.t3{fill:#7c3aed}.tr{fill:#2563eb}.va{fill:#db2777}</style><rect width=\"960\" height=\"540\" fill=\"#0b1020\"/>"))
-}
-
-def u:svg_num(v) {
-  "A number as SVG text content.";
-  to_string(v)
-}
-
-def u:svg_text(x0, y0, cls, content) {
-  "One text element at x0, y0 with a class.";
-  str_concat(str_concat(str_concat(str_concat(str_concat(str_concat(str_concat("<text x=\"", u:svg_num(x0)), "\" y=\""), u:svg_num(y0)), "\" class=\""), cls), "\">"), str_concat(content, "</text>"))
-}
-
-def u:svg_rect(x0, y0, wd, ht, cls) {
-  "One rectangle with a class.";
-  str_concat(str_concat(str_concat(str_concat(str_concat(str_concat(str_concat(str_concat("<rect x=\"", u:svg_num(x0)), "\" y=\""), u:svg_num(y0)), "\" width=\""), u:svg_num(wd)), "\" height=\""), u:svg_num(ht)), str_concat(str_concat("\" class=\"", cls), "\"/>"))
-}
-
-def u:svg_cells(v, x0, y0, wd, on_mask) {
-  "A row of value cells; cells whose on_mask entry is one are highlighted, zeros are drawn as padding.";
-  n = reduce_mul(shape(v));
-  out = "";
-  i = 0;
-  while lt(i, n) {
-    val = take(v, 0, i);
-    cls = if take(on_mask, 0, i) {
-      "on"
-    } else {
-      if val {
-        "cell"
-      } else {
-        "pad"
-      }
-    };
-    out = str_concat(out, u:svg_rect(x0 + i * wd, y0, wd - 2, 24, cls));
-    out = str_concat(out, u:svg_text(x0 + i * wd + 5, y0 + 17, "", u:svg_num(val)));
-    i = i + 1
-  };
-  out
-}
-
-def u:svg_id_cells(v, x0, y0, wd) {
-  "A row of small-font id cells for the alphabet strip.";
-  n = reduce_mul(shape(v));
-  out = "";
-  i = 0;
-  while lt(i, n) {
-    out = str_concat(out, u:svg_rect(x0 + i * wd, y0, wd - 2, 24, "cell"));
-    out = str_concat(out, u:svg_text(x0 + i * wd + 2, y0 + 16, "s", u:svg_num(take(v, 0, i))));
-    i = i + 1
-  };
-  out
-}
-
-def u:svg_chars(text, x0, y0, wd) {
-  "A row of character cells for a string.";
-  n = str_len(text);
-  out = "";
-  i = 0;
-  while lt(i, n) {
-    out = str_concat(out, u:svg_rect(x0 + i * wd, y0, wd - 2, 24, "cell"));
-    out = str_concat(out, u:svg_text(x0 + i * wd + 7, y0 + 17, "", str_slice(text, i, 1)));
-    i = i + 1
-  };
-  out
-}
 
 def u:window_svg() {
   "Diagram: alphabet ids, one example encoded, then x, y, and mask rows of the padded window.";

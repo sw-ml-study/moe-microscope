@@ -1,0 +1,13 @@
+# F11 reproducer: a nested user-function call inside grad loses a parameter used in index arithmetic; checked by scripts/run-probes.
+W = param[4, 3]
+W = reshape(range(12), [4, 3])
+def u:rows(M, start, count) {
+  "Contiguous row slice.";
+  gather_rows(M, start + range(count))
+}
+def u:second_pair(M) {
+  "Rows one and two through the nested helper.";
+  u:rows(M, 1, 2)
+}
+print("eager rows", u:second_pair(W))
+print("grad rows", grad(reduce_add(u:second_pair(W)), W))

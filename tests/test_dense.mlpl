@@ -1,0 +1,64 @@
+# Dense-lesson helper contract: chunks, masked loss, greedy decoding, and prompt evaluation.
+include "lib/dense.mlpl";
+
+stub_logits = fill([1, 52], 0);
+
+def u:stub_forward(seq) {
+  "A forward stub whose next token is always the stop id; logits shape [len, V].";
+  n = reduce_mul(shape(seq));
+  base = fill([n, 52], 0);
+  base + reshape(one_hot([u:stop_id()], 52), [1, 52]) * 5
+}
+
+def u:echo_forward(seq) {
+  "A forward stub that predicts the id 4 (character 2) then stop.";
+  n = reduce_mul(shape(seq));
+  last = take(seq, 0, n - 1);
+  nxt = if eq(last, u:stop_id()) { u:stop_id() } else {
+    if eq(last, 4) { u:stop_id() } else {
+      4
+    }
+  };
+  fill([n, 52], 0) + reshape(one_hot([nxt], 52), [1, 52]) * 5
+}
+
+@test {name: "flat_chunk flattens contiguous rows into one sequence", tags: ["dense", "chunk"]}
+def u:test_flat_chunk() {
+  "Chunk 1 of size 2 over a 4x3 matrix is rows 2 and 3 end to end.";
+  M = reshape(range(12), [4, 3]);
+  u:assert_eq(u:flat_chunk(M, 1, 2), [6, 7, 8, 9, 10, 11], "second chunk")?;
+  u:assert_shape(u:positions(6, 4), [6, 4], "unlabeled positions")?;
+  u:assert_text_eq(labels(u:positions(6, 4)), ",", "labels stripped")
+}
+
+@test {name: "masked cross-entropy equals cross_entropy under an all-ones mask", tags: ["dense", "loss"]}
+def u:test_masked_ce() {
+  "Masking to the answer positions changes the mean, not the per-position terms.";
+  logits = randn(1, [6, 52]);
+  y = rand_ints(6, 0, 52, 2);
+  u:assert_approx(u:masked_ce(logits, y, fill([6], 1), 52), cross_entropy(logits, y), 0.000000001, "all-ones mask")?;
+  partial = u:masked_ce(logits, y, [0, 0, 0, 1, 1, 1], 52);
+  tail = cross_entropy(u:rows(logits, 3, 3), u:rows(reshape(y, [6, 1]), 3, 3));
+  u:assert_approx(partial, tail, 0.000000001, "mask selects the last three positions")
+}
+
+@test {name: "greedy decoding stops at the stop id and strips it from the answer", tags: ["dense", "decode"]}
+def u:test_greedy() {
+  "The stub predicts 2 then stop; the answer text is 2.";
+  ids = u:greedy(:u:echo_forward, unwrap(u:domain_encode("1+1=|")), 6);
+  u:assert_eq(ids, [4, u:stop_id()], "two generated ids")?;
+  u:assert_text_eq(u:answer_text(ids), "2", "stop stripped")?;
+  u:assert_eq(u:greedy(:u:stub_forward, [4], 3), [u:stop_id()], "immediate stop")
+}
+
+@test {name: "evaluate_prompts scores greedy answers per family", tags: ["dense", "evaluate"]}
+def u:test_evaluate_prompts() {
+  "A stub that always answers 2 is right only on prompts whose answer is 2.";
+  d = {prompts: ["1+1=", "3+4=", "rev 2="], answers: ["2", "7", "2"], tags: [0, 0, 1], count: 3};
+  r = u:evaluate_prompts(:u:echo_forward, d, [0, 1, 2], 4);
+  u:assert_eq(r.hits, [1, 0, 1], "hits")?;
+  u:assert_approx(r.accuracy.arithmetic, 0.5, 0.000001, "arithmetic")?;
+  u:assert_eq(r.accuracy.sequence, 1, "sequence")
+}
+
+u:run_registered_tests()

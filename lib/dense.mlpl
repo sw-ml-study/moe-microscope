@@ -1,0 +1,106 @@
+# Dense-lesson helpers: chunked flattening, masked next-token loss, greedy decoding, and prompt evaluation.
+include "domain.mlpl";
+include "evaluate.mlpl";
+
+def u:rows(M, start, count) {
+  "Contiguous row slice of a rank-two matrix.";
+  gather_rows(M, start + range(count))
+}
+
+def u:flat_chunk(M, chunk, size) {
+  "Rows chunk*size .. chunk*size+size of M flattened into one rank-one sequence.";
+  reshape(u:rows(M, chunk * size, size), [size * reduce_mul(shape(take(M, 0, 0)))])
+}
+
+def u:positions(length, width) {
+  "Unlabeled sinusoidal position table (labels are stripped: finding F10).";
+  reshape(sinusoidal_encoding(length, width), [length, width])
+}
+
+def u:masked_ce(logits, targets, mask, vocab) {
+  "Mean negative log-likelihood over masked positions only; equals cross_entropy when the mask is all ones (vocab is explicit: size arithmetic is not traced, F11).";
+  picked = reduce_add(one_hot(targets, vocab) * log(softmax(logits)), 1);
+  0 - reduce_add(picked * mask) / reduce_add(mask)
+}
+
+def u:stop_id() {
+  "Token id of the stop character.";
+  str_find(u:domain_alphabet(), ".")
+}
+
+def u:greedy(forward, prompt_ids, max_new) {
+  "Greedy decode with a forward-function reference until the stop id or max_new tokens; returns new ids only.";
+  seq = prompt_ids;
+  out = fill([0], 0);
+  k = 0;
+  while lt(k, max_new) {
+    nxt = argmax(last_row(call(forward, seq)));
+    seq = concat(seq, nxt);
+    out = concat(out, nxt);
+    k = if eq(nxt, u:stop_id()) {
+      max_new
+    } else {
+      k + 1
+    }
+  };
+  out
+}
+
+def u:answer_text(ids) {
+  "Decode generated ids and drop the trailing stop character if present.";
+  text = u:domain_decode(ids);
+  n = str_len(text);
+  if n {
+    if str_eq(str_slice(text, n - 1, 1), ".") {
+      str_slice(text, 0, n - 1)
+    } else {
+      text
+    }
+  } else {
+    text
+  }
+}
+
+def u:predict_prompts(forward, prompts, index, max_new) {
+  "Greedy answers for the prompts at the given row indices, as a string list.";
+  n = reduce_mul(shape(index));
+  acc = "";
+  i = 0;
+  while lt(i, n) {
+    prompt = str_concat(unwrap(list_get(prompts, take(index, 0, i))), "|");
+    text = u:answer_text(u:greedy(forward, unwrap(u:domain_encode(prompt)), max_new));
+    acc = if eq(i, 0) {
+      text
+    } else {
+      str_concat(str_concat(acc, ";"), text)
+    };
+    i = i + 1
+  };
+  str_split(acc, ";")
+}
+
+def u:select_list(items, index) {
+  "The strings at the given indices, as a string list.";
+  n = reduce_mul(shape(index));
+  acc = "";
+  i = 0;
+  while lt(i, n) {
+    item = unwrap(list_get(items, take(index, 0, i)));
+    acc = if eq(i, 0) {
+      item
+    } else {
+      str_concat(str_concat(acc, ";"), item)
+    };
+    i = i + 1
+  };
+  str_split(acc, ";")
+}
+
+def u:evaluate_prompts(forward, d, index, max_new) {
+  "Per-family and overall exact-match accuracy of greedy answers over the indexed examples.";
+  preds = u:predict_prompts(forward, d.prompts, index, max_new);
+  answers = u:select_list(d.answers, index);
+  hits = u:exact_match(preds, answers);
+  tags = reshape(gather_rows(reshape(d.tags, [d.count, 1]), index), [reduce_mul(shape(index))]);
+  {accuracy: u:accuracy_by_tag(hits, tags), hits: hits, preds: preds}
+}

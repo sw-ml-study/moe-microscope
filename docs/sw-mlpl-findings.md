@@ -10,8 +10,8 @@ reproducers under `probes/` that `scripts/run-probes` re-checks on every
 this document is updated in the same step.
 
 Binary under test: `mlpl-repl 0.22.0` from the adjacent `../sw-mlpl`
-checkout at `a2aa68a4` (2026-09-12), rebuilt after the upstream
-`moe-microscope-findings` saga.
+checkout at `a9ae2a79` (2026-09-12), rebuilt after the second step of the
+upstream `moe-microscope-followups` saga.
 
 ## Resolved upstream (verified here)
 
@@ -21,28 +21,10 @@ checkout at `a2aa68a4` (2026-09-12), rebuilt after the upstream
 | F2 user-defined functions rejected inside `grad`/`adam` | `u:` calls are inlined onto the tape | `41faf626` | probe "adam trains a list of expert models plus a router param through a user function" |
 | F3 `chain(blk, blk, blk)` does not share weights | documented as by design; weight sharing is spelled by reusing one block through nested `apply` | `b28fdf45` | probe "one shared block applied R times trains through nested apply" |
 | F4 `gather_rows` not differentiable; no `kl_divergence` | scatter-add backward for `gather_rows`; KL documented as `reduce_add(P * (log(P) - log(Q)))` | `e1d693af` | probes "gather_rows scatter-adds gradient" and "KL divergence is a composition" |
+| F6 `repeat` rejected inside a traced function | `repeat N` with a literal count unrolls onto the tape | `a9ae2a79` | probe "repeat with a literal count unrolls inside a traced function"; `probes/f6_repeat_in_grad.mlpl` expects success |
+| F5 `one_hot`/`argmax` rejected inside `grad` | index and mask builtins (`argmax`, `one_hot`, `eq`, `gt`, `lt`, `argtop_k`) are stop-gradient constants on the tape | `54ad5849` | probe "one_hot and argmax act as stop-gradient constants"; `probes/f5_one_hot_in_grad.mlpl` now expects success |
 
-## Open, queued upstream as `moe-microscope-followups`
-
-### F5: `one_hot` and `argmax` are rejected inside a traced function
-
-```
-grad(reduce_add(softmax(matmul(x, W)) * one_hot(argmax(matmul(x, W), 1), 2)), W)
-# error: unsupported: grad: function 'one_hot' not supported inside grad()
-```
-
-Reproducer: `probes/f5_one_hot_in_grad.mlpl`. Workaround: compute the top-k
-mask eagerly each training step and pass it into the loss as a constant
-argument. Affects: every router lesson (MX01 onward). Proposed fix: treat
-index and mask builtins (`argmax`, `argtop_k`, `one_hot`, `eq`, `gt`, `lt`)
-as stop-gradient constants on the tape.
-
-### F6: `repeat` is rejected inside a traced function
-
-Reproducer: `probes/f6_repeat_in_grad.mlpl` ("expression form not supported
-inside grad()"). Workaround: nested `apply` per depth, one user function per
-`R` value. Affects: RC01, RM01, RE01. Proposed fix: unroll `repeat N` with a
-literal or bound integer `N` onto the tape.
+## Open, queued upstream as `moe-microscope-followups` (D1) or new (F7 to F15)
 
 ### F7: a model value cannot be a user-function argument
 
@@ -75,6 +57,110 @@ Affects: observation facade, any generated or parameterized observation name
 string value for the name, or document the literal rule and provide a
 `str`-valued form.
 
+### F9: `embed` rejects the batched `[B, T]` token input the reference documents
+
+```
+apply(embed(8, 4, 0), [[1, 2, 3], [4, 5, 6]])
+# error: unsupported: embed: tokens must be a 1-D [N] array, got shape [2, 3]
+```
+
+Reproducer: `probes/f9_embed_batch.mlpl`. The language reference for `embed`
+and `cross_entropy` promises `[B, T]` and `[B, T, V]` forms. Workaround (the
+idiom of the upstream `tiny_lm.mlpl` demo): flatten a chunk of examples into
+one rank-one sequence of `B * T` tokens; causal attention then spans example
+boundaries inside the chunk, which the lesson states. Affects: DN01 and
+every trained lesson. Proposed fix: implement the documented rank-two path in
+`embed` (and confirm attention and `cross_entropy` on rank three), or correct
+the reference.
+
+### F10: the labeled `sinusoidal_encoding` table panics the autograd tape
+
+```
+pos = sinusoidal_encoding(12, 8)              # labeled [time, dim]
+cross_entropy(apply(head, apply(emb, x) + pos), y)   # eager: fine
+train 1 { adam(cross_entropy(apply(head, apply(emb, x) + pos), y), [emb, head], ...) }
+# thread 'main' panicked at .../mlpl-autograd/src/tensor_ops.rs:43:18:
+# broadcastable shapes: LabelMismatch { expected: [Some("time"), Some("dim")], actual: [Some("time"), None] }
+```
+
+Reproducer: `probes/f10_labeled_axes_on_tape.mlpl`. Two defects: the tape
+treats a label mismatch that the eager path accepts as fatal, and it exits
+by Rust panic rather than an MLPL `err`. Workaround: strip the labels with
+`reshape(sinusoidal_encoding(L, d), [L, d])` (any arithmetic derivative also
+works). Affects: every lesson that adds positions. Proposed fix: make the
+tape's label check match eager broadcasting, and turn the panic into a
+structured error.
+
+### F11: a nested user-function call inside `grad` loses a parameter used in index arithmetic
+
+```
+def u:rows(M, start, count) { "..."; gather_rows(M, start + range(count)) }
+def u:second_pair(M) { "..."; u:rows(M, 1, 2) }
+u:second_pair(W)                                 # eager: rows 1 and 2
+grad(reduce_add(u:second_pair(W)), W)            # error: undefined variable: start
+```
+
+Reproducer: `probes/f11_nested_param_binding_in_grad.mlpl`. A one-level
+call with plain arithmetic (`u:inner(w, 3)` returning `a * k`) traces fine,
+so the failure is specific to the nested call whose parameter feeds `range`
+and `gather_rows`. Workaround: slice chunks eagerly before the loss and pass
+arrays into the loss function. Affects: any lesson helper that slices inside
+the loss. Proposed fix: bind nested-call parameters in the inliner's scope
+before walking index expressions.
+
+### F12: shape-derived size arithmetic is rejected inside `grad`
+
+```
+grad(reduce_add(W) * reduce_mul(shape(take(W, 0, 0))), W)
+# error: unsupported: grad: function 'reduce_mul' not supported inside grad()
+```
+
+Reproducer: `probes/f12_size_arithmetic_in_grad.mlpl`. Workaround: pass sizes
+(vocabulary, width) as explicit arguments; `u:masked_ce` takes `vocab`.
+Affects: every loss helper that derives a size from a shape. Proposed fix:
+treat `shape` and reductions over it as stop-gradient constants, like the F5
+index builtins.
+
+### F13: `attention_weights` cannot find an attention layer inside `residual(chain(...))`
+
+```
+body = chain(residual(chain(rms_norm(8), causal_attention(8, 1, 1))), linear(8, 20, 2))
+attention_weights(body, h)
+# error: unsupported: attention_weights: no Attention layer found in model
+```
+
+Reproducer: `probes/f13_attention_weights_residual.mlpl`. Workaround: keep
+the attention sub-model as its own global and write the residual by hand
+(`h1 = h0 + apply(att, h0)`); `attention_weights(att, h0)` then works and the
+weights are shared because the same model value is applied. This spelling is
+also more readable for the microscope. Affects: DN01 attention diagram.
+Proposed fix: walk `residual` and nested `chain` blocks in `attention_weights`.
+
+### F14: constant constructors are rejected inside `grad`
+
+```
+grad(reduce_add(W * fill([3], 2)), W)
+# error: unsupported: grad: function 'fill' not supported inside grad()
+```
+
+Reproducer: `probes/f14_fill_in_grad.mlpl`. Workaround: build constant
+arrays (masks, ones) eagerly and pass them in. Affects: loss helpers.
+Proposed fix: treat `fill`, `zeros`, `ones`, and `range` as constants on the
+tape, alongside the F5 index builtins.
+
+### F15: `repeat` with a parameter count fails inside `grad`
+
+```
+def u:recurn(x0, r) { "..."; s = x0; repeat r { s = matmul(s, W) }; s }
+grad(reduce_add(u:recurn(x, 3)), W)        # error: undefined variable: r
+```
+
+Reproducer: `probes/f15_repeat_param_count.mlpl`. The F6 fix unrolls a
+literal count; a count bound to a user-function parameter is not visible to
+the unroller, the same binding defect as F11. Workaround: one user function
+per depth with a literal count. Affects: recurrence lessons that sweep `R`.
+Proposed fix: resolve the count in the inlined call's scope before unrolling.
+
 ### D1: `grad` of a pre-evaluated loss variable is silently zero
 
 ```
@@ -88,8 +174,8 @@ when the `wrt` leaf does not appear on the tape of the expression.
 
 ## Still to be probed
 
-- `emit_frame` inside `train { }` on the connect path: does every step
-  stream, or only the last? Deferred to Saga 1 step 6, which records DN01
+- `emit_frame` inside a training loop on the connect path: does every
+  checkpoint stream in order? Deferred to Saga 1 step 5, which records DN01
   over live SSE against the peer schema.
 - `device("mlx") { }` at lab scale for the MoE loss written as user
   functions; deferred until a lesson runs at lab scale.

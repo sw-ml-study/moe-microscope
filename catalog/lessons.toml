@@ -18,3 +18,19 @@ memory = "120 examples, window 28: x, y, mask are three [120,28] arrays (10,080 
 speed = "generation and windowing are O(N T) with O(N^2) concat copying; sample of 8 runs in well under a second"
 quality = "oracle answers by construction; exact-match harness reports arithmetic, sequence, mlpl, prose, overall"
 status = "accepted"
+
+[[lesson]]
+id = "DN01"
+slug = "dense-baseline"
+title = "A dense block memorizes; only local patterns generalize"
+source = "demos/dense_baseline.mlpl"
+library = ["lib/dense.mlpl", "lib/domain.mlpl", "lib/evaluate.mlpl", "lib/results.mlpl", "lib/svg.mlpl"]
+test = ["tests/test_dense.mlpl"]
+previews = ["assets/previews/dense-model.svg", "assets/previews/dense-run.svg"]
+fixture = "fixtures/domain/mixture-v0.json"
+implementation = "builtin"
+observations = ["dense/config", "dense/loss/train", "dense/loss/val", "dense/accuracy/train", "dense/accuracy/val", "dense/logits/example-argmax", "dense/attention/example"]
+memory = "3,812 parameters (embedding 832, attention 1,024, FFN 1,072, norm and head 884); 2,996 active per token; 23,968 bytes per token at f64"
+speed = "27,000 per-example Adam steps; about 0.56 ms per step and 0.02 ms per token on an M1 Max with mlpl-repl 0.22.0; the whole lesson runs in about 16 seconds"
+quality = "validation masked loss 3.79 (perplexity 44.2); validation exact match arithmetic 0, sequence 0, mlpl 0, prose 0.667; training exact match 0.70"
+status = "accepted"

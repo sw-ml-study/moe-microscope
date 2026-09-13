@@ -1,0 +1,112 @@
+# Shared hand-written SVG helpers for annotated microscope diagrams.
+
+def u:svg_head(title, desc) {
+  "Open an SVG document with a title, description, and the shared style.";
+  str_concat(str_concat(str_concat("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" width=\"960\" height=\"540\" role=\"img\"><title>", title), "</title><desc>"), str_concat(desc, "</desc><style>text{font-family:ui-monospace,monospace;fill:#dbeafe;font-size:12px}.h{font-size:20px}.k{fill:#fbbf24}.s{font-size:9px}.m{fill:#a5b4fc}.panel{fill:#172033;stroke:#52627a;stroke-width:2}.cell{fill:#0f172a;stroke:#52627a}.pad{fill:#1e293b;stroke:#334155}.on{fill:#db2777}.t0{fill:#2563eb}.t1{fill:#16a34a}.t2{fill:#d97706}.t3{fill:#7c3aed}.tr{fill:#2563eb}.va{fill:#db2777}.l1{fill:none;stroke:#fbbf24;stroke-width:2}.l2{fill:none;stroke:#db2777;stroke-width:2}.axis{stroke:#52627a;stroke-width:1}.heat{fill:#2563eb;stroke:#52627a}.box{fill:#172033;stroke:#a5b4fc;stroke-width:1.5}</style><rect width=\"960\" height=\"540\" fill=\"#0b1020\"/>"))
+}
+
+def u:svg_num(v) {
+  "A number as SVG text content.";
+  to_string(v)
+}
+
+def u:svg_text(x0, y0, cls, content) {
+  "One text element at x0, y0 with a class.";
+  str_concat(str_concat(str_concat(str_concat(str_concat(str_concat(str_concat("<text x=\"", u:svg_num(x0)), "\" y=\""), u:svg_num(y0)), "\" class=\""), cls), "\">"), str_concat(content, "</text>"))
+}
+
+def u:svg_rect(x0, y0, wd, ht, cls) {
+  "One rectangle with a class.";
+  str_concat(str_concat(str_concat(str_concat(str_concat(str_concat(str_concat(str_concat("<rect x=\"", u:svg_num(x0)), "\" y=\""), u:svg_num(y0)), "\" width=\""), u:svg_num(wd)), "\" height=\""), u:svg_num(ht)), str_concat(str_concat("\" class=\"", cls), "\"/>"))
+}
+
+def u:svg_cells(v, x0, y0, wd, on_mask) {
+  "A row of value cells; cells whose on_mask entry is one are highlighted, zeros are drawn as padding.";
+  n = reduce_mul(shape(v));
+  out = "";
+  i = 0;
+  while lt(i, n) {
+    val = take(v, 0, i);
+    cls = if take(on_mask, 0, i) {
+      "on"
+    } else {
+      if val {
+        "cell"
+      } else {
+        "pad"
+      }
+    };
+    out = str_concat(out, u:svg_rect(x0 + i * wd, y0, wd - 2, 24, cls));
+    out = str_concat(out, u:svg_text(x0 + i * wd + 5, y0 + 17, "", u:svg_num(val)));
+    i = i + 1
+  };
+  out
+}
+
+def u:svg_id_cells(v, x0, y0, wd) {
+  "A row of small-font id cells for the alphabet strip.";
+  n = reduce_mul(shape(v));
+  out = "";
+  i = 0;
+  while lt(i, n) {
+    out = str_concat(out, u:svg_rect(x0 + i * wd, y0, wd - 2, 24, "cell"));
+    out = str_concat(out, u:svg_text(x0 + i * wd + 2, y0 + 16, "s", u:svg_num(take(v, 0, i))));
+    i = i + 1
+  };
+  out
+}
+
+def u:svg_chars(text, x0, y0, wd) {
+  "A row of character cells for a string.";
+  n = str_len(text);
+  out = "";
+  i = 0;
+  while lt(i, n) {
+    out = str_concat(out, u:svg_rect(x0 + i * wd, y0, wd - 2, 24, "cell"));
+    out = str_concat(out, u:svg_text(x0 + i * wd + 7, y0 + 17, "", str_slice(text, i, 1)));
+    i = i + 1
+  };
+  out
+}
+
+def u:svg_round(v, places) {
+  "Round v to the given number of decimal places for display.";
+  scale = reduce_mul(fill([places], 10));
+  round(v * scale) / scale
+}
+
+def u:svg_polyline(xs, ys, cls) {
+  "A polyline through parallel x and y coordinate vectors.";
+  n = reduce_mul(shape(xs));
+  pts = "";
+  i = 0;
+  while lt(i, n) {
+    pts = str_concat(str_concat(str_concat(str_concat(pts, u:svg_num(u:svg_round(take(xs, 0, i), 1))), ","), u:svg_num(u:svg_round(take(ys, 0, i), 1))), " ");
+    i = i + 1
+  };
+  str_concat(str_concat(str_concat(str_concat("<polyline points=\"", pts), "\" class=\""), cls), "\"/>")
+}
+
+def u:svg_heat(M, x0, y0, wd) {
+  "A rank-two matrix as opacity-shaded cells with rounded values; values are expected in [0, 1].";
+  rows = reduce_mul(shape(take(M, 1, 0)));
+  cols = reduce_mul(shape(take(M, 0, 0)));
+  out = "";
+  i = 0;
+  while lt(i, rows) {
+    j = 0;
+    while lt(j, cols) {
+      v = take(take(M, 0, i), 0, j);
+      out = str_concat(out, str_concat(str_concat(str_concat(str_concat(str_concat(str_concat(str_concat("<rect x=\"", u:svg_num(x0 + j * wd)), "\" y=\""), u:svg_num(y0 + i * wd)), "\" width=\""), u:svg_num(wd - 2)), "\" height=\""), str_concat(str_concat(str_concat(u:svg_num(wd - 2), "\" class=\"heat\" fill-opacity=\""), u:svg_num(u:svg_round(0.1 + 0.9 * v, 2))), "\"/>")));
+      out = str_concat(out, u:svg_text(x0 + j * wd + 3, y0 + i * wd + wd / 2 + 4, "s", u:svg_num(u:svg_round(v, 2))));
+      j = j + 1
+    };
+    i = i + 1
+  };
+  out
+}
+
+def u:svg_box(x0, y0, wd, ht, title, line2, line3) {
+  "A labeled stage box with a title and two detail lines.";
+  str_concat(str_concat(str_concat(u:svg_rect(x0, y0, wd, ht, "box"), u:svg_text(x0 + 8, y0 + 18, "k", title)), u:svg_text(x0 + 8, y0 + 36, "", line2)), u:svg_text(x0 + 8, y0 + 54, "m", line3))
+}

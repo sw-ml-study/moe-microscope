@@ -1,0 +1,5 @@
+# F13 reproducer: attention_weights does not find an attention layer nested inside residual(chain(...)); checked by scripts/run-probes.
+body = chain(residual(chain(rms_norm(8), causal_attention(8, 1, 1))), linear(8, 20, 2))
+h = randn(1, [5, 8])
+print("apply ok", shape(apply(body, h)))
+print("weights", shape(attention_weights(body, h)))
