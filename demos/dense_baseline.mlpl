@@ -7,8 +7,17 @@ include "../lib/results.mlpl";
 print("WHAT THIS SHOWS -- A dense 3.8K-parameter transformer trained on 90 examples memorizes them but generalizes only where a local pattern exists (prose).");
 print("SHAPES -- ids:[T], embedding:[T,16], attention:[T,16], logits:[T,52]; T=28 window, 120 examples, 90 train / 30 validation.");
 
-out_dir = unwrap(list_get(args(), 0));
-binary = unwrap(list_get(args(), 1));
+out_dir = if list_len(args()) {
+  unwrap(list_get(args(), 0))
+} else {
+  ""
+};
+binary = if gt(list_len(args()), 1) {
+  unwrap(list_get(args(), 1))
+} else {
+  "unknown"
+};
+writing = str_len(out_dir);
 m = unwrap(u:domain_load_mixture(u:domain_mixture_path()));
 d = u:domain_build(m);
 w = unwrap(u:domain_windows(d.texts, m.window));
@@ -130,7 +139,11 @@ prose_answer = unwrap(list_get(d.answers, take(prose_index, 0, 0)));
 prose_pred = u:answer_text(u:greedy(:u:forward, unwrap(u:domain_encode(str_concat(prose_prompt, "|"))), 12));
 
 row = {lesson: "DN01", config: "dense d16 h32 1head T28 120ex 300ep lr0.003", binary: binary, params: params, active_params: active, expert_evals: 1, bytes_per_token: active * 8, ms_per_token: u:svg_round(ms_per_token, 4), val_loss: u:svg_round(final_val, 4), ppl: u:svg_round(ppl, 2), arith_acc: u:svg_round(rv.accuracy.arithmetic, 3), seq_acc: u:svg_round(rv.accuracy.sequence, 3), mlpl_acc: u:svg_round(rv.accuracy.mlpl, 3), prose_acc: u:svg_round(rv.accuracy.prose, 3)};
-r_row = write_atomic(str_concat(out_dir, "/results-row.md"), str_concat(u:results_row(row), "\n"));
+r_row = if writing {
+  write_atomic(str_concat(out_dir, "/results-row.md"), str_concat(u:results_row(row), "\n"))
+} else {
+  ok(0)
+};
 print("MEMORY -- params", params, "active/token", active, "bytes/token (f64)", active * 8);
 print("SPEED -- ms/step", u:svg_round(ms_per_step, 3), "ms/token", u:svg_round(ms_per_token, 4), "greedy decode ms for", nval, "prompts", u:svg_round(decode_ms, 1), "(", binary, ")");
 print("QUALITY -- val loss", u:svg_round(final_val, 4), "ppl", u:svg_round(ppl, 2), "val acc [arith seq mlpl prose all]", val_acc, "train acc", train_acc);
@@ -219,8 +232,16 @@ def u:run_svg() {
   str_concat(page, "</svg>")
 }
 
-r1 = write_atomic(str_concat(out_dir, "/dense-model.svg"), u:model_svg());
-r2 = write_atomic(str_concat(out_dir, "/dense-run.svg"), u:run_svg());
+r1 = if writing {
+  write_atomic(str_concat(out_dir, "/dense-model.svg"), u:model_svg())
+} else {
+  ok(0)
+};
+r2 = if writing {
+  write_atomic(str_concat(out_dir, "/dense-run.svg"), u:run_svg())
+} else {
+  ok(0)
+};
 print("NUMERICAL CONTRACT -- training loss ends below 0.3 while validation loss ends above 1.0; validation prose accuracy is at least 0.5; every other validation family is below 0.5.");
 print("THE POINT -- Dense capacity memorizes; only locally patterned answers survive to held-out rows.");
 print("BOUNDARY -- 90 training rows and one 16-wide block; this is the reference row for every later mechanism, not a claim about transformers in general.");

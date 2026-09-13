@@ -12,7 +12,11 @@ for path in AGENTS.md CLAUDE.md COPYRIGHT LICENSE README.md justfile mlplunit.co
     lib/domain.mlpl lib/evaluate.mlpl lib/results.mlpl fixtures/domain/mixture-v0.json \
     demos/domain_microscope.mlpl catalog/lessons.toml scripts/run-domain-demo scripts/check-catalog \
     lib/dense.mlpl lib/svg.mlpl tests/test_dense.mlpl demos/dense_baseline.mlpl scripts/run-dense-demo \
-    assets/previews/dense-model.svg assets/previews/dense-run.svg; do
+    assets/previews/dense-model.svg assets/previews/dense-run.svg \
+    docs/host-handoff.md fixtures/recordings/recording-schema-v0.json fixtures/recordings/index-v1.json \
+    fixtures/recordings/dense-baseline-run-v0.json scripts/bundle-program scripts/select-mlpl-serve \
+    scripts/capture-dense-recording scripts/check-dense-recording scripts/run-dense-recording \
+    scripts/make-recording-index scripts/run-emit-frame-loops scripts/build-local-serve; do
     if [ ! -e "$repo_dir/$path" ]; then
         echo "missing required file: $path" >&2
         exit 1

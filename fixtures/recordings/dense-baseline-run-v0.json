@@ -1,0 +1,359 @@
+{
+  "schema": "sw-ml-study.ml-microscope-recording",
+  "version": 0,
+  "lesson": "dense-baseline",
+  "budgets": {
+    "max_frames": 16,
+    "max_observations_per_frame": 8,
+    "max_values_per_observation": 64,
+    "max_total_values": 128
+  },
+  "frames": [
+    {
+      "step": 0,
+      "observations": [
+        {
+          "name": "dense/config",
+          "shape": [
+            6
+          ],
+          "values": [
+            16.0,
+            32.0,
+            28.0,
+            300.0,
+            90.0,
+            30.0
+          ]
+        }
+      ]
+    },
+    {
+      "step": 25,
+      "observations": [
+        {
+          "name": "dense/loss/train",
+          "shape": [],
+          "values": [
+            0.9959761024576393
+          ]
+        },
+        {
+          "name": "dense/loss/val",
+          "shape": [],
+          "values": [
+            1.936089644504942
+          ]
+        }
+      ]
+    },
+    {
+      "step": 50,
+      "observations": [
+        {
+          "name": "dense/loss/train",
+          "shape": [],
+          "values": [
+            0.6873279109959376
+          ]
+        },
+        {
+          "name": "dense/loss/val",
+          "shape": [],
+          "values": [
+            2.3865477659906715
+          ]
+        }
+      ]
+    },
+    {
+      "step": 75,
+      "observations": [
+        {
+          "name": "dense/loss/train",
+          "shape": [],
+          "values": [
+            0.6075849274277485
+          ]
+        },
+        {
+          "name": "dense/loss/val",
+          "shape": [],
+          "values": [
+            2.5461981402330798
+          ]
+        }
+      ]
+    },
+    {
+      "step": 100,
+      "observations": [
+        {
+          "name": "dense/loss/train",
+          "shape": [],
+          "values": [
+            0.4935061559925885
+          ]
+        },
+        {
+          "name": "dense/loss/val",
+          "shape": [],
+          "values": [
+            2.72997580901223
+          ]
+        }
+      ]
+    },
+    {
+      "step": 125,
+      "observations": [
+        {
+          "name": "dense/loss/train",
+          "shape": [],
+          "values": [
+            0.48507879864769265
+          ]
+        },
+        {
+          "name": "dense/loss/val",
+          "shape": [],
+          "values": [
+            3.1274673512611906
+          ]
+        }
+      ]
+    },
+    {
+      "step": 150,
+      "observations": [
+        {
+          "name": "dense/loss/train",
+          "shape": [],
+          "values": [
+            0.37481365059097616
+          ]
+        },
+        {
+          "name": "dense/loss/val",
+          "shape": [],
+          "values": [
+            3.0677279352673748
+          ]
+        }
+      ]
+    },
+    {
+      "step": 175,
+      "observations": [
+        {
+          "name": "dense/loss/train",
+          "shape": [],
+          "values": [
+            0.4055145363197611
+          ]
+        },
+        {
+          "name": "dense/loss/val",
+          "shape": [],
+          "values": [
+            3.353118054218099
+          ]
+        }
+      ]
+    },
+    {
+      "step": 200,
+      "observations": [
+        {
+          "name": "dense/loss/train",
+          "shape": [],
+          "values": [
+            0.37468145240995904
+          ]
+        },
+        {
+          "name": "dense/loss/val",
+          "shape": [],
+          "values": [
+            3.4811231517366146
+          ]
+        }
+      ]
+    },
+    {
+      "step": 225,
+      "observations": [
+        {
+          "name": "dense/loss/train",
+          "shape": [],
+          "values": [
+            0.26354738963912405
+          ]
+        },
+        {
+          "name": "dense/loss/val",
+          "shape": [],
+          "values": [
+            3.6043492345079726
+          ]
+        }
+      ]
+    },
+    {
+      "step": 250,
+      "observations": [
+        {
+          "name": "dense/loss/train",
+          "shape": [],
+          "values": [
+            0.25467871428112104
+          ]
+        },
+        {
+          "name": "dense/loss/val",
+          "shape": [],
+          "values": [
+            3.731308099229605
+          ]
+        }
+      ]
+    },
+    {
+      "step": 275,
+      "observations": [
+        {
+          "name": "dense/loss/train",
+          "shape": [],
+          "values": [
+            0.21880428286968223
+          ]
+        },
+        {
+          "name": "dense/loss/val",
+          "shape": [],
+          "values": [
+            3.7274963283061635
+          ]
+        }
+      ]
+    },
+    {
+      "step": 300,
+      "observations": [
+        {
+          "name": "dense/loss/train",
+          "shape": [],
+          "values": [
+            0.18931350018700033
+          ]
+        },
+        {
+          "name": "dense/loss/val",
+          "shape": [],
+          "values": [
+            3.788809011028541
+          ]
+        },
+        {
+          "name": "dense/accuracy/val",
+          "shape": [
+            5
+          ],
+          "values": [
+            0.0,
+            0.0,
+            0.0,
+            0.6666666666666666,
+            0.06666666666666667
+          ]
+        },
+        {
+          "name": "dense/accuracy/train",
+          "shape": [
+            5
+          ],
+          "values": [
+            1.0,
+            0.5185185185185185,
+            0.391304347826087,
+            1.0,
+            0.7
+          ]
+        },
+        {
+          "name": "dense/logits/example-argmax",
+          "shape": [
+            7
+          ],
+          "values": [
+            6.0,
+            10.0,
+            8.0,
+            51.0,
+            3.0,
+            8.0,
+            8.0
+          ]
+        },
+        {
+          "name": "dense/attention/example",
+          "shape": [
+            7,
+            7
+          ],
+          "values": [
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.006447527382102968,
+            0.993552472617897,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            8.21188176148952E-7,
+            0.955934471972527,
+            0.04406470683929694,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            2.0978003740498857E-7,
+            0.06371690571863044,
+            0.01356447230802042,
+            0.9227184121933117,
+            0.0,
+            0.0,
+            0.0,
+            0.0009007958662713472,
+            0.9598291740838787,
+            0.038851909754377176,
+            0.0004029498590356344,
+            0.000015170436436942411,
+            0.0,
+            0.0,
+            0.00009789696695610689,
+            0.8135898013086071,
+            0.11199800847324863,
+            0.04725161515692597,
+            0.02630001360263989,
+            0.0007626644916222967,
+            0.0,
+            0.0031853954874041046,
+            0.5199576905059865,
+            0.47393761608548307,
+            0.0007087181240177717,
+            0.00003728153500596239,
+            0.00009140011361050008,
+            0.002081898148492101
+          ]
+        }
+      ]
+    }
+  ]
+}

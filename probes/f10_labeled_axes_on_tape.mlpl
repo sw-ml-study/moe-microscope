@@ -1,4 +1,4 @@
-# F10 reproducer: a labeled sinusoidal_encoding table through a residual attention block works eagerly but panics inside adam; checked by scripts/run-probes.
+# F10 reproducer, resolved in the rebuilt upstream binary: a labeled sinusoidal_encoding table through a residual attention block now trains inside adam.
 emb = embed(20, 8, 0)
 body = chain(residual(chain(rms_norm(8), causal_attention(8, 1, 1))), linear(8, 20, 2))
 x = rand_ints(12, 0, 20, 5)

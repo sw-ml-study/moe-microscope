@@ -1,0 +1,63 @@
+#!/bin/sh
+# Validate the committed DN01 recording: schema, budgets, shape products, ordered unique steps, expected names, and pinned index hashes.
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+fixture="$repo_root/fixtures/recordings/dense-baseline-run-v0.json"
+index="$repo_root/fixtures/recordings/index-v1.json"
+peer_schema="$repo_root/../demo-ml-microscope/fixtures/yew/recording-schema-v0.json"
+
+jq -e '
+  def product: reduce .[] as $value (1; . * $value);
+  .schema == "sw-ml-study.ml-microscope-recording" and
+  .version == 0 and
+  .lesson == "dense-baseline" and
+  (.frames | length) <= .budgets.max_frames and
+  ([.frames[].observations | length] | max) <= .budgets.max_observations_per_frame and
+  ([.frames[].observations[].values | length] | max) <= .budgets.max_values_per_observation and
+  ([.frames[].observations[].values | length] | add) <= .budgets.max_total_values and
+  (all(.frames[].observations[]; (.shape | product) == (.values | length))) and
+  (all(.frames[].observations[].values[]; isnormal or . == 0)) and
+  ([.frames[].step] == ([.frames[].step] | sort | unique)) and
+  (.frames[0].step == 0) and
+  ([.frames[0].observations[].name] == ["dense/config"]) and
+  (.frames[0].observations[0].shape == [6]) and
+  ([.frames[1].observations[].name] == ["dense/loss/train", "dense/loss/val"]) and
+  ([.frames[-1].observations[].name] == ["dense/loss/train", "dense/loss/val", "dense/accuracy/val", "dense/accuracy/train", "dense/logits/example-argmax", "dense/attention/example"]) and
+  ((.frames[-1].observations[] | select(.name == "dense/attention/example") | .shape) == [7, 7]) and
+  ((.frames[-1].observations[] | select(.name == "dense/accuracy/val") | .shape) == [5]) and
+  ((.frames[1].observations[] | select(.name == "dense/loss/train") | .values[0]) > (.frames[-1].observations[] | select(.name == "dense/loss/train") | .values[0])) and
+  ((.frames[1].observations[] | select(.name == "dense/loss/val") | .values[0]) < (.frames[-1].observations[] | select(.name == "dense/loss/val") | .values[0]))
+' "$fixture" >/dev/null
+
+if [ -f "$peer_schema" ]; then
+    cmp -s "$repo_root/fixtures/recordings/recording-schema-v0.json" "$peer_schema" || {
+        echo "vendored recording schema differs from the peer schema" >&2
+        exit 1
+    }
+fi
+
+jq -e '
+  .schema == "sw-ml-study.ml-microscope-fixture-index" and
+  .version == 1 and
+  (.fixtures | length) == 1 and
+  .fixtures[0].id == "DN01"
+' "$index" >/dev/null
+
+encoded=$(jq -r '.fixtures[0] | @base64' "$index")
+field() { printf '%s' "$encoded" | base64 --decode | jq -r "$1"; }
+for path in "$(field '.recording')" "$(field '.source')" "$(field '.preview')" "$(field '.guide')"; do
+    [ -f "$repo_root/$path" ] || { echo "missing indexed input: $path" >&2; exit 1; }
+done
+recording_hash=$(shasum -a 256 "$repo_root/$(field '.recording')" | awk '{print $1}')
+source_hash=$(shasum -a 256 "$repo_root/$(field '.source')" | awk '{print $1}')
+bundle_hash=$("$repo_root/scripts/bundle-program" "$repo_root/$(field '.source')" | shasum -a 256 | awk '{print $1}')
+[ "$recording_hash" = "$(field '.recording_sha256')" ] || { echo "recording hash drift; run scripts/make-recording-index" >&2; exit 1; }
+[ "$source_hash" = "$(field '.source_sha256')" ] || { echo "source hash drift; run scripts/make-recording-index" >&2; exit 1; }
+[ "$bundle_hash" = "$(field '.bundle_sha256')" ] || { echo "bundled program hash drift; run scripts/make-recording-index" >&2; exit 1; }
+[ "$(jq '[.frames[]] | length' "$fixture")" = "$(field '.frame_count')" ] || { echo "frame count drift" >&2; exit 1; }
+[ "$(jq '[.frames[].observations[]] | length' "$fixture")" = "$(field '.observation_count')" ] || { echo "observation count drift" >&2; exit 1; }
+[ "$(jq '[.frames[].observations[].values | length] | add' "$fixture")" = "$(field '.value_count')" ] || { echo "value count drift" >&2; exit 1; }
+[ "$(jq -c '[.frames[].step]' "$fixture")" = "$(field '.steps | tojson')" ] || { echo "step list drift" >&2; exit 1; }
+
+echo "PASS DN01 recording schema, budgets, shapes, names, loss trend, and pinned index"

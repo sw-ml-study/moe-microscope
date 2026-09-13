@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/sw-ml-study/demo-ml-microscope/fixtures/yew/recording-schema-v0.json",
+  "title": "sw-MLPL microscope recording version 0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "version", "lesson", "budgets", "frames"],
+  "properties": {
+    "schema": {"const": "sw-ml-study.ml-microscope-recording"},
+    "version": {"const": 0},
+    "lesson": {"type": "string", "minLength": 1},
+    "budgets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_frames", "max_observations_per_frame", "max_values_per_observation", "max_total_values"],
+      "properties": {
+        "max_frames": {"type": "integer", "minimum": 1},
+        "max_observations_per_frame": {"type": "integer", "minimum": 1},
+        "max_values_per_observation": {"type": "integer", "minimum": 1},
+        "max_total_values": {"type": "integer", "minimum": 1}
+      }
+    },
+    "frames": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/frame"}
+    }
+  },
+  "$defs": {
+    "frame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["step", "observations"],
+      "properties": {
+        "step": {"type": "integer", "minimum": 0},
+        "observations": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/observation"}
+        }
+      }
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "shape", "values"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "shape": {
+          "type": "array",
+          "items": {"type": "integer", "minimum": 0}
+        },
+        "values": {
+          "type": "array",
+          "items": {"type": "number"}
+        }
+      }
+    }
+  }
+}

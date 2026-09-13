@@ -27,6 +27,7 @@ source = "demos/dense_baseline.mlpl"
 library = ["lib/dense.mlpl", "lib/domain.mlpl", "lib/evaluate.mlpl", "lib/results.mlpl", "lib/svg.mlpl"]
 test = ["tests/test_dense.mlpl"]
 previews = ["assets/previews/dense-model.svg", "assets/previews/dense-run.svg"]
+recording = "fixtures/recordings/dense-baseline-run-v0.json"
 fixture = "fixtures/domain/mixture-v0.json"
 implementation = "builtin"
 observations = ["dense/config", "dense/loss/train", "dense/loss/val", "dense/accuracy/train", "dense/accuracy/val", "dense/logits/example-argmax", "dense/attention/example"]

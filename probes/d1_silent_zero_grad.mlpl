@@ -1,6 +1,6 @@
-# D1 reproducer: grad of a pre-evaluated loss variable is silently zero; scripts/run-probes checks the printed zeros.
+# D1 reproducer, resolved upstream: grad of a pre-evaluated loss variable now raises a loud error instead of returning zeros; checked by scripts/run-probes.
 W = param[2]
 W = [1, 2]
 l = reduce_add(W * W)
-print("pre-evaluated", grad(l, W))
 print("expression", grad(reduce_add(W * W), W))
+grad(l, W)

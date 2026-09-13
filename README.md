@@ -112,6 +112,31 @@ MLPL answers need rules this model cannot learn from 90 rows. The numbers are
 one row in [`docs/results.md`](docs/results.md), and the residual is written
 by hand so `attention_weights` can show the trained attention map.
 
+## Recording and host handoff
+
+Every lesson's observations are also captured over the live `mlpl-serve`
+SSE path into a recording under the peer version-zero schema from
+`../demo-ml-microscope`, pinned by hash in
+[`fixtures/recordings/index-v1.json`](fixtures/recordings/index-v1.json). The
+generic Rust/Yew/WASM microscope in `../demo-extensions` renders these
+recordings without lesson-specific Rust; the work order is
+[`docs/host-handoff.md`](docs/host-handoff.md). Because the server surface
+has no `include`, `scripts/bundle-program` inlines a lesson's library tree
+into the single program a host submits.
+
+```sh
+just emit-frame-loops     # every train step and while iteration streams in order
+just recording-check      # schema, budgets, shapes, names, trend, pinned hashes
+just dense-recording      # a live server run of DN01 equals the committed recording
+just build-local-serve    # compile a current mlpl-serve into tmp/ without touching ../sw-mlpl
+```
+
+The scripts select an absolute `MLPL_SERVE` override, then a local build
+under `tmp/` made by `scripts/build-local-serve` (which compiles the adjacent
+source into this repository's ignored directory and never touches the
+sibling), then `../sw-mlpl/target/release/mlpl-serve`. Rebuild locally when
+the adjacent server binary is older than the evaluator fixes it needs.
+
 ## What is here
 
 ```text
@@ -121,12 +146,13 @@ docs/architecture.md         Ownership, layering, the model under the lens
 docs/sw-mlpl-blockers.md     Capability ledger: supported, awkward, blocked
 docs/sw-mlpl-findings.md     Upstream work orders with reproducers and status
 docs/cross-repo-handoffs.md  Read-only work orders for sibling repositories
+docs/host-handoff.md         The demo-extensions work order for the DN01 recording
 docs/results.md              Memory/speed/quality rows, one per lesson run
 catalog/lessons.toml         Lesson inventory with implementation form and measured triple
 docs/research.txt            The original design discussion
 lib/  demos/  tests/         MLPL model code, lessons, and native mlplunit tests
 probes/                      Standalone reproducers re-checked by the gate
-fixtures/  assets/previews/  Bounded fixtures and committed diagrams
+fixtures/  assets/previews/  Bounded fixtures, pinned recordings, and committed diagrams
 catalog/                     Machine-readable lesson inventory
 scripts/  justfile           Thin gate and tool-selection scripts
 ```

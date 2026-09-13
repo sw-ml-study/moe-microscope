@@ -172,13 +172,19 @@ def u:recur3_repeat(W, x0) {
 }
 
 
-@test {name: "grad of a pre-evaluated loss variable is silently zero (documentation note)", tags: ["probe", "awkward", "autograd"]}
-def u:test_pre_evaluated_loss_is_constant() {
-  "A variable assigned eagerly is a constant on the tape; write the loss as an expression.";
+@test {name: "grad of a pre-evaluated loss variable raises a loud error (D1 resolved)", tags: ["probe", "supported", "autograd"]}
+def u:test_pre_evaluated_loss_is_loud() {
+  "A variable assigned eagerly is a constant on the tape; the evaluator now says so instead of returning zeros.";
   W = param[2];
   W = [1, 2];
   l = reduce_add(W * W);
-  u:assert_eq(grad(l, W), [0, 0], "pre-evaluated variable gives zero gradient")?;
+  outcome = try {
+    grad(l, W);
+    "silent"
+  } catch e {
+    e.kind
+  };
+  u:assert_true(1 - u:text_equal(outcome, "silent"), "pre-evaluated loss raises")?;
   u:assert_eq(grad(reduce_add(W * W), W), [2, 4], "expression form gives the true gradient")
 }
 

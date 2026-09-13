@@ -34,14 +34,11 @@ expect_ok f6_repeat_in_grad "^repeat-in-grad gradient"
 expect_error f7_model_argument "must be an array, Result, string"
 expect_error f8_emit_frame_name "name must be a string literal"
 expect_error f9_embed_batch "tokens must be a 1-D"
-expect_error f10_labeled_axes_on_tape "LabelMismatch"
+expect_ok f10_labeled_axes_on_tape "^trained loss"
 expect_error f11_nested_param_binding_in_grad "undefined variable: start"
 expect_error f12_size_arithmetic_in_grad "not supported inside grad"
 expect_error f13_attention_weights_residual "no Attention layer found"
 expect_error f14_fill_in_grad "not supported inside grad"
 expect_error f15_repeat_param_count "undefined variable: r"
 
-output=$("$mlpl" --source-dir "$repo_root" "$repo_root/probes/d1_silent_zero_grad.mlpl" 2>&1)
-printf '%s\n' "$output" | grep -q '^pre-evaluated 0 0$' || { echo "probe d1: silent zero gradient no longer reproduces" >&2; exit 1; }
-printf '%s\n' "$output" | grep -q '^expression 2 4$' || { echo "probe d1: expression gradient wrong" >&2; exit 1; }
-echo "PASS probe d1_silent_zero_grad still reproduces: pre-evaluated loss gives zeros"
+expect_error d1_silent_zero_grad "the loss does not depend on"

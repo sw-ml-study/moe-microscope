@@ -1,0 +1,39 @@
+{
+  "schema": "sw-ml-study.ml-microscope-fixture-index",
+  "version": 1,
+  "recording_schema": "fixtures/recordings/recording-schema-v0.json",
+  "source_repository": "https://github.com/sw-ml-study/moe-microscope.git",
+  "source_revision": "8fb15e166546425f2159b1e66e96518ff05c0643",
+  "bundler": "scripts/bundle-program",
+  "fixtures": [
+    {
+      "id": "DN01",
+      "lesson": "dense-baseline",
+      "source": "demos/dense_baseline.mlpl",
+      "recording": "fixtures/recordings/dense-baseline-run-v0.json",
+      "preview": "assets/previews/dense-run.svg",
+      "guide": "docs/host-handoff.md",
+      "recording_sha256": "ec308abdc311d04600e794f54e8e69bd971502e68419e19738e7bd46e11e3726",
+      "source_sha256": "3ce7b2973b8d22cf63ac7718b914ffecc268d279e759848cef14f902152ba884",
+      "bundle_sha256": "27094f4f6e8c4d118574f8c6d1d3f83e9387685cb79db3201ff225a03868b381",
+      "frame_count": 13,
+      "observation_count": 29,
+      "value_count": 96,
+      "steps": [
+        0,
+        25,
+        50,
+        75,
+        100,
+        125,
+        150,
+        175,
+        200,
+        225,
+        250,
+        275,
+        300
+      ]
+    }
+  ]
+}

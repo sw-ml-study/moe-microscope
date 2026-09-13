@@ -1,0 +1,27 @@
+#!/bin/sh
+# Inline a demo's include tree into one program for the mlpl-serve eval_stream surface, which has no source provider (finding F16).
+set -eu
+
+seen=""
+
+bundle() {
+    file=$1
+    dir=$(dirname -- "$file")
+    while IFS= read -r line || [ -n "$line" ]; do
+        case "$line" in
+            include\ \"*\"\;|include\ \"*\")
+                target=${line#include \"}
+                target=${target%%\"*}
+                path=$(CDPATH= cd -- "$dir" && cd -- "$(dirname -- "$target")" && pwd)/$(basename -- "$target")
+                case " $seen " in
+                    *" $path "*) ;;
+                    *) seen="$seen $path"; bundle "$path" ;;
+                esac
+                ;;
+            *) printf '%s\n' "$line" ;;
+        esac
+    done < "$file"
+}
+
+[ "$#" -eq 1 ] || { echo "usage: bundle-program <demo.mlpl>" >&2; exit 1; }
+bundle "$(CDPATH= cd -- "$(dirname -- "$1")" && pwd)/$(basename -- "$1")"

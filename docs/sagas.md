@@ -36,6 +36,12 @@ in-repo teacher fixture that later distillation lessons consume.
 6. `in-repo-teacher-fixture` - the larger dense teacher trained once, its
    next-token distributions exported as a bounded, hash-checked fixture.
 
+Step 5 status: complete. DN01 recorded over live `mlpl-serve` SSE into
+`fixtures/recordings/dense-baseline-run-v0.json` with a hash-pinned index;
+`scripts/bundle-program` works around the server's missing source provider
+(F16); loop streaming proven; `docs/host-handoff.md` written for
+`../demo-extensions`; D1 and F10 verified fixed upstream.
+
 Step 4 status: complete. DN01 (`demos/dense_baseline.mlpl`) with
 `lib/dense.mlpl` and `lib/svg.mlpl`; two annotated diagrams; the first
 results row; catalog entry; seven more findings (F9 to F15) filed with

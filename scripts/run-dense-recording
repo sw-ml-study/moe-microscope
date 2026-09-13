@@ -1,0 +1,21 @@
+#!/bin/sh
+# Prove that a live mlpl-serve run of the bundled DN01 program reproduces the committed recording exactly.
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+fixture="$repo_root/fixtures/recordings/dense-baseline-run-v0.json"
+mode=${1:-check}
+
+if [ "$mode" = "write" ]; then
+    "$repo_root/scripts/capture-dense-recording" > "$fixture"
+    "$repo_root/scripts/make-recording-index"
+    echo "PASS live DN01 recording written and indexed"
+    exit 0
+fi
+
+actual=$("$repo_root/scripts/capture-dense-recording")
+if [ "$(printf '%s' "$actual" | jq -S -c .)" != "$(jq -S -c . "$fixture")" ]; then
+    echo "live DN01 recording differs from the committed fixture; run scripts/run-dense-recording write" >&2
+    exit 1
+fi
+echo "PASS live DN01 SSE recording matches the committed fixture"

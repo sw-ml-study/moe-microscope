@@ -25,7 +25,7 @@ Gaps with reproducers are written up as upstream work orders in
 | Routing primitives (`argtop_k`, `argmax`, `gather_rows`, `compress`, `one_hot`, `eq`/`gt`/`lt`, `scatter`, `concat` with axis, `take`) | reference | router masks, dispatch tables, specialization maps |
 | Bounded byte I/O (`read_bytes` with offset/length, `read_bytes_packed`, `write_bytes`, `write_atomic`, `append_bytes`, `file_size`, `to_native`/`parse_native`, `to_json`) | reference; `../demo-ml-utils` demos | packed TinyMoE file, per-expert reads |
 | Monotonic `clock_ms()` | reference | wall-clock secondary speed metric |
-| Numeric observation `emit_frame(name, step, x)` returning `x` | peer measured contract in `../demo-ml-microscope` | assembly primitive for recorded observations |
+| Numeric observation `emit_frame(name, step, x)` returning `x` | peer measured contract in `../demo-ml-microscope`; `scripts/run-emit-frame-loops` proves every `train` step and `while` iteration streams in order | assembly primitive for recorded observations |
 | Static visuals (`svg` heatmap/scatter/curves/equation, `loss_curve`, hand-written SVG strings) | reference; peer previews | committed diagrams |
 | MLX device scope `device("mlx") { }` | Engram MLX demo | opt-in lab scale |
 
@@ -36,11 +36,11 @@ Gaps with reproducers are written up as upstream work orders in
 | Sparse expert dispatch | no batched gather across experts on the tape; per-token loops in the interpreter (16 routing decisions measured well under a millisecond) | dense-masked training plus forward-only sparse dispatch with parity assertion |
 | Top-k gate on the tape | `argmax`/`one_hot`/`argtop_k` are stop-gradient constants inside `grad` (F5 resolved), so the mask can live inside the loss; the Switch-style gate `softmax(logits) * mask` gives the router a gradient (a renormalized top-1 gate is identically 1 and gives none) | probes "adam trains a list of expert models..." and "one_hot and argmax act as stop-gradient constants" |
 | Batched sequences | `embed` accepts rank-one tokens only (F9) | flatten a chunk of `B` windows into one `B * T` sequence, as the upstream tiny LM demo does; attention spans the chunk |
-| Positional table on the tape | the labeled `sinusoidal_encoding` output panics inside `adam` (F10) | `reshape(sinusoidal_encoding(L, d), [L, d])` strips the labels |
+| Positional table on the tape | the labeled `sinusoidal_encoding` output trains inside `adam` (F10 resolved) | `u:positions` still strips labels; harmless |
 | Recurrence depth as a runtime value | `repeat` with a literal count unrolls on the tape (F6 resolved); a parameter-bound count does not (F15) | one user function per depth with a literal `repeat` |
 | Models as user-function parameters | models cannot be arguments (F7); they are reached as globals | lesson helpers name their globals |
 | Observation facade | `emit_frame` requires a literal name (F8); no forwarding wrapper is possible | `lib/observe.mlpl` provides naming helpers only |
-| Pre-evaluated loss variables | `grad(l, W)` on an assigned `l` is silently zero (D1) | always write the loss as an expression or user-function call |
+| Pre-evaluated loss variables | `grad(l, W)` on an assigned `l` now raises a loud error (D1 resolved) | write the loss as an expression or user-function call |
 | Rank-one gather, reverse, sort | `gather_rows` is rank-two only; no `reverse` or value `sort` builtin | `u:domain_slice` reshapes to a column, gathers, reshapes back; sort is `gather_rows(column, grade_up(v))` |
 | String lists | no append; `for` does not iterate a string list | accumulate a `;`-joined string and `str_split` it; index with `list_get` in a `while` loop |
 | Dynamic record access | `record_get(r, key)` returns a Result | `unwrap` before `type_of` or use |
@@ -56,20 +56,17 @@ Gaps with reproducers are written up as upstream work orders in
 |---|---|---|
 | F7 model as user-function argument | probe "a model value cannot be a user-function argument"; `probes/f7_model_argument.mlpl` | globals |
 | F8 `emit_frame` literal name | probe "emit_frame rejects a name held in a variable"; `probes/f8_emit_frame_name.mlpl` | literal names |
-| D1 silent zero gradient | probe "grad of a pre-evaluated loss variable is silently zero"; `probes/d1_silent_zero_grad.mlpl` | expression-form losses |
 | F9 batched `embed` | `probes/f9_embed_batch.mlpl` | flattened chunks |
-| F10 labeled table panics on the tape | `probes/f10_labeled_axes_on_tape.mlpl` | `reshape` strips labels |
 | F11 nested traced call loses an index parameter | `probes/f11_nested_param_binding_in_grad.mlpl` | slice chunks eagerly, pass arrays into the loss |
 | F12 size arithmetic inside `grad` | `probes/f12_size_arithmetic_in_grad.mlpl` | pass sizes as arguments |
 | F13 `attention_weights` and `residual` | `probes/f13_attention_weights_residual.mlpl` | explicit residual with a separate attention sub-model |
 | F14 `fill`/`zeros` inside `grad` | `probes/f14_fill_in_grad.mlpl` | build constants eagerly |
 | F15 `repeat` with a parameter count | `probes/f15_repeat_param_count.mlpl` | literal counts |
+| F16 no include/sandbox/args on `eval_stream` | `scripts/run-emit-frame-loops` | `scripts/bundle-program`, inline mixture twin, guarded writes |
 
 ## Still to be probed
 
-1. Whether `emit_frame` inside a training loop streams every checkpoint in
-   order on the connect path (Saga 1 step 5).
-2. The user-function MoE loss under `device("mlx") { }` at lab scale.
+1. The user-function MoE loss under `device("mlx") { }` at lab scale.
 
 A confirmed blocker must add a minimal `.mlpl` reproducer, the configured
 binary version, expected signature and semantics, positive/negative/boundary

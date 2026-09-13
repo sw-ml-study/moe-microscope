@@ -22,9 +22,11 @@ upstream `moe-microscope-followups` saga.
 | F3 `chain(blk, blk, blk)` does not share weights | documented as by design; weight sharing is spelled by reusing one block through nested `apply` | `b28fdf45` | probe "one shared block applied R times trains through nested apply" |
 | F4 `gather_rows` not differentiable; no `kl_divergence` | scatter-add backward for `gather_rows`; KL documented as `reduce_add(P * (log(P) - log(Q)))` | `e1d693af` | probes "gather_rows scatter-adds gradient" and "KL divergence is a composition" |
 | F6 `repeat` rejected inside a traced function | `repeat N` with a literal count unrolls onto the tape | `a9ae2a79` | probe "repeat with a literal count unrolls inside a traced function"; `probes/f6_repeat_in_grad.mlpl` expects success |
+| F10 labeled positional table panicked the tape inside a residual block | the tape now broadcasts a labeled table against an unlabeled activation like the eager path | upstream `followups-2`, verified against the 21:40 rebuilt binary | probe file expects success; `u:positions` keeps stripping labels only as documentation of the old workaround |
+| D1 silent zero gradient for an untracked `wrt` leaf | loud error: "the loss does not depend on 'W' (no gradient flows to it)" | upstream `moe-microscope-followups` step 3 | probe "grad of a pre-evaluated loss variable raises a loud error"; `probes/d1_silent_zero_grad.mlpl` expects the error |
 | F5 `one_hot`/`argmax` rejected inside `grad` | index and mask builtins (`argmax`, `one_hot`, `eq`, `gt`, `lt`, `argtop_k`) are stop-gradient constants on the tape | `54ad5849` | probe "one_hot and argmax act as stop-gradient constants"; `probes/f5_one_hot_in_grad.mlpl` now expects success |
 
-## Open, queued upstream as `moe-microscope-followups` (D1) or new (F7 to F15)
+## Open, queued upstream as `moe-microscope-followups` (F7 to F16, S1; upstream has queued F9 to F15 as `followups-2`)
 
 ### F7: a model value cannot be a user-function argument
 
@@ -72,24 +74,6 @@ boundaries inside the chunk, which the lesson states. Affects: DN01 and
 every trained lesson. Proposed fix: implement the documented rank-two path in
 `embed` (and confirm attention and `cross_entropy` on rank three), or correct
 the reference.
-
-### F10: the labeled `sinusoidal_encoding` table panics the autograd tape
-
-```
-pos = sinusoidal_encoding(12, 8)              # labeled [time, dim]
-cross_entropy(apply(head, apply(emb, x) + pos), y)   # eager: fine
-train 1 { adam(cross_entropy(apply(head, apply(emb, x) + pos), y), [emb, head], ...) }
-# thread 'main' panicked at .../mlpl-autograd/src/tensor_ops.rs:43:18:
-# broadcastable shapes: LabelMismatch { expected: [Some("time"), Some("dim")], actual: [Some("time"), None] }
-```
-
-Reproducer: `probes/f10_labeled_axes_on_tape.mlpl`. Two defects: the tape
-treats a label mismatch that the eager path accepts as fatal, and it exits
-by Rust panic rather than an MLPL `err`. Workaround: strip the labels with
-`reshape(sinusoidal_encoding(L, d), [L, d])` (any arithmetic derivative also
-works). Affects: every lesson that adds positions. Proposed fix: make the
-tape's label check match eager broadcasting, and turn the panic into a
-structured error.
 
 ### F11: a nested user-function call inside `grad` loses a parameter used in index arithmetic
 
@@ -161,21 +145,39 @@ the unroller, the same binding defect as F11. Workaround: one user function
 per depth with a literal count. Affects: recurrence lessons that sweep `R`.
 Proposed fix: resolve the count in the inlined call's scope before unrolling.
 
-### D1: `grad` of a pre-evaluated loss variable is silently zero
+### F16: the `eval_stream` surface has no source provider, sandbox, or arguments
 
 ```
-l = reduce_add(W * W)
-grad(l, W)                     # [0, 0]  (l is a constant on the tape)
-grad(reduce_add(W * W), W)     # [2, 4]
+include "lib/observe.mlpl"     # error: include is a script-mode construct ... this surface has no source provider
+read_text("fixtures/x.json")   # Err(read_text: no filesystem sandbox on this surface ...)
+args()                          # empty
 ```
 
-Reproducer: `probes/d1_silent_zero_grad.mlpl`. Proposed fix: a loud error
-when the `wrt` leaf does not appear on the tape of the expression.
+Reproducer: `scripts/run-emit-frame-loops` (third check). A lesson that is
+split into library modules cannot be submitted to `mlpl-serve` as written.
+Workaround: `scripts/bundle-program` inlines the include tree into one
+program, the mixture fixture has an inline twin (`u:domain_mixture_v0`,
+pinned equal by test), and file writes are skipped when `args()` is empty.
+Affects: every recorded lesson. Proposed fix: let a session declare a
+read-only source root (or accept a multi-file program body) so includes and
+fixture reads work on the connect path.
+
+### S1: the adjacent `mlpl-serve` binary was stale
+
+`../sw-mlpl/target/release/mlpl-serve` dated 2026-09-09 rejected
+`u:masked_ce` inside `grad` because it predates the F2 fix, while
+`mlpl-repl` had been rebuilt. `scripts/build-local-serve` builds a current
+server from the adjacent source into this repository's ignored
+`tmp/sw-mlpl-target` (a separate `CARGO_TARGET_DIR`), and
+`scripts/select-mlpl-serve` prefers an absolute `MLPL_SERVE`, then that local
+build, then the adjacent release binary; nothing in the sibling is modified.
+Upstream's rebuild step should include `mlpl-serve` (and `mlpl-web`) whenever
+the evaluator changes.
 
 ## Still to be probed
 
-- `emit_frame` inside a training loop on the connect path: does every
-  checkpoint stream in order? Deferred to Saga 1 step 5, which records DN01
-  over live SSE against the peer schema.
+- `emit_frame` inside `train` and `while` loops on the connect path streams
+  every iteration in order (`train` interleaves `metric` events); proven by
+  `scripts/run-emit-frame-loops`. Resolved.
 - `device("mlx") { }` at lab scale for the MoE loss written as user
   functions; deferred until a lesson runs at lab scale.

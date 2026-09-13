@@ -1,6 +1,6 @@
 number = 5
 slug = "dn01-recording-and-host-handoff"
-status = "pending"
+status = "in-progress"
 description = "Record DN01 over the live mlpl-serve SSE path under the peer version-zero rec..."
 role = "production"
 context_files = []

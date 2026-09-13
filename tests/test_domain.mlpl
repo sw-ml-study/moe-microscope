@@ -80,6 +80,13 @@ def u:test_mixture_build() {
   u:assert_text_eq(unwrap(list_get(u:domain_build(m).texts, 5)), unwrap(list_get(d.texts, 5)), "rebuild is identical")
 }
 
+@test {name: "inline mixture record equals the JSON fixture", tags: ["domain", "mixture"]}
+def u:test_inline_mixture() {
+  "The server surface has no sandbox, so the inline record must never drift from the fixture.";
+  m = parse_json(read_text(u:domain_mixture_path())?)?;
+  u:assert_true(equal(m, u:domain_mixture_v0()), "inline record equals fixtures/domain/mixture-v0.json")
+}
+
 @test {name: "split is a seeded permutation with an exact train count", tags: ["domain", "split"]}
 def u:test_split() {
   "Every row lands in exactly one of train or validation.";

@@ -1,0 +1,72 @@
+#!/bin/sh
+# Run the bundled DN01 program through a loopback mlpl-serve session and print its recording under the peer version-zero schema.
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+server=$("$repo_root/scripts/select-mlpl-serve")
+port=${MOE_DENSE_PORT:-16491}
+base_url="http://127.0.0.1:$port"
+log_file=$(mktemp)
+response_file=$(mktemp)
+program_file=$(mktemp)
+
+cleanup() {
+    if [ -n "${server_pid:-}" ]; then
+        kill "$server_pid" 2>/dev/null || true
+        wait "$server_pid" 2>/dev/null || true
+    fi
+    rm -f "$log_file" "$response_file" "$program_file"
+}
+trap cleanup EXIT HUP INT TERM
+
+command -v curl >/dev/null 2>&1 || { echo "curl is required" >&2; exit 1; }
+command -v jq >/dev/null 2>&1 || { echo "jq is required" >&2; exit 1; }
+
+"$repo_root/scripts/bundle-program" "$repo_root/demos/dense_baseline.mlpl" > "$program_file"
+
+"$server" --bind "127.0.0.1:$port" --auth disabled >"$log_file" 2>&1 &
+server_pid=$!
+attempt=0
+until curl --fail --silent "$base_url/v1/health" >/dev/null 2>&1; do
+    attempt=$((attempt + 1))
+    if [ "$attempt" -ge 50 ] || ! kill -0 "$server_pid" 2>/dev/null; then
+        echo "mlpl-serve did not become ready" >&2
+        sed -n '1,20p' "$log_file" >&2
+        exit 1
+    fi
+    sleep 0.1
+done
+
+session=$(curl --fail --silent --request POST "$base_url/v1/sessions")
+session_id=$(printf '%s' "$session" | jq -r '.session_id')
+token=$(printf '%s' "$session" | jq -r '.token')
+body=$(jq -nc --rawfile program "$program_file" '{program: $program}')
+
+curl --fail --silent --no-buffer \
+    --header "Authorization: Bearer $token" \
+    --header 'Content-Type: application/json' \
+    --data "$body" \
+    "$base_url/v1/sessions/$session_id/eval_stream" >"$response_file"
+
+events=$(sed -n 's/^event: *//p' "$response_file" | sort | uniq -c | tr -s ' ' | tr '\n' ';')
+case "$events" in
+    *error*) echo "server run reported an error: $(sed -n 's/^data: *//p' "$response_file" | tail -1)" >&2; exit 1 ;;
+esac
+
+sed -n 's/^data: *//p' "$response_file" | jq -s '
+  [ .[] | select(.name != null and .shape != null) | {step, observation: {name, shape, values}} ]
+  | group_by(.step)
+  | map({step: .[0].step, observations: map(.observation)})
+  | {
+      schema: "sw-ml-study.ml-microscope-recording",
+      version: 0,
+      lesson: "dense-baseline",
+      budgets: {
+        max_frames: 16,
+        max_observations_per_frame: 8,
+        max_values_per_observation: 64,
+        max_total_values: 128
+      },
+      frames: .
+    }
+'

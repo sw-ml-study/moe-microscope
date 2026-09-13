@@ -24,6 +24,22 @@ domain mode="check":
 dense mode="check":
     ./scripts/run-dense-demo {{mode}}
 
+# Prove that emit_frame streams every train step and while iteration over live SSE, and pin F16.
+emit-frame-loops:
+    ./scripts/run-emit-frame-loops
+
+# Validate the committed DN01 recording and its pinned index.
+recording-check:
+    ./scripts/check-dense-recording
+
+# Prove that a live mlpl-serve run of DN01 equals the committed recording; `just dense-recording write` recaptures it.
+dense-recording mode="check":
+    ./scripts/run-dense-recording {{mode}}
+
+# Build a current mlpl-serve from the adjacent source into tmp/ (the sibling is never modified).
+build-local-serve:
+    ./scripts/build-local-serve
+
 # Print the selected sw-MLPL executable.
 mlpl-path:
     ./scripts/select-mlpl

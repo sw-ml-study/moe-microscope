@@ -1,0 +1,12 @@
+#!/bin/sh
+# Build mlpl-serve from the adjacent sw-mlpl source into this repository's ignored tmp/ directory; the sibling worktree is never modified.
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+source_root="$repo_root/../sw-mlpl"
+manifest="$source_root/components/serve/Cargo.toml"
+[ -f "$manifest" ] || { echo "adjacent sw-mlpl serve workspace not found: $manifest" >&2; exit 1; }
+command -v cargo >/dev/null 2>&1 || { echo "cargo is required" >&2; exit 1; }
+
+CARGO_TARGET_DIR="$repo_root/tmp/sw-mlpl-target" cargo build --release --manifest-path "$manifest" -p mlpl-serve
+echo "built $repo_root/tmp/sw-mlpl-target/release/mlpl-serve from $(git -C "$source_root" rev-parse --short HEAD)"

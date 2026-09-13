@@ -13,7 +13,7 @@ def u:flat_chunk(M, chunk, size) {
 }
 
 def u:positions(length, width) {
-  "Unlabeled sinusoidal position table (labels are stripped: finding F10).";
+  "Unlabeled sinusoidal position table (label stripping dates from finding F10, now resolved upstream; kept for readability).";
   reshape(sinusoidal_encoding(length, width), [length, width])
 }
 

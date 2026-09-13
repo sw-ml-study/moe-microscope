@@ -1,0 +1,44 @@
+#!/bin/sh
+# Regenerate fixtures/recordings/index-v1.json from the committed recording, its lesson source, and the bundled program.
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+recording="fixtures/recordings/dense-baseline-run-v0.json"
+source="demos/dense_baseline.mlpl"
+revision=$(git -C "$repo_root" rev-parse HEAD)
+
+jq -n \
+    --arg revision "$revision" \
+    --arg recording "$recording" \
+    --arg source "$source" \
+    --arg recording_sha256 "$(shasum -a 256 "$repo_root/$recording" | awk '{print $1}')" \
+    --arg source_sha256 "$(shasum -a 256 "$repo_root/$source" | awk '{print $1}')" \
+    --arg bundle_sha256 "$("$repo_root/scripts/bundle-program" "$repo_root/$source" | shasum -a 256 | awk '{print $1}')" \
+    --argjson frame_count "$(jq '[.frames[]] | length' "$repo_root/$recording")" \
+    --argjson observation_count "$(jq '[.frames[].observations[]] | length' "$repo_root/$recording")" \
+    --argjson value_count "$(jq '[.frames[].observations[].values | length] | add' "$repo_root/$recording")" \
+    --argjson steps "$(jq -c '[.frames[].step]' "$repo_root/$recording")" \
+    '{
+      schema: "sw-ml-study.ml-microscope-fixture-index",
+      version: 1,
+      recording_schema: "fixtures/recordings/recording-schema-v0.json",
+      source_repository: "https://github.com/sw-ml-study/moe-microscope.git",
+      source_revision: $revision,
+      bundler: "scripts/bundle-program",
+      fixtures: [{
+        id: "DN01",
+        lesson: "dense-baseline",
+        source: $source,
+        recording: $recording,
+        preview: "assets/previews/dense-run.svg",
+        guide: "docs/host-handoff.md",
+        recording_sha256: $recording_sha256,
+        source_sha256: $source_sha256,
+        bundle_sha256: $bundle_sha256,
+        frame_count: $frame_count,
+        observation_count: $observation_count,
+        value_count: $value_count,
+        steps: $steps
+      }]
+    }' > "$repo_root/fixtures/recordings/index-v1.json"
+echo "wrote fixtures/recordings/index-v1.json at $revision"

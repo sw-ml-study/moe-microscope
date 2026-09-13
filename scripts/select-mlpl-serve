@@ -1,0 +1,22 @@
+#!/bin/sh
+# Select an mlpl-serve executable: absolute MLPL_SERVE override, then a local build under tmp/ made by scripts/build-local-serve, then the adjacent release binary.
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+local_build="$repo_root/tmp/sw-mlpl-target/release/mlpl-serve"
+adjacent="$repo_root/../sw-mlpl/target/release/mlpl-serve"
+
+if [ -n "${MLPL_SERVE:-}" ]; then
+    candidate=$MLPL_SERVE
+elif [ -x "$local_build" ]; then
+    candidate=$local_build
+else
+    candidate=$adjacent
+fi
+
+case "$candidate" in
+    /*) ;;
+    *) echo "MLPL_SERVE must resolve to an absolute path: $candidate" >&2; exit 1 ;;
+esac
+[ -x "$candidate" ] || { echo "mlpl-serve executable not found: $candidate" >&2; exit 1; }
+printf '%s\n' "$candidate"

@@ -8,7 +8,7 @@ revalidated against artifacts produced here before its own saga begins.
 
 Trigger: the end of each saga, starting with Saga 1 step 5 (DN01), produces
 version-pinned recordings under the peer recording schema with a hash-checked
-index. The live demo (editable lesson, `mlpl-serve` SSE, generic timeline)
+index. The DN01 work order is [`host-handoff.md`](host-handoff.md). The live demo (editable lesson, `mlpl-serve` SSE, generic timeline)
 is handed off after Saga 3 on the MLPL web framework proven there.
 
 The extension agent should:
