@@ -1,7 +1,9 @@
 # Documentation
 
 The repository documents are the canonical source; the README is the
-executive summary and this page is the landing page. Three reader journeys:
+executive summary and this page is the landing page. The
+[GitHub wiki](https://github.com/sw-ml-study/moe-microscope/wiki) mirrors
+the same hierarchy as a navigation layer. Three reader journeys:
 
 ## I want to understand the idea
 

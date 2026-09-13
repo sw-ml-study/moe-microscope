@@ -10,7 +10,7 @@ The mandatory checklist in `AGENTS.md` applies to every step: focused tests,
 tracked-file audit, named-file staging, a detailed commit on `main`,
 Agentrail completion metadata, and a verified `git push origin main`.
 
-## Active: `resource-budget-and-documentation` (Saga 3)
+## Completed: `resource-budget-and-documentation` (Saga 3)
 
 Purpose: give the project one quantitative vocabulary (stored, resident,
 active, transferred, executed), measure generation latency, and restructure
@@ -30,6 +30,14 @@ the hierarchy. Source: `research2.txt`.
    quality, experiment reports, concept pages with schematics.
 6. `wiki-mirror` - the peer wiki mirrors the hierarchy with verified Mermaid
    diagrams and links.
+
+Step 6 status: complete. The peer wiki (`../moe-microscope.wiki`) mirrors
+the hierarchy as a navigation layer: Home, Start Here, Learn, Results,
+Experiments, Internals, Reference, and a sidebar. Verified after the push:
+all six Mermaid diagrams render without error under Mermaid 11 in headless
+Chrome, and all 53 distinct link targets (7 wiki pages by wiki-page links,
+46 repository files by full GitHub URLs) return HTTP 200. Saga 3 is
+complete; Saga 4 (recurrence and Engram) is next.
 
 Step 5 status: complete. `docs/concepts/` holds the learning path (index
 plus nine concept pages, each with a schematic, measurements, and the
