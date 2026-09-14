@@ -547,9 +547,8 @@ relitigate them:
    recording steps to its last frame) in `docs/results/live-demo.md`.
    Every page carries the standard footer of the sw-embed web demos: the
    license and copyright from `LICENSE` and `COPYRIGHT`, links to the
-   campus (`https://software-wrighter-lab.github.io/sw-campus/`), the blog
-   (`https://blog.softwarewrighter.com/about/` until the post is
-   published, then the post), Discord
+   campus (`https://software-wrighter-lab.github.io/sw-campus/`), the blog post
+   (`https://blog.softwarewrighter.com/2026/09/13/saw-building-a-tiny-mixture-of-experts/`), the wiki, Discord
    (`https://discord.com/invite/Ctzk5uHggZ`), and the GitHub repository,
    then the build info: host, short commit SHA, and UTC timestamp. There is
    no compile step, so the Pages workflow and the local serve recipe write

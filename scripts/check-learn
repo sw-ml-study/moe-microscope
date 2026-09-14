@@ -12,7 +12,7 @@ for path in $(grep -o "fetch('[^']*')" "$repo_root/learn/app.js" | sed "s/fetch(
         *.json) python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "$out/$path" || { echo "$path is not valid JSON" >&2; exit 1; } ;;
     esac
 done
-for needle in 'https://software-wrighter-lab.github.io/sw-campus/' 'https://blog.softwarewrighter.com/' 'https://discord.com/invite/Ctzk5uHggZ' 'https://github.com/sw-ml-study/moe-microscope' 'MIT License' 'Michael A Wright' 'build-info'; do
+for needle in 'https://software-wrighter-lab.github.io/sw-campus/' 'https://blog.softwarewrighter.com/' 'https://discord.com/invite/Ctzk5uHggZ' 'https://github.com/sw-ml-study/moe-microscope' 'https://github.com/sw-ml-study/moe-microscope/wiki' 'MIT License' 'Michael A Wright' 'build-info'; do
     grep -q -- "$needle" "$repo_root/learn/index.html" "$repo_root/learn/app.js" || { echo "the live demo footer is missing: $needle" >&2; exit 1; }
 done
 grep -q '<footer' "$repo_root/learn/index.html" || { echo "learn/index.html has no footer" >&2; exit 1; }
