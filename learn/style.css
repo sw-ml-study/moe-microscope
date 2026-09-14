@@ -71,3 +71,4 @@ footer {
 }
 .sep { color: var(--line); }
 #verify { white-space: pre-wrap; font-size: 12px; }
+.cmds { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; font-size: 12px; overflow-x: auto; margin: 0 0 10px; }

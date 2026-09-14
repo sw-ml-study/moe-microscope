@@ -31,6 +31,17 @@
     <dl id="howto"></dl>
     <h2>Where it comes from</h2>
     <p class="caption">Recordings: <code>fixtures/recordings/*.json</code> in the <a href="https://github.com/sw-ml-study/moe-microscope">moe-microscope</a> repository. Each lesson page there explains the experiment, its diagrams, and its measured numbers: <a href="https://github.com/sw-ml-study/moe-microscope/blob/main/docs/experiments/README.md">experiments</a>, <a href="https://github.com/sw-ml-study/moe-microscope/blob/main/docs/results/current-findings.md">findings</a>.</p>
+    <h2>Run the training yourself</h2>
+    <p class="caption">The fixtures this page plays back are produced by the repository's <code>just</code> recipes on a laptop with the adjacent sw-MLPL checkout. Each recipe trains the model natively, writes the fixture, and the same recipe without <code>write</code> checks it in the gate.</p>
+    <pre class="cmds">git clone https://github.com/sw-ml-study/moe-microscope
+cd moe-microscope        # needs ../sw-mlpl built, just, mlplunit
+just dense write         # DN01: train 300 epochs (about 16 s), diagrams and row
+just moe write           # MX01: four experts, top-1 (about 36 s)
+just moe2 write          # MX02: top-2 (about 36 s)
+just recordings write    # recapture the three recordings over mlpl-serve
+just walkthrough write   # retrain 40 epochs and rewrite the walkthrough fixture
+just serve-learn         # compose this page locally and serve it
+just check               # the whole gate, including these fixtures</pre>
     <pre id="verify" hidden></pre>
   </aside>
 </main>

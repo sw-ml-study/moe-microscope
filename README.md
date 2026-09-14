@@ -29,7 +29,11 @@ The moving parts step by step, live on GitHub Pages:
 baseline, the top-1 and top-2 mixtures, or one window through routing and
 dispatch) and step through its frames. It is a playback: no sw-MLPL code
 runs in the browser, and every number is read from a pinned fixture that a
-real training run or its export script wrote. The blog post about this work:
+real training run or its export script wrote. To produce those fixtures
+yourself, run the training at the command line: `just dense write`,
+`just moe write`, `just moe2 write`, `just recordings write`, and
+`just walkthrough write` (see Build and run below); `just serve-learn`
+then serves the same page locally. The blog post about this work:
 <https://blog.softwarewrighter.com/2026/09/13/saw-building-a-tiny-mixture-of-experts/>.
 The [wiki](https://github.com/sw-ml-study/moe-microscope/wiki) mirrors the
 documentation as a navigation layer.
