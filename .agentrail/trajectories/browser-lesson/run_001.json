@@ -1,0 +1,11 @@
+{
+  "task_type": "browser-lesson",
+  "state": {
+    "number": 3,
+    "step": "recording-replay-page"
+  },
+  "action": "Live demo published at https://sw-ml-study.github.io/moe-microscope/ and linked from the README: static learn/ page stepping the three pinned recordings and a new walkthrough fixture (demos/walkthrough_export.mlpl: MX01 trained 40 epochs, one window stage by stage, parity 0) frame by frame; standard footer (license, copyright, campus, blog about page, Discord, GitHub, build host/SHA/timestamp via build-info.json); Pages workflow; gate checks (walkthrough fixture, check-learn); verified on the live site with ?verify=1 (all four lessons to their last frame, no errors) and recorded in docs/results/live-demo.md. GitHub Pages enabled on the repository (build type workflow). F20 filed (take index parameter unbound in inlined functions, falls through to a global). Gate passed; pushed.",
+  "result": "success",
+  "reward": 1,
+  "timestamp": "2026-09-13T17:25:45"
+}
