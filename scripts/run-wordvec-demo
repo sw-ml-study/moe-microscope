@@ -1,32 +1,20 @@
 #!/bin/sh
-# Run CD01b, the docent over word vectors, into a temporary directory; check (or write) its three diagrams and the deterministic columns of its two docent results rows.
+# Run CD01b once per variant (fine-tuned, frozen; one process each, finding F22), compose the table diagram, and check (or write) the three diagrams and the two docent results rows.
 set -eu
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 mlpl=$("$repo_root/scripts/select-mlpl")
 mode=${1:-check}
 tmp_rel="tmp/wordvec-demo"
+rm -rf "$repo_root/$tmp_rel"
 mkdir -p "$repo_root/$tmp_rel"
 binary=$("$mlpl" --version 2>/dev/null | head -1 | tr -d '\n')
-
-"$mlpl" --source-dir "$repo_root" "$repo_root/demos/docent_wordvec.mlpl" -- "$tmp_rel" "$binary"
-
-for name in wordvec-cooccurrence wordvec-neighbours wordvec-table; do
-    generated="$repo_root/$tmp_rel/$name.svg"
-    committed="$repo_root/assets/previews/$name.svg"
-    [ -s "$generated" ] || { echo "wordvec demo did not write $name.svg" >&2; exit 1; }
-    if [ "$mode" = "write" ]; then
-        cp "$generated" "$committed"
-    elif ! cmp -s "$generated" "$committed"; then
-        echo "$name.svg preview is stale; run scripts/run-wordvec-demo write" >&2
-        exit 1
-    fi
-done
-
-# Both rows' deterministic columns (everything except binary and ms/query) must match docs/reference/docent-results.md.
 table="$repo_root/docs/reference/docent-results.md"
-for lesson in CD01b CD01bf; do
-    row=$(grep "^| $lesson |" "$repo_root/$tmp_rel/results-rows.md")
+
+for variant in finetuned frozen; do
+    "$mlpl" --source-dir "$repo_root" "$repo_root/demos/docent_wordvec.mlpl" -- "$tmp_rel" "$binary" "$variant"
+    row=$(cat "$repo_root/$tmp_rel/results-row-$variant.md")
+    lesson=$(printf '%s\n' "$row" | awk -F'|' '{ gsub(/ /, "", $2); print $2 }')
     key=$(printf '%s\n' "$row" | awk -F'|' '{ $4=""; $9=""; print }')
     if [ "$mode" = "write" ]; then
         grep -q "^| $lesson |" "$table" && sed -i '' "/^| $lesson |/d" "$table"
@@ -39,6 +27,20 @@ for lesson in CD01b CD01bf; do
             echo "committed: $committed_key" >&2
             exit 1
         }
+    fi
+done
+
+"$mlpl" --source-dir "$repo_root" "$repo_root/demos/docent_wordvec_table.mlpl" -- "$tmp_rel"
+
+for name in wordvec-cooccurrence wordvec-neighbours wordvec-table; do
+    generated="$repo_root/$tmp_rel/$name.svg"
+    committed="$repo_root/assets/previews/$name.svg"
+    [ -s "$generated" ] || { echo "wordvec demo did not write $name.svg" >&2; exit 1; }
+    if [ "$mode" = "write" ]; then
+        cp "$generated" "$committed"
+    elif ! cmp -s "$generated" "$committed"; then
+        echo "$name.svg preview is stale; run scripts/run-wordvec-demo write" >&2
+        exit 1
     fi
 done
 rm -rf "$repo_root/$tmp_rel"

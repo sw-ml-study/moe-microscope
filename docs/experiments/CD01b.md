@@ -30,21 +30,25 @@ repositories linked from snapshot A, assembled once by
 | Parameters | 26,003 (table 24,576) |
 
 Two variants: fine-tuned (the table trains with the body and heads) and
-frozen (only the body and heads train).
+frozen (only the body and heads train), each in its own interpreter
+process. The first measurement ran both in one process and the frozen run
+inherited the fine-tuned run's Adam state (finding F22); the frozen column
+below is the clean re-measurement (its paraphrase accuracy fell from 0.259
+to 0.204, its templated accuracy rose from 0.369 to 0.407).
 
 ## Results
 
 | Metric | CD01 random table | CD01b fine-tuned | CD01bf frozen | MB01t text matcher |
 |---|---:|---:|---:|---:|
-| Intent accuracy | 0.938 | 0.942 | 0.627 | 0.759 |
-| Destination accuracy | 0.925 | 0.917 | 0.369 | 0.925 |
-| Top-3 destination accuracy | 0.963 | 0.959 | 0.618 | 0.983 |
-| Exhibit accuracy | 0.927 | 0.917 | 0.177 | 0.990 |
-| Ambiguous rows, expected top-2 pair | 0.091 | 0.182 | 0.000 | 0.091 |
-| Unsupported recall | 0.300 | 0.300 | 0.500 | 0.400 |
-| Paraphrase destination accuracy | 0.296 | 0.407 | 0.259 | 0.685 |
-| Paraphrase intent accuracy | 0.481 | 0.407 | 0.333 | 0.481 |
-| Validation loss | 1.50 | 1.70 | 3.72 | - |
+| Intent accuracy | 0.938 | 0.942 | 0.647 | 0.759 |
+| Destination accuracy | 0.925 | 0.917 | 0.407 | 0.925 |
+| Top-3 destination accuracy | 0.963 | 0.959 | 0.747 | 0.983 |
+| Exhibit accuracy | 0.927 | 0.917 | 0.292 | 0.990 |
+| Ambiguous rows, expected top-2 pair | 0.091 | 0.182 | 0.091 | 0.091 |
+| Unsupported recall | 0.300 | 0.300 | 0.300 | 0.400 |
+| Paraphrase destination accuracy | 0.296 | 0.407 | 0.204 | 0.685 |
+| Paraphrase intent accuracy | 0.481 | 0.407 | 0.426 | 0.481 |
+| Validation loss | 1.50 | 1.70 | 2.97 | - |
 
 Margin on the paraphrase set against the stronger matcher: destination
 minus 28 points (0.407 against 0.685); intent minus 7. The bar (plus 20 on
@@ -61,7 +65,7 @@ both, unsupported recall 0.8) is not met.
 - Meaning helps, measurably: starting the table from in-domain vectors
   lifted paraphrase destination accuracy from 0.296 to 0.407 with the same
   model and data, and doubled the ambiguous top-2 hits (still low).
-- Frozen vectors alone are far too weak (0.259 on paraphrases, 0.369 on
+- Frozen vectors alone are far too weak (0.204 on paraphrases, 0.407 on
   templated rows): a few thousand words of text give noisy vectors, and
   words seen once have none. Fine-tuning recovers the templated accuracy
   and keeps some of the transfer.

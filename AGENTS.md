@@ -320,6 +320,12 @@ it with duplicated content or edit it independently.
   and transformation, a step strip for the run, and recorded memory, speed,
   and quality measurements written to the catalog and `docs/reference/results.md`.
   Diagrams are derived from the same recorded values the tests assert on.
+- One training run per process, and training loops at top level: `adam`
+  keeps per-parameter state by name that outlives a re-created model
+  (finding F22), and `adam` inside a user function trains local copies
+  (F21). A lesson with several variants runs each through its own
+  interpreter process (the gate script loops) and composes any shared
+  diagram from committed metrics.
 - Training uses the dense-masked MoE formulation; inference uses sparse
   dispatch. Every lesson that introduces a sparse path asserts parity with
   the dense-masked path on the same fixture.

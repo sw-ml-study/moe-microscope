@@ -110,7 +110,7 @@ from the campus's text) or from capacity that specializes, and it must be
 shown on the paraphrase set.
 
 Word vectors trained on the campus's own text (CD01b) lift the paraphrase
-number to 0.407 fine-tuned and 0.259 frozen: meaning helps, but a few
+number to 0.407 fine-tuned; frozen vectors alone give 0.204: meaning helps, but a few
 thousand words of text give too little of it to beat a matcher that reads
 the same words directly (0.685).
 

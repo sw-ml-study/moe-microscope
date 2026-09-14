@@ -35,6 +35,14 @@ work by the user's decision.
 2. `optimizer-state-isolation` - re-measure the lessons that trained two
    variants in one process (LD01, CD01b) with one run per process; update
    their reports and rows.
+
+   Status: complete. Audit: LD01 already used distinct model names for its
+   second variant (fresh names get fresh Adam state), so LD01r stands; DS01
+   runs one point per process; CD01b re-ran its frozen variant in its own
+   process (paraphrase 0.259 to 0.204, held-out destination 0.369 to 0.407)
+   and now trains one variant per process with a drawer composing the table
+   diagram. AGENTS.md states the rule: one training run per process,
+   training loops at top level.
 3. `recurrent-moe` - RM01: re-routing per recurrence, the change-of-expert
    statistic, per-recurrence specialization maps.
 4. `engram-from-scratch` - EG01: ngram_hash addressing, gather_rows
@@ -79,7 +87,7 @@ Step 5 status: complete. CD01b: word vectors from the campus's own text
 linked READMEs; PPMI, rank 24 by orthogonal iteration) in a 1,024-row
 hashed table under the CD01 docent. Fine-tuned: paraphrase destination
 0.407 (CD01 0.296), held-out destination 0.917, intent 0.942; frozen
-vectors alone: 0.259. Against the text matcher's 0.685 the margin is minus
+vectors alone: 0.204 (re-measured in its own process, finding F22). Against the text matcher's 0.685 the margin is minus
 28 points: the bar is still not met, though vectors moved the paraphrase
 number by 11 points. F21 filed (adam inside a user function trains local
 copies). The docent saga pauses here; Engram (recurrence-and-Engram) runs

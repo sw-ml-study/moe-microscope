@@ -139,8 +139,9 @@ previous run's Adam moments. The reference says the state "is maintained
 across calls" but not that it survives re-creation, and there is no reset
 builtin. Workaround: one training run per process (the gate scripts loop
 over processes), or unique names per run. Affects: every lesson that trains
-two variants in one process (LD01 and LD01r, CD01b and CD01bf, re-measured
-in the follow-up step). Proposed fix: clear optimizer state when a name is
+two variants in one process under the same names (CD01bf was contaminated
+and re-measured; LD01r used distinct names and stands; DS01 runs one point
+per process). Proposed fix: clear optimizer state when a name is
 rebound to a new model, and add `reset_optimizer()`.
 
 ### F16: the `eval_stream` surface has no source provider, sandbox, or arguments

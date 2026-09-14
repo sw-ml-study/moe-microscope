@@ -1,0 +1,47 @@
+# CD01b table drawer: composes the hashed-table diagram from the metrics of the two isolated runs (fine-tuned and frozen), each trained in its own process (finding F22).
+include "../lib/svg.mlpl";
+
+print("WHAT THIS SHOWS -- The word-vector table and the two docent trainings over it, drawn from the metrics files of two separate processes.");
+
+dir = unwrap(list_get(args(), 0));
+ft = unwrap(parse_json(unwrap(read_text(str_concat(dir, "/metrics-finetuned.json")))));
+fr = unwrap(parse_json(unwrap(read_text(str_concat(dir, "/metrics-frozen.json")))));
+
+def u:curve_xs(n) {
+  "Frame indices mapped to pixel x positions.";
+  60 + range(n) * (340 / (n - 1 + eq(n, 1)))
+}
+
+def u:table_svg() {
+  "Diagram: the hashed table and the two training runs over it.";
+  page = u:svg_head("The word-vector table and the docent trained on it", "The Engram-style hashed table (rows for vocabulary words at the docent's hash slots, small random rows elsewhere), with the held-out destination accuracy and validation loss over epochs for the fine-tuned and the frozen table, each trained in its own process.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "HASHED TABLE -- vectors at the docent's slots, then the docent on top"));
+  what = str_concat(str_concat("WHAT: 1024 rows of 24: ", to_string(ft.filled)), str_concat(str_concat(" hold vocabulary vectors (", to_string(ft.collisions)), " words collided into an occupied row); the rest are random at 0.05 scale."));
+  page = str_concat(page, u:svg_text(32, 60, "m", what));
+  page = str_concat(page, u:svg_text(40, 92, "k", "held-out destination accuracy"));
+  page = str_concat(page, u:svg_rect(60, 102, 340, 120, "cell"));
+  nf = reduce_mul(shape(ft.curve_d));
+  page = str_concat(page, u:svg_polyline(u:curve_xs(nf), 222 - ft.curve_d * 115, "l1"));
+  page = str_concat(page, u:svg_polyline(u:curve_xs(nf), 222 - fr.curve_d * 115, "l2"));
+  page = str_concat(page, u:svg_text(60, 238, "s", "0 .. 1 over 40 epochs, every 5; amber fine-tuned table, pink frozen"));
+  page = str_concat(page, u:svg_text(460, 92, "k", "validation loss over epochs"));
+  page = str_concat(page, u:svg_rect(460, 102, 340, 120, "cell"));
+  vmax = reduce(:max, concat(ft.curve_v, fr.curve_v)) + 0.0001;
+  page = str_concat(page, u:svg_polyline(400 + u:curve_xs(nf), 222 - ft.curve_v * (115 / vmax), "l1"));
+  page = str_concat(page, u:svg_polyline(400 + u:curve_xs(nf), 222 - fr.curve_v * (115 / vmax), "l2"));
+  page = str_concat(page, u:svg_text(460, 238, "s", str_concat("0 .. ", to_string(u:svg_round(vmax, 2)))));
+  page = str_concat(page, u:svg_text(40, 274, "k", "example rows of the table, first 8 of 24 values (apl and cosmac before fine-tuning)"));
+  page = str_concat(page, u:svg_text(40, 296, "", str_concat("apl     ", u:svg_vec(ft.apl_row, 2))));
+  page = str_concat(page, u:svg_text(40, 316, "", str_concat("cosmac  ", u:svg_vec(ft.cosmac_row, 2))));
+  page = str_concat(page, u:svg_rect(30, 340, 900, 180, "panel"));
+  page = str_concat(page, u:svg_text(50, 366, "", "WHY: an Engram-style table is addressed by a hash of the input, not by a dictionary, so unseen words still land on a row;"));
+  page = str_concat(page, u:svg_text(50, 388, "", "     here the rows start as meaning (word vectors) instead of noise, and fine-tuning may keep or erase that meaning."));
+  page = str_concat(page, u:svg_text(50, 414, "", "HOW: docent_table is a param [1024, 24] assigned the table; u:docent_pooled_t gathers rows (gather_rows is differentiable,"));
+  page = str_concat(page, u:svg_text(50, 436, "", "     finding F4) and averages them; the frozen run lists only the body and heads in adam. One process per variant (F22)."));
+  page = str_concat(page, u:svg_text(50, 462, "", "WHAT DECIDES: the paraphrase columns in the docent results table against MB01t; the bar needs plus 20 points."));
+  page = str_concat(page, u:svg_text(50, 492, "m", "Bigram slots have no vectors (random rows); word rows shared by hash collisions carry the last word written."));
+  str_concat(page, "</svg>")
+}
+
+w = write_atomic(str_concat(dir, "/wordvec-table.svg"), u:table_svg());
+print("TABLE -- fine-tuned dest acc", ft.dest_acc, "paraphrase", ft.paraphrase_acc, "; frozen dest acc", fr.dest_acc, "paraphrase", fr.paraphrase_acc);
