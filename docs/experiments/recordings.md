@@ -49,7 +49,8 @@ probabilities, top-1 mask, gate, dispatch groups, one expert's sub-batch and
 output, the dense-masked and sparse outputs, their parity, the next tokens).
 Scalars are drawn with their history, vectors as bars, matrices as shaded
 tables, and the dispatch groups as token chips colored by expert; every
-number is a recorded value. `?verify=1` makes the page step every lesson to
+number is a recorded value and the page is a playback (no sw-MLPL code
+runs in the browser). `?verify=1` makes the page step every lesson to
 its last frame and print a report, which is how the deploy is checked.
 The verification record of the published site is
 [live-demo.md](../results/live-demo.md).

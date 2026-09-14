@@ -90,7 +90,7 @@ const CAPTIONS = {
 };
 
 const HOWTO = [
-  ['Recording', 'A JSON list of frames; each frame is a training step with named observations (name, shape, values). emit_frame in the lesson wrote them; the gate pins their hashes.'],
+  ['Recording', 'A JSON list of frames; each frame is a step with named observations (name, shape, values). The three training runs were written by emit_frame during training; the walkthrough was written by demos/walkthrough_export.mlpl after training. The gate pins or regenerates them. Nothing is computed here.'],
   ['Scalars', 'Shown with their history across frames as a sparkline, so loss curves appear as you step.'],
   ['Vectors', 'Bars with the labels the lesson uses (experts, task families).'],
   ['Matrices', 'Tables shaded by value; pink cells are the one-hot or gate entries that are on.'],

@@ -22,11 +22,13 @@ for it.
 | Routing and dispatch walkthrough | 10 frames stepped, 20 observations rendered, last step 9 |
 | Console errors during verify | none reported by the page (any load or render error is listed in the report as ERROR) |
 
-What the page does and does not do: every number it draws is read from a
-recording that a real training run wrote (the three pinned runs, and the
-walkthrough fixture written by `demos/walkthrough_export.mlpl` from a model
-trained 40 epochs). Nothing is computed or simulated in the browser; there
-is no model running in the page. The trained docent and in-browser
+What the page does and does not do: it is a playback. No sw-MLPL code runs
+in the browser and no model runs in the page. Every number it draws is read
+from a fixture in the repository: the three training recordings were
+written by `emit_frame` during real training runs and captured over
+`mlpl-serve`; the walkthrough fixture was written by
+`demos/walkthrough_export.mlpl` after training the mixture for 40 epochs.
+The page lays the values out and computes nothing. The trained docent and in-browser
 inference are later steps of the campus docent saga and will be recorded
 here when they are live.
 

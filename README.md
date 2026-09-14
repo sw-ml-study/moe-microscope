@@ -27,8 +27,9 @@ results row or a measured document.
 The moving parts step by step, live on GitHub Pages:
 <https://sw-ml-study.github.io/moe-microscope/>. Pick a lesson (the dense
 baseline, the top-1 and top-2 mixtures, or one window through routing and
-dispatch) and step through its frames; every number is read from a pinned
-recording that a real training run wrote. The blog post about this work:
+dispatch) and step through its frames. It is a playback: no sw-MLPL code
+runs in the browser, and every number is read from a pinned fixture that a
+real training run or its export script wrote. The blog post about this work:
 <https://blog.softwarewrighter.com/2026/09/13/saw-building-a-tiny-mixture-of-experts/>.
 The [wiki](https://github.com/sw-ml-study/moe-microscope/wiki) mirrors the
 documentation as a navigation layer.

@@ -9,7 +9,7 @@
 <body>
 <header>
   <h1>MoE Microscope: the moving parts, step by step</h1>
-  <p>Every number on this page is read from a recording that a real training run wrote (<code>emit_frame</code> in sw-MLPL), pinned in the repository and checked by its gate. Nothing here is simulated. Pick a lesson, then step through its frames.</p>
+  <p>This page is a playback, not a live computation: no sw-MLPL code runs in your browser. Every number is read from a JSON fixture in the repository. Three fixtures are recordings that real training runs wrote with <code>emit_frame</code> in sw-MLPL, captured over <code>mlpl-serve</code> and pinned by hash; the fourth was written by an export script after training the same mixture. The gate regenerates or checks all four. This page only lays the values out. Pick a lesson, then step through its frames.</p>
 </header>
 <section class="controls" aria-label="Playback">
   <label for="lesson">Lesson</label>
