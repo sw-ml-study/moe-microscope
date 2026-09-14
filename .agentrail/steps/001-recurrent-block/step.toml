@@ -1,0 +1,9 @@
+number = 1
+slug = "recurrent-block"
+status = "pending"
+description = "RC01 recurrent block. One physical transformer block (the DN01 block: attenti..."
+role = "production"
+context_files = []
+created_at = "2026-09-14T08:44:00"
+task_type = "mlpl-lesson"
+commits = []

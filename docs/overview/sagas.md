@@ -10,12 +10,29 @@ The mandatory checklist in `AGENTS.md` applies to every step: focused tests,
 tracked-file audit, named-file staging, a detailed commit on `main`,
 Agentrail completion metadata, and a verified `git push origin main`.
 
-## Active: `campus-docent-v0` (Saga 4)
+## Active: `recurrence-and-engram` (Saga 5)
 
-First publication milestone: the replay page live and linked from the
-README, the campus institute lobby featuring it, and an honest blog post
-about both; the trained docent joins the campus only after the usefulness
-bar with its margin over the matcher is met.
+Purpose: parameter sparsity and memory-lookup sparsity, measured: one block
+applied R times with deep supervision (RC01), routing over reasoning time
+(RM01), the Engram table from scratch with parity against the sw-MLPL
+builtin and a slot-count sweep (EG01), all three sparsities together with
+the seven-row ablation table (RE01), and the recordings, live demo, and
+handoffs (saga close). Started 2026-09-14 ahead of the remaining docent
+work by the user's decision.
+
+1. `recurrent-block` - RC01: one shared block applied R times, deep
+   supervision, accuracy against R at fixed parameters.
+2. `recurrent-moe` - RM01: re-routing per recurrence, the change-of-expert
+   statistic, per-recurrence specialization maps.
+3. `engram-from-scratch` - EG01: ngram_hash addressing, gather_rows
+   retrieval, projection, gate; parity with the builtin; the table-size
+   sweep.
+4. `recurrent-moe-engram` - RE01: all three sparsities and the ablation
+   table.
+5. `saga-close` - recordings, the live demo extended, handoffs, README,
+   concepts, wiki.
+
+## Paused: `campus-docent-v0` (Saga 4)
 
 Purpose: a second training area whose domain is the live campus site: a
 tiny MoE trained in batch here, run in the browser, that predicts intent
@@ -401,8 +418,9 @@ Every saga from here ends with a host step that pins its recordings and hands
 them to the generic `../demo-extensions` microscope; see the visualization
 track in [`plan.md`](plan.md).
 
-- Saga 4 `campus-docent-v0` (active, above; value over the deterministic
-  matcher is part of its usefulness bar): the second training area, from
+- Saga 4 `campus-docent-v0` (paused after step 5, above; value over the
+  deterministic matcher is part of its usefulness bar): the second training
+  area, from
   [`research3.txt`](../research/research3.txt). A tiny MoE trained in batch
   here and run in the browser to direct visitors of the sw-campus site:
   snapshot A of the campus catalog (IBM 1130, APL, RCA 1802) with canned
@@ -412,33 +430,37 @@ track in [`plan.md`](plan.md).
   the `just docent` batch export with manifest, the inference-first docent
   page CD05 on the proven `mlpl-wasm` bridge with a budgeted live-training
   probe, and the inference-only easel handoff to sw-campus.
-- Saga 5 `campus-docent-live`: the trained docent replaces the mockup's
+- Saga 5 `recurrence-and-engram` (active, above): RC01, RM01, EG01 (both
+  forms: from scratch and builtin, with parity), RE01, the seven-row
+  ablation table, and the live-demo and host handoffs.
+- Saga 6 `campus-docent-routed`: the docent saga continued: CD02 to CD04
+  routed experts and specialization, the batch export, browser inference
+  with the budgeted live-training probe, and the easel handoff; ships to
+  the campus only if the usefulness bar is met.
+- Saga 7 `campus-docent-live`: the trained docent replaces the mockup's
   keyword matcher in the campus site: the frozen export contract and
   validator, the browser bridge module with `predict(query)` and a parity
   page, the campus model-bridge work order, and live acceptance against
   the deployed page (edition line, thirty scripted queries matching the
   export, fallback, stale badge, latency) recorded as CD09.
-- Saga 6 `campus-docent-v1`: when the campus adds the 1442 card reader and
+- Saga 8 `campus-docent-v1`: when the campus adds the 1442 card reader and
   its radio demo, the stale-model, retraining-versus-forgetting, and
   quantization study (CD06 to CD08) and the revision comparison page.
-- Saga 7 `recurrence-and-engram`: RC01, RM01, EG01 (both forms: from scratch
-  and builtin, with parity), RE01, the seven-row ablation table, and the
-  live-demo foundation handoff.
-- Saga 8 `distillation`: token KD against the in-repo teacher, router warm
+- Saga 9 `distillation`: token KD against the in-repo teacher, router warm
   start, expert-delta distillation, and the gated external-teacher export.
-- Saga 9 `quantization-packing-and-cache`: INT8 and INT4 experts, the packed
+- Saga 10 `quantization-packing-and-cache`: INT8 and INT4 experts, the packed
   TinyMoE file, the LRU expert-cache simulator with capacity curves, and
   prefill double buffering, and KV01, decode-cache
   compression measured on the generation benchmark.
-- Saga 10 `hybrid-execution-and-embedded-budget`: bandwidth calibration, the
+- Saga 11 `hybrid-execution-and-embedded-budget`: bandwidth calibration, the
   q-star transfer/compute split, expert banks, and the 256 MB budget report.
-- Saga 11 `interactive-microscope-host`: systems recordings, live-demo
+- Saga 12 `interactive-microscope-host`: systems recordings, live-demo
   acceptance (the only `sw-checklist` scope), and the pocket-helper demo.
-- Saga 12 `configuration-frontier`: one harness over configuration records;
+- Saga 13 `configuration-frontier`: one harness over configuration records;
   sweeps of expert count, top-k, shared always-on experts, Engram slots, and
   recurrence depth; a Pareto frontier with smallest, fastest, and best picks.
-- Saga 13 `cuda-and-host-resident-experts`: backend probes for CUDA and MLX,
+- Saga 14 `cuda-and-host-resident-experts`: backend probes for CUDA and MLX,
   lab-scale training on the GPU, expert weights in host RAM with a bounded
   GPU cache, CPU execution of missing experts, and a VRAM-budget report.
-- Saga 14 `findings-and-recommendations`: `docs/report.md` with findings,
+- Saga 15 `findings-and-recommendations`: `docs/report.md` with findings,
   recommendations, and ranked future improvements, every claim cited.

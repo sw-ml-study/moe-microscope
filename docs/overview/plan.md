@@ -576,19 +576,63 @@ relitigate them:
    that reads the same text; diagrams of the co-occurrence matrix, the
    nearest neighbours of a few words, and the table. This is the fair way
    for a model to earn a margin: same text for both sides.
-6. **docent-moe (CD02, CD03).** The same encoder behind a router over 4 and
+Milestone, first publication: the replay page (step 3) is live on GitHub
+Pages and linked from the README, the campus's Computational Sciences
+Institute lobby features it (a handoff the campus repository applies), and
+a blog post describes both honestly, with the campus docent still gated or
+labelled as the keyword matcher. This milestone does not wait for the
+trained docent; the docent joins the campus only when the usefulness bar
+with its margin over the matcher is met.
+
+Exit (as paused on 2026-09-14, by decision, so that Engram runs first): steps
+1 to 5 done, the replay page live, the matcher yardstick and the word-vector
+result recorded; the routed docent and everything after it continue in
+Saga 6. The original exit (the usefulness bar met; a batch-trained tiny
+MoE loaded in the page navigating the three destinations with explainable
+routing and catalog-backed responses, telling the right canned story once
+and another on request; the live-training budget measured;
+dense, four-expert, and eight-expert rows sit in the results table with the
+docent metrics; snapshot A is preserved with its provenance; sw-campus has an
+implementation-ready easel handoff.
+## Saga 7: recurrence and Engram
+
+1. **recurrent-block (RC01).** Shared block applied `R` times with recorded
+   state per recurrence, accuracy versus `R`, and the deep-supervision loss.
+2. **recurrent-moe (RM01).** Routing over reasoning time: the expert sequence
+   per token per recurrence, drawn as a strip, and the change-of-expert
+   statistic.
+3. **engram-from-scratch (EG01).** `ngram_hash` addressing, `gather_rows`
+   retrieval, projection, and a learned gate written in MLPL; parity check
+   against the `engram` builtin; gate magnitude, collision, and nonzero-row
+   observations; Engram table diagram with bytes; a table-size sweep (1,024
+   down to 16 slots) plotting collisions, gate magnitude, and prose accuracy.
+4. **recurrent-moe-engram (RE01).** All three sparsities together and the
+   ablation table filled for the seven research combinations.
+5. **live-demo-foundation.** With DN01, MX02, and RM01 recordings pinned,
+   hand off the interactive live demo: MLPL web framework pages that submit
+   an editable lesson to `mlpl-serve`, stream frames, and drive the generic
+   Yew timeline.
+
+Exit: the ablation matrix rows through RE01 exist with diagrams and triples;
+the live demo has a written, implementation-ready handoff.
+## Saga 8: campus docent, routed and in the browser
+
+The docent saga continued after Engram: the same design decisions and the
+same usefulness bar as Saga 4. Steps, renumbered from Saga 4's 6 to 9:
+
+1. **docent-moe (CD02, CD03).** The same encoder behind a router over 4 and
    8 rank-4 delta experts, top-1, balance term; the routing and
    specialization map per destination and per concept, expert annotations
    derived from measured distributions, entropy and balance, and the
    ambiguous-query panel (top-2 comparison, CD04) as a recorded lesson.
-7. **docent-batch-export.** The `just docent` recipe: native batch
+2. **docent-batch-export.** The `just docent` recipe: native batch
    training of the chosen configuration, the packed weights, labels, and
    manifest written by MLPL (`write_atomic`, `to_json`), INT8 projection with
    measured file sizes, the recorded training run for replay, and an MLPL
    inference twin that reloads the export and asserts parity with the trained
    model on every corpus row. The gate checks the export against the pinned
    fixture the way it checks every other lesson.
-8. **docent-in-browser (CD05).** The docent page under `learn/`, inference
+3. **docent-in-browser (CD05).** The docent page under `learn/`, inference
    first: the adapted iframe bridge loads the exported weights (inlined into
    the program, since the WASM surface has no filesystem sandbox), answers
    queries with the "why this?" panel, replays the recorded batch run; measured
@@ -597,7 +641,7 @@ relitigate them:
    the CD06 browser benchmark row, deciding whether the "teach one epoch" and
    "teach a new exhibit" controls stay on the page. Published on GitHub Pages
    from this repository.
-9. **easel-handoff.** The work order for sw-campus: the easel component
+4. **easel-handoff.** The work order for sw-campus: the easel component
    (passive featured exhibit, interactive docent), loading the exported
    model, catalog-hash comparison with a stale badge, the local
    `DocentContext` (current place, recent places, interests, recent
@@ -628,24 +672,15 @@ Usefulness bar, measured by steps 1 to 6 before any integration:
   margin is not met, the campus keeps its matcher and Saga 5 does not
   start.
 
-Milestone, first publication: the replay page (step 3) is live on GitHub
-Pages and linked from the README, the campus's Computational Sciences
-Institute lobby features it (a handoff the campus repository applies), and
-a blog post describes both honestly, with the campus docent still gated or
-labelled as the keyword matcher. This milestone does not wait for the
-trained docent; the docent joins the campus only when the usefulness bar
-with its margin over the matcher is met.
+Exit: the usefulness bar is met and recorded in the docent results table;
+a batch-trained tiny MoE, loaded in the page, navigates among the three
+destinations with explainable routing and catalog-backed responses; the
+live-training budget has a measured answer; sw-campus has an
+implementation-ready easel handoff. If the bar is not met, the saga still
+closes with the measured result and no campus integration.
 
-Exit: the usefulness bar is met and recorded in the results table; a
-batch-trained tiny MoE, loaded in the page, navigates among the three
-destinations with explainable routing and catalog-backed responses, tells
-the right canned story once and another on request, and the live-training
-budget has a measured answer;
-dense, four-expert, and eight-expert rows sit in the results table with the
-docent metrics; snapshot A is preserved with its provenance; sw-campus has an
-implementation-ready easel handoff.
 
-## Saga 5: campus docent live in the campus UI
+## Saga 7: campus docent live in the campus UI
 
 The trained docent replaces the mockup's keyword matcher in the campus
 site, and that replacement is verified on the live page, not assumed. The
@@ -688,7 +723,7 @@ live site answers from weights.
 Exit: the live campus site answers from the trained weights, proven by the
 step 4 record; the keyword matcher remains only as the documented fallback.
 
-## Saga 6: campus docent v1
+## Saga 8: campus docent v1
 
 Starts when the campus adds the IBM 1442 card read punch and its radio demo
 (snapshot B). If that content is not yet published, the step authors
@@ -711,29 +746,8 @@ snapshot B as a handoff fixture first and reruns when the real content lands.
 Exit: the before/after study is a recorded lesson with rows and diagrams,
 and the campus easel can show which revision its docent knows.
 
-## Saga 7: recurrence and Engram
 
-1. **recurrent-block (RC01).** Shared block applied `R` times with recorded
-   state per recurrence, accuracy versus `R`, and the deep-supervision loss.
-2. **recurrent-moe (RM01).** Routing over reasoning time: the expert sequence
-   per token per recurrence, drawn as a strip, and the change-of-expert
-   statistic.
-3. **engram-from-scratch (EG01).** `ngram_hash` addressing, `gather_rows`
-   retrieval, projection, and a learned gate written in MLPL; parity check
-   against the `engram` builtin; gate magnitude, collision, and nonzero-row
-   observations; Engram table diagram with bytes; a table-size sweep (1,024
-   down to 16 slots) plotting collisions, gate magnitude, and prose accuracy.
-4. **recurrent-moe-engram (RE01).** All three sparsities together and the
-   ablation table filled for the seven research combinations.
-5. **live-demo-foundation.** With DN01, MX02, and RM01 recordings pinned,
-   hand off the interactive live demo: MLPL web framework pages that submit
-   an editable lesson to `mlpl-serve`, stream frames, and drive the generic
-   Yew timeline.
-
-Exit: the ablation matrix rows through RE01 exist with diagrams and triples;
-the live demo has a written, implementation-ready handoff.
-
-## Saga 8: distillation
+## Saga 9: distillation
 
 1. **token-kd (KD01 part 1).** `beta L_KD` against the in-repo teacher
    fixture; KL and accuracy deltas versus the same student without KD.
@@ -747,7 +761,7 @@ the live demo has a written, implementation-ready handoff.
 
 Exit: each distillation term has a measured, diagrammed, and tabled effect.
 
-## Saga 9: quantization, packed format, and expert cache
+## Saga 10: quantization, packed format, and expert cache
 
 1. **int8-experts (QZ01).** Symmetric INT8 experts and shared weights as
    integer-valued arrays plus scales; quality delta; bytes per expert.
@@ -776,7 +790,7 @@ Exit: each distillation term has a measured, diagrammed, and tabled effect.
 Exit: the same model runs from a packed file through a capacity-limited cache
 with a checked curve of hit rate and bytes per token versus capacity.
 
-## Saga 10: hybrid execution and the embedded budget
+## Saga 11: hybrid execution and the embedded budget
 
 1. **bandwidth-calibration.** A tiny `bench bw` analogue measuring the
    simulated transfer and host-compute bandwidths (from counted bytes and
@@ -793,7 +807,7 @@ with a checked curve of hit rate and bytes per token versus capacity.
 Exit: HY01 and PK01 rows exist; the embedded gap is a written handoff, not a
 claim.
 
-## Saga 11: interactive microscope host, complete
+## Saga 12: interactive microscope host, complete
 
 1. **systems-recordings.** Pinned recordings for QZ01, XC01, HY01, and PK01;
    cache traces and q-star splits proven in the generic host.
@@ -808,7 +822,7 @@ claim.
 Exit: every recorded lesson renders in the generic host without lesson-
 specific Rust, and the pocket helper runs end to end.
 
-## Saga 12: configuration frontier
+## Saga 13: configuration frontier
 
 After the mechanisms exist, compare configurations on the dimensions the
 results table already records and produce a size, speed, quality frontier.
@@ -830,7 +844,7 @@ results table already records and produce a size, speed, quality frontier.
 Exit: a frontier diagram whose every point is a results row and a
 recording.
 
-## Saga 13: CUDA system and CPU-resident expert weights
+## Saga 14: CUDA system and CPU-resident expert weights
 
 Today every lesson runs in the f64 CPU interpreter; `device("mlx")` and the
 CUDA backend in sw-MLPL are unused here. This saga moves the lab-scale runs
@@ -859,7 +873,7 @@ cache or executed on the CPU.
 Exit: a lab-scale MoE runs on CUDA with expert weights in host RAM at a
 documented VRAM ceiling, and the sw-MLPL backend findings are filed.
 
-## Saga 14: findings, recommendations, and future work
+## Saga 15: findings, recommendations, and future work
 
 The closing document, `docs/report.md`, written from the results table,
 the recordings, the findings ledger, and the frontier: what was built, what

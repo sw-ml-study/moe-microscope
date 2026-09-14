@@ -1,0 +1,9 @@
+number = 4
+slug = "recurrent-moe-engram"
+status = "pending"
+description = "RE01 recurrent MoE plus Engram: all three sparsities together, and the ablati..."
+role = "production"
+context_files = []
+created_at = "2026-09-14T08:44:00"
+task_type = "mlpl-lesson"
+commits = []

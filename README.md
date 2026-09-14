@@ -128,14 +128,14 @@ inventory is [`catalog/lessons.toml`](catalog/lessons.toml).
 
 ## Next
 
-A second training area first: a campus docent, a tiny MoE trained in batch
-here and run in the browser to direct visitors of the Software Wrighter
-research campus site, with the campus catalog as the authority for facts
-and the model predicting only intent and destination. Then whether
-recurrence, Engram, distillation, and quantization move the quality and
-resource frontier for roughly the same active budget, and whether a bounded
-expert cache and heterogeneous execution let the whole model exceed fast
-memory and stay usable. Plan: [docs/overview/plan.md](docs/overview/plan.md).
+Recurrence and Engram next: one block applied several times with deep
+supervision, routing over reasoning time, the Engram lookup table from
+scratch with parity against the sw-MLPL builtin, and all three sparsities
+together in one ablation table. The campus docent (a tiny model trained in
+batch here to direct visitors of the research campus site) is paused after
+its first five steps: it does not yet beat a deterministic matcher, and it
+resumes after Engram. Then distillation, quantization, the expert cache,
+and heterogeneous execution. Plan: [docs/overview/plan.md](docs/overview/plan.md).
 
 ## What is here
 
