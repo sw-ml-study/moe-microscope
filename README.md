@@ -3,7 +3,7 @@
 Building mixture-of-experts models small enough to understand.
 
 MicroMoE is an educational and experimental mixture-of-experts model
-written in sw-MLPL. The repository isolates the techniques behind modern
+written in [sw-MLPL](https://github.com/sw-ml-study/sw-mlpl). The repository isolates the techniques behind modern
 efficient MoE systems (routing, sparse dispatch, low-rank experts,
 recurrence, Engram memory, distillation, quantization, expert caching,
 heterogeneous execution) so each can be inspected and measured on its own,
@@ -158,7 +158,7 @@ scripts/  justfile           Thin gate and tool-selection scripts
 
 Prerequisites:
 
-- the adjacent `../sw-mlpl` checkout built in release mode
+- the adjacent [`../sw-mlpl`](https://github.com/sw-ml-study/sw-mlpl) checkout built in release mode
   (`target/release/mlpl-repl`), or an absolute `MLPL` override;
 - `mlplunit` on `PATH`, an absolute `MLPLUNIT` override, or the adjacent
   `../../softwarewrighter/mlplunit/bin/mlplunit` checkout;
