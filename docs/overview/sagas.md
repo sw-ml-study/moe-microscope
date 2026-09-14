@@ -428,5 +428,5 @@ track in [`plan.md`](plan.md).
 - Saga 13 `cuda-and-host-resident-experts`: backend probes for CUDA and MLX,
   lab-scale training on the GPU, expert weights in host RAM with a bounded
   GPU cache, CPU execution of missing experts, and a VRAM-budget report.
-- Saga 15 `findings-and-recommendations`: `docs/report.md` with findings,
+- Saga 14 `findings-and-recommendations`: `docs/report.md` with findings,
   recommendations, and ranked future improvements, every claim cited.
