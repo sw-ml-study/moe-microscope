@@ -1,0 +1,1 @@
+Optimizer-state isolation done: audit found only CD01bf contaminated (LD01r used distinct names; DS01 one point per process); docent_wordvec split into one variant per process with a table drawer; CD01bf re-measured (paraphrase 0.204, dest 0.407); reports, findings (F22 scope), and the queue corrected; AGENTS.md rule added. Gate passed; pushed.
