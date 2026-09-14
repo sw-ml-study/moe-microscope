@@ -22,14 +22,27 @@ work by the user's decision.
 
 1. `recurrent-block` - RC01: one shared block applied R times, deep
    supervision, accuracy against R at fixed parameters.
-2. `recurrent-moe` - RM01: re-routing per recurrence, the change-of-expert
+
+   Status: complete. At 3,812 parameters, R=2 with deep supervision reaches
+   validation loss 3.45 (DN01 3.79), R=3 gives the first held-out MLPL
+   answers of a dense model, R=4 is worse (4.22); every model is best when
+   stopped after one recurrence (3.29 for R=2), so the gain is a
+   regularization effect of scoring every state, not refinement. Rows
+   RC01@1..4, three diagrams, four tests, the R=4 recording pinned and
+   replayed in the live demo. F22 found on the way: Adam state is keyed by
+   name and outlives a re-created model, so each R now trains in its own
+   process; a follow-up step re-measures LD01r and CD01bf.
+2. `optimizer-state-isolation` - re-measure the lessons that trained two
+   variants in one process (LD01, CD01b) with one run per process; update
+   their reports and rows.
+3. `recurrent-moe` - RM01: re-routing per recurrence, the change-of-expert
    statistic, per-recurrence specialization maps.
-3. `engram-from-scratch` - EG01: ngram_hash addressing, gather_rows
+4. `engram-from-scratch` - EG01: ngram_hash addressing, gather_rows
    retrieval, projection, gate; parity with the builtin; the table-size
    sweep.
-4. `recurrent-moe-engram` - RE01: all three sparsities and the ablation
+5. `recurrent-moe-engram` - RE01: all three sparsities and the ablation
    table.
-5. `saga-close` - recordings, the live demo extended, handoffs, README,
+6. `saga-close` - recordings, the live demo extended, handoffs, README,
    concepts, wiki.
 
 ## Paused: `campus-docent-v0` (Saga 4)

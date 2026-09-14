@@ -1,0 +1,17 @@
+# F22 reproducer: adam keeps per-parameter state by name, so a model re-created under the same name inherits the previous model's moments (the first-step update differs from a fresh name); there is no reset builtin; checked by scripts/run-probes.
+x = reshape([1, 2], [1, 2]);
+h = linear(2, 1, 3);
+k = 0;
+while lt(k, 30) {
+  adam(reduce_add(apply(h, x) * apply(h, x)), h, 0.1, 0.9, 0.999, 0.00000001);
+  k = k + 1
+};
+h = linear(2, 1, 3);
+before = reduce_add(apply(h, x));
+adam(reduce_add(apply(h, x) * apply(h, x)), h, 0.1, 0.9, 0.999, 0.00000001);
+step_reused_name = reduce_add(apply(h, x)) - before;
+g = linear(2, 1, 3);
+before_g = reduce_add(apply(g, x));
+adam(reduce_add(apply(g, x) * apply(g, x)), g, 0.1, 0.9, 0.999, 0.00000001);
+step_fresh_name = reduce_add(apply(g, x)) - before_g;
+print("first-step change: reused name", step_reused_name, "fresh name", step_fresh_name, "same", eq(round(step_reused_name * 1000000000), round(step_fresh_name * 1000000000)));

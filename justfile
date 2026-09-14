@@ -52,6 +52,10 @@ check-learn:
 serve-learn port="8765":
     ./scripts/build-site tmp/site && cd tmp/site && python3 -m http.server {{port}}
 
+# Run RC01, the recurrent block sweep over R = 1..4 (minutes), and check its diagrams and rows; `just recur write` regenerates them.
+recur mode="check":
+    ./scripts/run-recur-demo {{mode}}
+
 # Run the DN01 dense baseline (about 16 seconds) and check its diagrams and results row; `just dense write` regenerates them.
 dense mode="check":
     ./scripts/run-dense-demo {{mode}}

@@ -3,7 +3,7 @@
   "version": 1,
   "recording_schema": "fixtures/recordings/recording-schema-v0.json",
   "source_repository": "https://github.com/sw-ml-study/moe-microscope.git",
-  "source_revision": "b1aaf35e354720728de2bfa319b20cb8e33f4ca0",
+  "source_revision": "028ceac60871a8cdd11a5638e1e848d8c05eba0f",
   "bundler": "scripts/bundle-program",
   "fixtures": [
     {
@@ -48,6 +48,35 @@
       "frame_count": 13,
       "observation_count": 65,
       "value_count": 137,
+      "steps": [
+        0,
+        25,
+        50,
+        75,
+        100,
+        125,
+        150,
+        175,
+        200,
+        225,
+        250,
+        275,
+        300
+      ]
+    },
+    {
+      "id": "RC01",
+      "lesson": "recurrent-block",
+      "source": "demos/recurrent_block.mlpl",
+      "recording": "fixtures/recordings/recurrent-block-run-v0.json",
+      "preview": "assets/previews/recur-window.svg",
+      "guide": "docs/implementation/host-handoff.md",
+      "recording_sha256": "a000ba9069019ac72f138dc587becb1cc7e30fb2ad3b7719eac5b5ee33885c63",
+      "source_sha256": "88e4f8150aadc61a110eb7bb6a65421fa90a2121907bf34e1cb70dd8b7cf065e",
+      "bundle_sha256": "32709d4272c1425e8a87baefd0045a05139ed8e5320478adf63b4023396cfc0a",
+      "frame_count": 13,
+      "observation_count": 36,
+      "value_count": 521,
       "steps": [
         0,
         25,

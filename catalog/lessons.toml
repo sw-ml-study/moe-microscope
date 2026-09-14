@@ -248,3 +248,19 @@ memory = "586 vocabulary words from 4,390 words of campus text; PPMI [586, 586];
 speed = "vectors in about five seconds; two docent trainings of 40 epochs in about a minute each"
 quality = "the same held-out and paraphrase metrics as CD01 and the matchers; rows CD01b (fine-tuned table) and CD01bf (frozen table)"
 status = "accepted"
+
+[[lesson]]
+id = "RC01"
+slug = "recurrent-block"
+title = "One block applied R times: does repeated compute replace parameters?"
+source = "demos/recurrent_block.mlpl"
+library = ["lib/recur.mlpl", "lib/dense.mlpl"]
+test = ["tests/test_recur.mlpl"]
+previews = ["assets/previews/recur-structure.svg", "assets/previews/recur-sweep.svg", "assets/previews/recur-window.svg"]
+fixture = "fixtures/recordings/recurrent-block-run-v0.json"
+implementation = "from-scratch"
+observations = ["recur/config", "recur/loss/train", "recur/loss/val", "recur/state/1", "recur/state/2", "recur/state/3", "recur/state/4", "recur/argmax/1", "recur/argmax/2", "recur/argmax/3", "recur/argmax/4", "recur/loss/per-recurrence", "recur/accuracy/val", "recur/accuracy/train"]
+memory = "3,812 parameters at every R (the DN01 block); active parameters per token 2,996 at R=1 rising by 2,176 per extra recurrence"
+speed = "the sweep trains four models for 300 epochs each, minutes in the interpreter; ms per token grows with R"
+quality = "validation loss and per-family exact match against R at fixed parameters; the R=4 model's loss when stopped after each recurrence"
+status = "accepted"

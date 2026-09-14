@@ -1,0 +1,38 @@
+# Recurrence: one shared transformer block applied R times to the same token state, with deep supervision (the head scored after every recurrence), so that depth comes from reuse rather than from new parameters.
+include "dense.mlpl";
+
+def u:recur_step(h) {
+  "One recurrence of the shared block: attention with a residual, then the feed-forward network with a residual (recur_att and recur_ffn are the caller's global models; reusing the same values shares the weights, finding F3).";
+  h1 = h + apply(recur_att, h);
+  h1 + apply(recur_ffn, h1)
+}
+
+def u:recur_state(h0, R) {
+  "The token state after R recurrences of the shared block (repeat with a parameter-bound count traces, finding F15).";
+  h = h0;
+  repeat R {
+    h = u:recur_step(h)
+  };
+  h
+}
+
+def u:recur_logits(h) {
+  "Vocabulary logits of a state through the caller's global recur_norm and recur_head.";
+  apply(recur_head, apply(recur_norm, h))
+}
+
+def u:recur_loss(h0, y, mask, V, R) {
+  "Deep supervision: the mean over recurrences of the masked next-token loss of the head applied to each intermediate state, so every recurrence is rewarded for improving the answer.";
+  h = h0;
+  total = 0;
+  repeat R {
+    h = u:recur_step(h);
+    total = total + u:masked_ce(u:recur_logits(h), y, mask, V)
+  };
+  total / R
+}
+
+def u:recur_active_params(p_att, p_ffn, p_norm, p_head, dm, R) {
+  "Parameters touched per token: one embedding row, the shared block R times, the final norm, and the head.";
+  dm + R * (p_att + p_ffn) + p_norm + p_head
+}

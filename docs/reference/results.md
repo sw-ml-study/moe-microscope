@@ -24,3 +24,7 @@ No rows yet. DN01 adds the first row in Saga 1 step 4.
 | LD01 | shared ffn + 16 rank4 deltas top1 d16 T28 120ex 300ep lr0.003 alpha0.01 routerMACs272 | mlpl-repl 0.22.0 | 6132 | 3396 | 1024 | - | 1 | 27168 | - | 0.0496 | 3.456 | 31.69 | 0 | 0 | 0 | 0 | - | 1.682 | 1.528 | 0.241 |
 | LD01r | 16 rank4 deltas only top1 d16 T28 120ex 300ep lr0.003 alpha0.01 routerMACs272 | mlpl-repl 0.22.0 | 5060 | 2324 | 1024 | - | 1 | 18592 | - | 0.0443 | 3.3652 | 28.94 | 0 | 0 | 0 | 0 | - | - | - | - |
 | CD00 | campus snapshot A: 12 places, 28 stories, 965 rows (724 train, 241 val), hash 1356782549, no model | mlpl-repl 0.22.0 | - | - | - | - | - | - | - | 0.2993 | - | - | - | - | - | - | - | - | - | - |
+| RC01@1 | recurrent block R=1 deep supervision, d16 h32 1head T28 120ex 300ep lr0.003 | mlpl-repl 0.22.0 | 3812 | 2996 | - | - | 1 | 23968 | - | 0.0201 | 3.7888 | 44.2 | 0 | 0 | 0 | 0.667 | - | - | - | - |
+| RC01@2 | recurrent block R=2 deep supervision, d16 h32 1head T28 120ex 300ep lr0.003 | mlpl-repl 0.22.0 | 3812 | 5092 | - | - | 1 | 40736 | - | 0.037 | 3.4545 | 31.64 | 0 | 0 | 0 | 0.667 | - | - | - | - |
+| RC01@3 | recurrent block R=3 deep supervision, d16 h32 1head T28 120ex 300ep lr0.003 | mlpl-repl 0.22.0 | 3812 | 7188 | - | - | 1 | 57504 | - | 0.0537 | 3.7294 | 41.65 | 0 | 0 | 0.286 | 0.667 | - | - | - | - |
+| RC01@4 | recurrent block R=4 deep supervision, d16 h32 1head T28 120ex 300ep lr0.003 | mlpl-repl 0.22.0 | 3812 | 9284 | - | - | 1 | 74272 | - | 0.0708 | 4.2207 | 68.08 | 0 | 0 | 0.143 | 0.667 | - | - | - | - |

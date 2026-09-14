@@ -34,7 +34,7 @@ upstream `moe-microscope-followups-2` saga (`mlpl-repl` 08:11, `mlpl-serve`
 | F11 nested traced call lost a parameter used in index arithmetic | gather index arithmetic resolves in the traced scope | `813526d6`, verified against the 13:29 rebuilt binary | probe file expects success ("grad rows 0 0 0" then the selected rows of ones); lessons keep eager slicing by choice |
 | F13 `attention_weights` could not find an attention layer inside `residual(chain(...))` | the walk now enters `residual` and nested `chain` blocks | `8282cd6a`, verified against the 14:37 rebuilt binary | probe file expects success ("weights 5 5"); DN01 keeps its explicit residual by choice, for readability |
 
-## Open, queued upstream as `moe-microscope-followups` (F7, F8, F16, F17, F19, F20, F21, S1; upstream `followups-2` is closing)
+## Open, queued upstream as `moe-microscope-followups` (F7, F8, F16, F17, F19, F20, F21, F22, S1; upstream `followups-2` is closing)
 
 ### F7: a model value cannot be a user-function argument
 
@@ -122,6 +122,26 @@ Workaround: keep `adam` loops at top level (the two CD01b variants are
 inlined). Affects: any helper that wraps training. Proposed fix: resolve the
 optimizer's parameter list against the caller's bindings, or document the
 copy semantics loudly.
+
+### F22: `adam` state is keyed by name and outlives the model; no reset
+
+```
+h = linear(2, 1, 3); train 30 steps
+h = linear(2, 1, 3)        # a fresh model under the same name
+adam(loss(h), h, ...)      # first step differs from the same step on g = linear(2, 1, 3)
+```
+
+Reproducer: `probes/f22_adam_state_by_name.mlpl`. Met in RC01, where a
+sweep re-created the block under the same names for R = 1..4 in one
+process: the R = 4 run reached validation loss 2.88 in the sweep but 4.22
+when trained alone in the server, because runs 2 to 4 started with the
+previous run's Adam moments. The reference says the state "is maintained
+across calls" but not that it survives re-creation, and there is no reset
+builtin. Workaround: one training run per process (the gate scripts loop
+over processes), or unique names per run. Affects: every lesson that trains
+two variants in one process (LD01 and LD01r, CD01b and CD01bf, re-measured
+in the follow-up step). Proposed fix: clear optimizer state when a name is
+rebound to a new model, and add `reset_optimizer()`.
 
 ### F16: the `eval_stream` surface has no source provider, sandbox, or arguments
 

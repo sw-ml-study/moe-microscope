@@ -1,0 +1,263 @@
+# RC01 recurrent block: the DN01 block applied R times with deep supervision at fixed parameters; one R per process (third argument, default 4: adam state is keyed by name and would leak between runs, finding F22); the R = 4 run is also the recording pinned over the server.
+include "../lib/recur.mlpl";
+include "../lib/observe.mlpl";
+include "../lib/svg.mlpl";
+include "../lib/results.mlpl";
+
+print("WHAT THIS SHOWS -- Whether repeated compute replaces parameters: one shared block applied R times, every recurrence scored (deep supervision), the same 3,812 parameters at every R.");
+print("SHAPES -- window [T=28]; state [T, 16] after each recurrence; logits [T, 52]; the sweep compares R = 1, 2, 3, 4.");
+
+out_dir = if list_len(args()) {
+  unwrap(list_get(args(), 0))
+} else {
+  ""
+};
+binary = if gt(list_len(args()), 1) {
+  unwrap(list_get(args(), 1))
+} else {
+  "unknown"
+};
+R_text = if gt(list_len(args()), 2) {
+  unwrap(list_get(args(), 2))
+} else {
+  "4"
+};
+R_arg = if str_eq(R_text, "1") {
+  1
+} else {
+  if str_eq(R_text, "2") {
+    2
+  } else {
+    if str_eq(R_text, "3") {
+      3
+    } else {
+      4
+    }
+  }
+};
+writing = str_len(out_dir);
+m = unwrap(u:domain_load_mixture(u:domain_mixture_path()));
+d = u:domain_build(m);
+w = unwrap(u:domain_windows(d.texts, m.window));
+s = u:domain_split(d.count, m.train_fraction, m.seed);
+V = u:domain_vocab_size();
+T = m.window;
+dm = 16;
+hidden = 32;
+epochs = 300;
+lr = 0.003;
+every = 25;
+ntrain = reduce_mul(shape(s.train));
+nval = reduce_mul(shape(s.val));
+train_x = gather_rows(w.x, s.train);
+train_y = gather_rows(w.y, s.train);
+train_m = gather_rows(w.mask, s.train);
+val_x = gather_rows(w.x, s.val);
+val_y = gather_rows(w.y, s.val);
+val_m = gather_rows(w.mask, s.val);
+posT = u:positions(T, dm);
+r_values = fill([1], R_arg);
+n_runs = 1;
+config = emit_frame("recur/config", 0, [dm, hidden, T, epochs, ntrain, nval, 4]);
+
+R_now = 1;
+emb = embed(V, dm, 0);
+recur_att = chain(rms_norm(dm), causal_attention(dm, 1, 1));
+recur_ffn = chain(rms_norm(dm), linear(dm, hidden, 2), relu_layer(), linear(hidden, dm, 3));
+recur_norm = rms_norm(dm);
+recur_head = linear(dm, V, 4);
+p_emb = param_count(emb);
+p_att = param_count(recur_att);
+p_ffn = param_count(recur_ffn);
+p_norm = param_count(recur_norm);
+p_head = param_count(recur_head);
+params = p_emb + p_att + p_ffn + p_norm + p_head;
+
+def u:forward(ids) {
+  "Logits of a window after R_now recurrences (positions for the window's own length).";
+  n = reduce_mul(shape(ids));
+  u:recur_logits(u:recur_state(apply(emb, ids) + u:positions(n, dm), R_now))
+}
+
+def u:forward_at(ids, R) {
+  "Logits after exactly R recurrences.";
+  n = reduce_mul(shape(ids));
+  u:recur_logits(u:recur_state(apply(emb, ids) + u:positions(n, dm), R))
+}
+
+def u:val_loss_at(R) {
+  "Validation masked loss when stopping after R recurrences of the current model.";
+  total = 0;
+  count = 0;
+  i = 0;
+  while lt(i, nval) {
+    mrow = take(val_m, 0, i);
+    total = total + u:masked_ce(u:forward_at(take(val_x, 0, i), R), take(val_y, 0, i), mrow, V) * reduce_add(mrow);
+    count = count + reduce_add(mrow);
+    i = i + 1
+  };
+  total / count
+}
+
+sweep_val = fill([0], 0);
+sweep_train = fill([0], 0);
+sweep_ms = fill([0], 0);
+sweep_acc = fill([0], 0);
+sweep_prose = fill([0], 0);
+rows_md = "";
+run = 0;
+while lt(run, n_runs) {
+  R_now = take(r_values, 0, run);
+  emb = embed(V, dm, 0);
+  recur_att = chain(rms_norm(dm), causal_attention(dm, 1, 1));
+  recur_ffn = chain(rms_norm(dm), linear(dm, hidden, 2), relu_layer(), linear(hidden, dm, 3));
+  recur_norm = rms_norm(dm);
+  recur_head = linear(dm, V, 4);
+  train_ms = 0;
+  e = 0;
+  while lt(e, epochs) {
+    ts = clock_ms();
+    i = 0;
+    while lt(i, ntrain) {
+      x1 = take(train_x, 0, i);
+      y1 = take(train_y, 0, i);
+      m1 = take(train_m, 0, i);
+      adam(u:recur_loss(apply(emb, x1) + posT, y1, m1, V, R_now), [emb, recur_att, recur_ffn, recur_norm, recur_head], lr, 0.9, 0.999, 0.00000001);
+      i = i + 1
+    };
+    train_ms = train_ms + (clock_ms() - ts);
+    e = e + 1;
+    if eq(mod(e, every), 0) {
+      tl = u:set_loss(:u:forward, train_x, train_y, train_m, ntrain, V);
+      vl = u:set_loss(:u:forward, val_x, val_y, val_m, nval, V);
+      recorded = if eq(R_now, 4) {
+        emit_frame("recur/loss/train", e, tl) + emit_frame("recur/loss/val", e, vl)
+      } else {
+        0
+      };
+      print("R", R_now, "epoch", e, "train loss", u:svg_round(tl, 4), "val loss", u:svg_round(vl, 4))
+    } else {
+      0
+    }
+  };
+  rv = u:evaluate_prompts(:u:forward, d, s.val, 12);
+  rt = u:evaluate_prompts(:u:forward, d, s.train, 12);
+  final_val = u:set_loss(:u:forward, val_x, val_y, val_m, nval, V);
+  final_train = u:set_loss(:u:forward, train_x, train_y, train_m, ntrain, V);
+  ms_per_token = train_ms / (epochs * ntrain * T);
+  active = u:recur_active_params(p_att, p_ffn, p_norm, p_head, dm, R_now);
+  sweep_val = concat(sweep_val, final_val);
+  sweep_train = concat(sweep_train, final_train);
+  sweep_ms = concat(sweep_ms, ms_per_token);
+  sweep_acc = concat(sweep_acc, rv.accuracy.overall);
+  sweep_prose = concat(sweep_prose, rv.accuracy.prose);
+  row = {lesson: str_concat("RC01@", to_string(R_now)), config: str_concat(str_concat("recurrent block R=", to_string(R_now)), " deep supervision, d16 h32 1head T28 120ex 300ep lr0.003"), binary: binary, params: params, active_params: active, expert_evals: 1, bytes_per_token: active * 8, ms_per_token: u:svg_round(ms_per_token, 4), val_loss: u:svg_round(final_val, 4), ppl: u:svg_round(exp(final_val), 2), arith_acc: u:svg_round(rv.accuracy.arithmetic, 3), seq_acc: u:svg_round(rv.accuracy.sequence, 3), mlpl_acc: u:svg_round(rv.accuracy.mlpl, 3), prose_acc: u:svg_round(rv.accuracy.prose, 3)};
+  rows_md = str_concat(rows_md, str_concat(u:results_row(row), "\n"));
+  print("RESULT -- R", R_now, "params", params, "active/token", active, "val loss", u:svg_round(final_val, 4), "val acc [arith seq mlpl prose all]", rv.accuracy.arithmetic, rv.accuracy.sequence, rv.accuracy.mlpl, rv.accuracy.prose, rv.accuracy.overall, "train acc", rt.accuracy.overall, "ms/token", u:svg_round(ms_per_token, 4));
+  run = run + 1
+};
+
+# The per-recurrence view of the trained model (recorded when R = 4).
+example = "2+3=|5.";
+ex_ids = u:pad_to(unwrap(u:domain_encode(example)), 7);
+h0 = apply(emb, ex_ids) + u:positions(7, dm);
+s1 = emit_frame("recur/state/1", epochs, u:recur_state(h0, 1));
+s2 = emit_frame("recur/state/2", epochs, u:recur_state(h0, 2));
+s3 = emit_frame("recur/state/3", epochs, u:recur_state(h0, 3));
+s4 = emit_frame("recur/state/4", epochs, u:recur_state(h0, 4));
+a1 = emit_frame("recur/argmax/1", epochs, argmax(u:recur_logits(s1), 1));
+a2 = emit_frame("recur/argmax/2", epochs, argmax(u:recur_logits(s2), 1));
+a3 = emit_frame("recur/argmax/3", epochs, argmax(u:recur_logits(s3), 1));
+a4 = emit_frame("recur/argmax/4", epochs, argmax(u:recur_logits(s4), 1));
+per_r = emit_frame("recur/loss/per-recurrence", epochs, [u:val_loss_at(1), u:val_loss_at(2), u:val_loss_at(3), u:val_loss_at(4)]);
+rv4 = u:evaluate_prompts(:u:forward, d, s.val, 12);
+rt4 = u:evaluate_prompts(:u:forward, d, s.train, 12);
+acc_val = emit_frame("recur/accuracy/val", epochs, [rv4.accuracy.arithmetic, rv4.accuracy.sequence, rv4.accuracy.mlpl, rv4.accuracy.prose, rv4.accuracy.overall]);
+acc_train = emit_frame("recur/accuracy/train", epochs, [rt4.accuracy.arithmetic, rt4.accuracy.sequence, rt4.accuracy.mlpl, rt4.accuracy.prose, rt4.accuracy.overall]);
+print("PER-RECURRENCE -- val loss of this model when stopped after 1..4 recurrences", per_r);
+
+def u:structure_svg() {
+  "Diagram: the shared block reused R times, with parameter counts and the deep-supervision taps.";
+  page = u:svg_head("Recurrent block data flow", "One block (attention with a residual, FFN with a residual) applied R times to the same token state; the head reads every intermediate state during training (deep supervision) and the last one at inference; the parameter count does not change with R.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "RECURRENT BLOCK -- one block, applied R times"));
+  page = str_concat(page, u:svg_text(32, 60, "m", str_concat(str_concat(str_concat("WHAT: ", to_string(params)), " parameters at every R (embedding "), str_concat(str_concat(to_string(p_emb), ", block "), str_concat(str_concat(to_string(p_att + p_ffn), ", norm and head "), str_concat(to_string(p_norm + p_head), "); per token the block's parameters are touched R times."))))));
+  page = str_concat(page, u:svg_box(40, 90, 150, 64, "embed + position", "[T] -> [T, 16]", str_concat(to_string(p_emb), " params")));
+  r = 0;
+  while lt(r, 4) {
+    x = 220 + r * 170;
+    page = str_concat(page, u:svg_box(x, 90, 150, 64, str_concat("recurrence ", to_string(r + 1)), "h + att(h); h + ffn(h)", "same weights"));
+    page = str_concat(page, u:svg_text(x + 50, 180, "s", str_concat("tap ", to_string(r + 1))));
+    page = str_concat(page, u:svg_rect(x + 60, 158, 30, 14, "cell"));
+    r = r + 1
+  };
+  page = str_concat(page, u:svg_text(40, 214, "k", "deep supervision: loss = mean over r of masked_ce(head(norm(h_r)))"));
+  page = str_concat(page, u:svg_text(40, 236, "", str_concat(str_concat("active parameters per token: R=1 ", to_string(u:recur_active_params(p_att, p_ffn, p_norm, p_head, dm, 1))), str_concat(str_concat("   R=2 ", to_string(u:recur_active_params(p_att, p_ffn, p_norm, p_head, dm, 2))), str_concat(str_concat("   R=3 ", to_string(u:recur_active_params(p_att, p_ffn, p_norm, p_head, dm, 3))), str_concat("   R=4 ", to_string(u:recur_active_params(p_att, p_ffn, p_norm, p_head, dm, 4))))))));
+  page = str_concat(page, u:svg_rect(30, 270, 900, 250, "panel"));
+  page = str_concat(page, u:svg_text(50, 298, "", "WHY: depth normally costs parameters, one new layer per level. HRM and TRM show that reasoning depth can come from"));
+  page = str_concat(page, u:svg_text(50, 320, "", "     applying one small block several times, so compute buys quality that storage does not have to pay for."));
+  page = str_concat(page, u:svg_text(50, 346, "", "WHY: scoring every intermediate state (deep supervision) rewards each recurrence for improving the answer, so the"));
+  page = str_concat(page, u:svg_text(50, 368, "", "     block learns a step that is worth repeating rather than a function that only works after exactly R uses."));
+  page = str_concat(page, u:svg_text(50, 394, "", "HOW: u:recur_state applies the same global block inside repeat R (a parameter-bound count traces, finding F15);"));
+  page = str_concat(page, u:svg_text(50, 416, "", "     chain(b, b) would copy the block (finding F3), so sharing is spelled by reusing one model value; u:recur_loss sums"));
+  page = str_concat(page, u:svg_text(50, 438, "", "     the masked loss at every recurrence and divides by R; adam updates the one block through all R uses at once."));
+  page = str_concat(page, u:svg_text(50, 466, "m", "R=1 is exactly DN01 (tests/test_recur.mlpl asserts it); the sweep diagram shows what R=2..4 buy at the same parameters."));
+  page = str_concat(page, u:svg_text(50, 494, "m", "Each R trains in its own process (adam state is keyed by name, finding F22); the R=4 run is the recording the live demo replays."));
+  str_concat(page, "</svg>")
+}
+
+def u:window_svg() {
+  "Diagram: the example window's prediction after each recurrence of the R=4 model, beside the target.";
+  page = u:svg_head("One window through the recurrences", "The example window 2+3=|5. after each of four recurrences of the trained R=4 block: the argmax next token at every position beside the target, and the state's first values.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "ONE WINDOW -- the prediction after each recurrence"));
+  page = str_concat(page, u:svg_text(32, 60, "m", str_concat("WHAT: window ", str_concat(example, ", positions 0..6; the graded positions are the answer 5 and the stop token."))));
+  page = str_concat(page, u:svg_text(40, 92, "k", "input"));
+  page = str_concat(page, u:svg_chars(str_slice(example, 0, 7), 200, 76, 30));
+  target = unwrap(u:domain_window(example, 7));
+  page = str_concat(page, u:svg_text(40, 132, "k", "target (next)"));
+  page = str_concat(page, u:svg_cells(target.y, 200, 116, 30, target.mask));
+  page = str_concat(page, u:svg_text(40, 172, "k", "after r=1"));
+  page = str_concat(page, u:svg_cells(a1, 200, 156, 30, eq(a1, target.y) * target.mask));
+  page = str_concat(page, u:svg_text(40, 212, "k", "after r=2"));
+  page = str_concat(page, u:svg_cells(a2, 200, 196, 30, eq(a2, target.y) * target.mask));
+  page = str_concat(page, u:svg_text(40, 252, "k", "after r=3"));
+  page = str_concat(page, u:svg_cells(a3, 200, 236, 30, eq(a3, target.y) * target.mask));
+  page = str_concat(page, u:svg_text(40, 292, "k", "after r=4"));
+  page = str_concat(page, u:svg_cells(a4, 200, 276, 30, eq(a4, target.y) * target.mask));
+  page = str_concat(page, u:svg_text(460, 92, "k", "state after each recurrence, position 4 (the bar before the answer), first 8 of 16 values"));
+  page = str_concat(page, u:svg_text(460, 116, "", str_concat("r=1  ", u:svg_vec(u:domain_slice(take(s1, 0, 4), 0, 8), 2))));
+  page = str_concat(page, u:svg_text(460, 138, "", str_concat("r=2  ", u:svg_vec(u:domain_slice(take(s2, 0, 4), 0, 8), 2))));
+  page = str_concat(page, u:svg_text(460, 160, "", str_concat("r=3  ", u:svg_vec(u:domain_slice(take(s3, 0, 4), 0, 8), 2))));
+  page = str_concat(page, u:svg_text(460, 182, "", str_concat("r=4  ", u:svg_vec(u:domain_slice(take(s4, 0, 4), 0, 8), 2))));
+  page = str_concat(page, u:svg_rect(30, 330, 900, 190, "panel"));
+  page = str_concat(page, u:svg_text(50, 358, "", "WHY: a recurrent block is only interesting if the answer improves as the state is refined; highlighted cells are graded"));
+  page = str_concat(page, u:svg_text(50, 380, "", "     positions where the argmax equals the target after that recurrence."));
+  page = str_concat(page, u:svg_text(50, 406, "", "HOW: recur/state/r and recur/argmax/r are emitted for r = 1..4 from the trained R=4 model on this window; the live demo"));
+  page = str_concat(page, u:svg_text(50, 428, "", "     replays them frame by frame; the values here are the same recorded ones."));
+  page = str_concat(page, u:svg_text(50, 456, "m", "Ids are alphabet indices (u:domain_alphabet); id 0 is padding. The state rows are what the next recurrence reads."));
+  str_concat(page, "</svg>")
+}
+
+w1 = if writing * eq(R_arg, 4) {
+  write_atomic(str_concat(out_dir, "/recur-structure.svg"), u:structure_svg())
+} else {
+  ok(0)
+};
+metrics = {R: R_arg, params: params, active: u:recur_active_params(p_att, p_ffn, p_norm, p_head, dm, R_arg), val_loss: take(sweep_val, 0, 0), train_loss: take(sweep_train, 0, 0), overall: take(sweep_acc, 0, 0), prose: take(sweep_prose, 0, 0), per_r: per_r};
+w2 = if writing {
+  write_atomic(str_concat(str_concat(out_dir, "/metrics-"), str_concat(to_string(R_arg), ".json")), unwrap(to_json(metrics)))
+} else {
+  ok(0)
+};
+w3 = if writing * eq(R_arg, 4) {
+  write_atomic(str_concat(out_dir, "/recur-window.svg"), u:window_svg())
+} else {
+  ok(0)
+};
+w4 = if writing {
+  write_atomic(str_concat(out_dir, "/results-rows.md"), rows_md)
+} else {
+  ok(0)
+};
+print("MEMORY -- params", params, "at every R; active/token per R", u:recur_active_params(p_att, p_ffn, p_norm, p_head, dm, 1), u:recur_active_params(p_att, p_ffn, p_norm, p_head, dm, 2), u:recur_active_params(p_att, p_ffn, p_norm, p_head, dm, 3), u:recur_active_params(p_att, p_ffn, p_norm, p_head, dm, 4));
+print("SPEED -- ms/token per run", sweep_ms, "(", binary, ")");
+print("QUALITY -- val loss per run", sweep_val, "overall acc per run", sweep_acc, "prose acc per run", sweep_prose);

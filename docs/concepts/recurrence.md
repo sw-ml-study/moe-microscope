@@ -28,11 +28,21 @@ as R grows.
 
 Same parameters, better held-out exact match at some R greater than 1.
 
+## What the evidence says
+
+RC01 (one block, deep supervision, 3,812 parameters at every R, one process
+per R): validation loss 3.79 at R=1 (DN01 exactly), 3.45 at R=2, 3.73 at R=3
+with the first held-out MLPL answers of a dense model, 4.22 at R=4. Every
+model scores best when stopped after its first recurrence (3.29 for the R=2
+model), so the gain is a regularization effect of scoring every state, not
+a converging reasoning loop. One seed, 90 windows.
+
 ## Status
 
-Planned: RC01 and RM01 in the recurrence-and-Engram saga. Upstream sw-MLPL
-now traces `repeat` with literal and parameter-bound counts (findings F6
-and F15, resolved), so depth can be a function argument.
+RC01 measured; RM01 (routing over reasoning time) next in the
+recurrence-and-Engram saga. sw-MLPL traces `repeat` with literal and
+parameter-bound counts (findings F6 and F15, resolved), so depth is a
+function argument.
 
 ## Deeper reference
 

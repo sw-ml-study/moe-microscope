@@ -1,0 +1,63 @@
+# RC01 sweep drawer: reads the per-R metrics written by demos/recurrent_block.mlpl (one process per R, finding F22) and draws the recurrence sweep diagram from those recorded values.
+include "../lib/svg.mlpl";
+
+print("WHAT THIS SHOWS -- The recurrence sweep at fixed parameters, composed from four separate training runs (R = 1..4), each in its own process.");
+
+dir = unwrap(list_get(args(), 0));
+
+def u:load(R) {
+  "The metrics record of one run.";
+  unwrap(parse_json(unwrap(read_text(str_concat(str_concat(dir, "/metrics-"), str_concat(to_string(R), ".json"))))))
+}
+
+m1 = u:load(1);
+m2 = u:load(2);
+m3 = u:load(3);
+m4 = u:load(4);
+val = [m1.val_loss, m2.val_loss, m3.val_loss, m4.val_loss];
+acc = [m1.overall, m2.overall, m3.overall, m4.overall];
+prose = [m1.prose, m2.prose, m3.prose, m4.prose];
+per_r = m4.per_r;
+
+def u:bars(x0, y0, vals, labels, scale, cls) {
+  "Labeled horizontal bars with their values.";
+  page = "";
+  i = 0;
+  while lt(i, reduce_mul(shape(vals))) {
+    y = y0 + i * 22;
+    v = take(vals, 0, i);
+    page = str_concat(page, u:svg_text(x0, y + 12, "", unwrap(list_get(labels, i))));
+    page = str_concat(page, u:svg_rect(x0 + 60, y + 1, v * scale, 14, cls));
+    page = str_concat(page, u:svg_text(x0 + 66 + v * scale, y + 12, "s", to_string(u:svg_round(v, 3))));
+    i = i + 1
+  };
+  page
+}
+
+def u:sweep_svg() {
+  "Diagram: validation loss, accuracy against R, and the per-recurrence loss of the R=4 model.";
+  labels = str_split("R=1|R=2|R=3|R=4", "|");
+  page = u:svg_head("Recurrence sweep", "Validation loss and held-out accuracy against the number of recurrences at fixed parameters, and the validation loss of the R=4 model when stopped after each recurrence; four separate training runs.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "RECURRENCE SWEEP -- what R buys at fixed parameters"));
+  page = str_concat(page, u:svg_text(32, 60, "m", str_concat(str_concat("WHAT: the same ", to_string(m1.params)), " parameters trained 300 epochs at R = 1, 2, 3, 4, one process per R; every number is a measured result.")));
+  page = str_concat(page, u:svg_text(40, 92, "k", "validation loss (lower is better)"));
+  page = str_concat(page, u:bars(40, 100, val, labels, 42, "tr"));
+  page = str_concat(page, u:svg_text(340, 92, "k", "held-out exact match, overall"));
+  page = str_concat(page, u:bars(340, 100, acc, labels, 300, "va"));
+  page = str_concat(page, u:svg_text(640, 92, "k", "held-out prose exact match"));
+  page = str_concat(page, u:bars(640, 100, prose, labels, 300, "va"));
+  page = str_concat(page, u:svg_text(40, 206, "k", "R=4 model, validation loss when stopped after r recurrences"));
+  page = str_concat(page, u:bars(40, 214, per_r, str_split("r=1|r=2|r=3|r=4", "|"), 42, "tr"));
+  page = str_concat(page, u:svg_rect(30, 320, 900, 200, "panel"));
+  page = str_concat(page, u:svg_text(50, 348, "", "WHY: if the block learned a repeatable step, stopping early should hurt and R=4 should beat R=1 at the same storage;"));
+  page = str_concat(page, u:svg_text(50, 370, "", "     if not, recurrence adds compute (R times the block per token) without quality, which is also a result."));
+  page = str_concat(page, u:svg_text(50, 396, "", "HOW: each R trains from the same seeds with the same budget in its own process (adam state is keyed by name and would"));
+  page = str_concat(page, u:svg_text(50, 418, "", "     leak between runs, finding F22); val loss is the masked loss at the final recurrence; accuracy is greedy exact match"));
+  page = str_concat(page, u:svg_text(50, 440, "", "     on the 30 held-out prompts; the per-recurrence panel re-scores the trained R=4 model after 1, 2, 3, 4 recurrences."));
+  page = str_concat(page, u:svg_text(50, 468, "m", "Limitation: 90 training windows and one seed (finding 4: data, not epochs, moves the held-out columns); ms per token"));
+  page = str_concat(page, u:svg_text(50, 490, "m", "and the rows RC01@1..4 are in docs/reference/results.md, never drawn here, so this diagram stays byte-stable."));
+  str_concat(page, "</svg>")
+}
+
+w = write_atomic(str_concat(dir, "/recur-sweep.svg"), u:sweep_svg());
+print("SWEEP -- val loss", val, "overall acc", acc, "prose acc", prose, "R=4 per-recurrence", per_r);
