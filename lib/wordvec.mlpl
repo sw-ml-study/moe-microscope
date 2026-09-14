@@ -1,0 +1,209 @@
+# Word vectors from the campus's own text: hashed vocabulary, sentence-bounded co-occurrence counts, positive pointwise mutual information, a rank-k factorization by orthogonal iteration, nearest neighbours, and an Engram-style hashed table the docent can fine-tune.
+include "matcher.mlpl";
+include "docent.mlpl";
+
+def u:wv_hash_slots() {
+  "Hash slots used to give every distinct word an id without a dictionary (collisions merge words; rare at this corpus size).";
+  4096
+}
+
+def u:wv_corpus(text) {
+  "Token stream of a normalized corpus (one sentence per line): hashed word slots [N] and sentence ids [N], stop words and one-character tokens dropped.";
+  lines = str_split(text, "\n");
+  nl = list_len(lines);
+  slots = fill([0], 0);
+  sids = fill([0], 0);
+  s = 0;
+  while lt(s, nl) {
+    line = u:lg(lines, s);
+    words = str_split(line, " ");
+    nw = list_len(words);
+    i = 0;
+    while lt(i, nw) {
+      w = u:lg(words, i);
+      keep = gt(str_len(w), 1) * (1 - u:matcher_is_stop(w));
+      slots = if keep {
+        concat(slots, u:docent_slot(w, u:wv_hash_slots()))
+      } else {
+        slots
+      };
+      sids = if keep {
+        concat(sids, s)
+      } else {
+        sids
+      };
+      i = i + 1
+    };
+    s = s + 1
+  };
+  {slots: slots, sids: sids, n: reduce_mul(shape(slots))}
+}
+
+def u:wv_vocab(text, min_count) {
+  "Vocabulary of words seen at least min_count times, in order of first appearance: the word list, each token's compact id (-1 when out of vocabulary), sentence ids, and the size.";
+  corpus = u:wv_corpus(text);
+  n = corpus.n;
+  counts = fill([u:wv_hash_slots()], 0);
+  i = 0;
+  while lt(i, n) {
+    slot = take(corpus.slots, 0, i);
+    counts = scatter(counts, slot, take(counts, 0, slot) + 1);
+    i = i + 1
+  };
+  map = fill([u:wv_hash_slots()], -1);
+  words = "";
+  v = 0;
+  lines = str_split(text, "\n");
+  nl = list_len(lines);
+  s = 0;
+  while lt(s, nl) {
+    ws = str_split(u:lg(lines, s), " ");
+    nw = list_len(ws);
+    j = 0;
+    while lt(j, nw) {
+      w = u:lg(ws, j);
+      keep = gt(str_len(w), 1) * (1 - u:matcher_is_stop(w));
+      slot = if keep {
+        u:docent_slot(w, u:wv_hash_slots())
+      } else {
+        0
+      };
+      fresh = keep * gt(take(counts, 0, slot) + 1, min_count) * eq(take(map, 0, slot), -1);
+      map = if fresh {
+        scatter(map, slot, v)
+      } else {
+        map
+      };
+      words = if fresh {
+        u:row_join(words, w)
+      } else {
+        words
+      };
+      v = v + fresh;
+      j = j + 1
+    };
+    s = s + 1
+  };
+  ids = fill([n], -1);
+  i = 0;
+  while lt(i, n) {
+    ids = scatter(ids, i, take(map, 0, take(corpus.slots, 0, i)));
+    i = i + 1
+  };
+  {words: str_split(words, "\n"), ids: ids, sids: corpus.sids, size: v, tokens: n}
+}
+
+def u:wv_cooccurrence(ids, sids, size, window) {
+  "Symmetric co-occurrence counts [V, V] over pairs at distance 1 to window within the same sentence; out-of-vocabulary tokens contribute nothing.";
+  n = reduce_mul(shape(ids));
+  inv = eq(ids, -1);
+  safe = ids * (1 - inv);
+  O = one_hot(safe, size) * reshape(1 - inv, [n, 1]);
+  C = fill([size, size], 0);
+  d = 1;
+  while lt(d, window + 1) {
+    m = n - d;
+    A = gather_rows(O, range(m));
+    B = gather_rows(O, d + range(m));
+    valid = eq(u:domain_slice(sids, 0, m), u:domain_slice(sids, d, m));
+    Bv = B * reshape(valid, [m, 1]);
+    C = C + matmul(transpose(A), Bv) + matmul(transpose(Bv), A);
+    d = d + 1
+  };
+  C
+}
+
+def u:wv_ppmi(C) {
+  "Positive pointwise mutual information of a co-occurrence matrix: log of observed over expected joint probability, floored at zero.";
+  total = reduce_add(C) + 0.000000000001;
+  r = reduce_add(C, 1);
+  V = reduce_mul(shape(r));
+  expected = matmul(reshape(r, [V, 1]), reshape(r, [1, V])) / (total * total);
+  relu(log((C / total + 0.000000000001) / (expected + 0.000000000001)))
+}
+
+def u:wv_column(X, j) {
+  "Column j of a rank-two matrix as a rank-one vector.";
+  reshape(take(X, 1, j), [reduce_mul(shape(take(X, 1, j)))])
+}
+
+def u:wv_orthonormalize(X) {
+  "Gram-Schmidt over the columns of X: an orthonormal basis of the same span (a zero column stays zero).";
+  V = reduce_mul(shape(take(X, 1, 0)));
+  k = reduce_mul(shape(take(X, 0, 0)));
+  Q = reshape(u:wv_column(X, 0) / (sqrt(reduce_add(u:wv_column(X, 0) * u:wv_column(X, 0))) + 0.000000001), [V, 1]);
+  j = 1;
+  while lt(j, k) {
+    v = u:wv_column(X, j);
+    i = 0;
+    while lt(i, j) {
+      q = u:wv_column(Q, i);
+      v = v - reduce_add(q * v) * q;
+      i = i + 1
+    };
+    q = v / (sqrt(reduce_add(v * v)) + 0.000000001);
+    Q = concat(Q, reshape(q, [V, 1]), 1);
+    j = j + 1
+  };
+  Q
+}
+
+def u:wv_factor(M, k, iters, seed) {
+  "Rank-k factorization of a symmetric matrix by orthogonal iteration: k random columns, repeatedly multiplied by M and re-orthonormalized; returns the row-normalized projection M Q as word vectors [V, k].";
+  V = reduce_mul(shape(take(M, 0, 0)));
+  Q = u:wv_orthonormalize(random(seed, [V, k]));
+  t = 0;
+  while lt(t, iters) {
+    Q = u:wv_orthonormalize(matmul(M, Q));
+    t = t + 1
+  };
+  X = matmul(M, Q);
+  norms = sqrt(reduce_add(X * X, 1)) + 0.000000001;
+  X / reshape(norms, [V, 1])
+}
+
+def u:wv_word_index(vocab, w) {
+  "Compact id of a word in the vocabulary, or -1.";
+  n = vocab.size;
+  found = -1;
+  i = 0;
+  while lt(i, n) {
+    found = if str_eq(u:lg(vocab.words, i), w) {
+      i
+    } else {
+      found
+    };
+    i = i + 1
+  };
+  found
+}
+
+def u:wv_neighbours(W, i, k) {
+  "Indices of the k nearest words to word i by cosine (rows are unit vectors), the word itself excluded.";
+  sims = reshape(matmul(W, reshape(take(W, 0, i), [reduce_mul(shape(take(W, 0, i))), 1])), [reduce_mul(shape(take(W, 1, 0)))]);
+  sims = scatter(sims, i, -2);
+  argtop_k(sims, k)
+}
+
+def u:wv_table(W, vocab, slots, seed) {
+  "Engram-style hashed table [slots, k]: rows for vocabulary words at the docent's hash slot hold their vectors; every other row is a small seeded random vector; returns the table, the filled-row count, and the collision count.";
+  V = vocab.size;
+  k = reduce_mul(shape(take(W, 0, 0)));
+  flat = reshape(random(seed, [slots, k]) * 0.05, [slots * k]);
+  used = fill([slots], 0);
+  collisions = 0;
+  i = 0;
+  while lt(i, V) {
+    slot = u:docent_slot(u:lg(vocab.words, i), slots);
+    collisions = collisions + take(used, 0, slot);
+    used = scatter(used, slot, 1);
+    row = take(W, 0, i);
+    j = 0;
+    while lt(j, k) {
+      flat = scatter(flat, slot * k + j, take(row, 0, j));
+      j = j + 1
+    };
+    i = i + 1
+  };
+  {table: reshape(flat, [slots, k]), filled: reduce_add(used), collisions: collisions}
+}

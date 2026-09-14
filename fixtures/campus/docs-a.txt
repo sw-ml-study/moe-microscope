@@ -1,0 +1,436 @@
+software wrighter research campus
+growing campus of projects experiments and ideas
+the campus is painted mockup today you can hover click and follow directories and the interactive application that replaces it is planned
+computer history museum
+vintage systems emulations interactive demos
+three wings are open with running emulators the other wings and the lobby exhibits are placeholders that say opening soon
+ibm 1130 wing
+the 1131 console its peripherals and the toolchain written to program it
+the 1130 system emulator runs the wing other peripherals the 1442 card reader and its radio demo among them are still being added
+ibm 1130 system emulator
+yew rust wasm emulation of the 1130 system
+the emulator runs the 1130 system in the browser today it is usable and it keeps gaining peripherals and polish
+processors and architectures
+instruction sets as artifacts first installation the rca cdp1802 cosmac
+one installation so far the rca cdp1802 other instruction sets are planned
+rca cosmac 1802
+cosmac elf simulator and input output on the 1802 in yew rust wasm
+both demos run today the cosmac elf assembly emulator and the input and output demo
+computer science building
+embedded systems architectures languages emulators demos tools
+several wings are open with live demos on the cor24 processor and the building hardware interfaces wing is still planned
+tiny forth apl lisp and more
+most languages in this wing run in the browser today few such as the fortran compiler are research phase
+an apl interpreter on cor24 in the browser
+the apl interpreter runs on the emulated cor24 in the browser today and is usable it is small interpreter not full apl system
+computational sciences institute
+mathematics machine learning artificial intelligence
+several wings are open the sw mlpl playground the mathematics wings and the machine learning wing with two browser demos the moe microscope live demo for this lobby is planned
+data models training evaluation
+two demos run in the browser today the serial moe fpga emulator and the neural network lab bench the two microscopes are in progress
+the moe microscope
+tiny mixture of experts model you can see all of and where the docent was trained
+the repository is public with its diagrams and measured results and the docent you are talking to was trained there the live demo page that steps through the model is planned and not published yet
+welcome to the campus
+why map instead of list
+inside the museum
+emulation as preservation
+the 1130 wing
+toolchain for 1965 machine
+computer for one department
+the disk in the desk
+reading the lights
+instruction sets as artifacts
+why an instruction set is worth keeping
+chip for hobbyists and spacecraft
+the elf on the kitchen table
+sixteen registers and one trick
+the computer science building
+one small cpu underneath
+wing of small languages
+why implement so many
+notation as tool of thought
+one symbol per idea
+interactive from the start
+ideas become understanding
+one language for the whole building
+watching models learn
+lab bench in the browser
+model you can see all of
+where the docent comes from
+experts that specialise on their own
+you are on painted map of the software wrighter projects each building is field each wing subject and each exhibit is real work you can run in your browser hover building to see what it holds and click to walk in
+list of repositories tells you nothing about how the work fits together the campus puts related things near each other so walk through it is also tour of the ideas
+this museum keeps machines alive as emulators every open wing has at least one system you can run the ibm 1130 minicomputer the system 360 and 390 mainframes and the rca 1802 microprocessor
+none of these machines runs on real hardware each is program that behaves like the original written so that its console cards and lights can be watched in browser
+this wing is built around one machine the ibm 1130 and everything that was plugged into it the 1442 card read punch the 2310 disk the 1132 printer the emulator in the middle of the room runs them together
+the wing also holds an assembler and utilities written recently to program the 1130 again so visitor can write program punch it to virtual cards and watch it run
+ibm announced the 1130 in 1965 as computer small and cheap enough for single engineering department or college laboratory it was 16 bit machine usually programmed in fortran and many people wrote their first program on one
+the 2310 disk cartridge sat inside the console desk it held about half million words and gave the 1130 disk operating system when many small computers still lived on cards and tape
+operators learned to read the console lights the way driver reads dashboard program in tight loop made pattern you could recognise across the room and the emulator reproduces those patterns
+this wing treats an instruction set as museum piece the first installation is the rca cdp1802 and its exhibit lets you assemble code for the chip and watch it step through the program
+hardware wears out but an instruction set can be preserved exactly once the emulator is right every program ever written for the chip runs again
+the rca cdp1802 introduced in 1976 was an 8 bit cmos microprocessor its low power use made it favourite for hobby computers like the cosmac elf and for spacecraft including the galileo probe to jupiter
+the cosmac elf was described in popular electronics in 1976 as computer you could build for about hundred dollars with toggle switches for input and pair of hex displays for output the emulator here reproduces that panel
+the 1802 has sixteen 16 bit registers and any of them can serve as the program counter switching which register is the program counter is how the chip calls subroutine without stack
+the wings here are about making things run small cpu called cor24 languages implemented on it an operating system emulators and the tools that tie them together
+most exhibits in this building share substrate the cor24 processor language built on it can run in browser because the processor itself is emulated there
+every language here is working implementation you can type into tiny pascal forth lisp apl basic snobol4 and others each running on the emulated cor24
+implementing language is the surest way to understand it each interpreter in this wing is small enough to read and the differences between them show what each language decided to make easy
+apl began as mathematical notation invented by kenneth iverson in the late 1950s for describing algorithms it became programming language when ibm implemented it in the 1960s and its one symbol operators still look like nothing else
+each apl glyph is whole operation on an array reverse sort sum along an axis program that would be page in another language is often single line which is why apl keyboards and fonts became part of its culture
+apl was one of the first languages used at terminal typing an expression and seeing the answer at once the exhibit keeps that feel type line get an array back
+this institute holds the sw ml study family an array language built for machine learning and the mathematics algorithms and machine learning experiments written in it every exhibit here can run in your browser
+every exhibit in this building is written in sw mlpl an array language made for machine learning the same interpreter that runs on laptop also runs in the browser which is how the demos travel
+this wing keeps microscopes programs that record every intermediate value of training run so you can watch model learn instead of reading about it it also holds lab bench that trains tiny networks in your browser
+the neural network lab bench trains small networks on and or xor and quadrant task while you watch the weights move it is the simplest honest picture of what training is
+the moe microscope is mixture of experts language model of few thousand parameters built one mechanism at time so that every router decision and every expert can be looked at larger models hide these parts this one is small enough to show them
+the docent you are talking to was trained in the microscope on sentences generated from this campus catalog it predicts only what you want and where to send you every word it says comes from the catalog which is why it cannot invent an exhibit
+nobody assigns subjects to the experts the model is trained the routing is measured and the experts turn out to have split the work between themselves the microscope shows that map rather than assuming it
+sw comp history ibm 1130 rs
+an interactive browser based educational platform for learning the ibm 1130 computer system
+the ibm 1130 was 16 bit minicomputer introduced by ibm in 1965 widely used in scientific and educational institutions
+try it online
+write and execute ibm 1130 assembly code with real time register and memory visualization
+authentic ibm 1130 console with indicator lights toggle switches and speed control knob
+ibm 029 keypunch
+punch cards with hollerith encoding type text and see the punch pattern
+ibm 1131 console printer with typewriter style output and greenbar paper
+historical ibm 1130 cpu emulation 4k words of 16 bit memory
+memory mapped index registers xr1 xr2 xr3 at addresses 1 2 3
+complete instruction set ld sto ldx stx and or sla sra bsc bsi wait
+interactive examples covering arithmetic indexing shifts and memory mapped registers
+progressive challenges with validation
+assembly parser with org directive support
+real time visualization of cpu state registers and memory
+6 rows 16 register indicator lights iar sar sbr afr acc ext
+8 status indicator lights disk unlock file ready run parity check etc
+16 bit toggle switches for data entry
+7 position speed control knob ss smc int run run si disp load
+power switch and control buttons
+lamp test for verifying all indicators
+help button with guided power on tutorial
+ibm 029 keypunch simulation
+hollerith punch card encoding
+visual punch pattern display
+multi card deck management
+ibm 1131 console printer simulation
+greenbar paper rendering
+typewriter style character output
+architecture system design and component structure
+prd product requirements and user stories
+plan implementation roadmap and milestones
+design design decisions and rationale
+status current project status and changelog
+the ibm 1130 is word addressed machine with
+acc accumulator main register for arithmetic
+ext extension register for double precision operations
+iar instruction address register program counter
+xr1 xr3 index registers for indexed addressing memory mapped at locations 1 2 3
+flags carry overflow positive zero
+rust with wasm32 unknown unknown target
+the production build outputs to
+all code must be clean before committing
+no clippy warnings
+no tech debt
+deploying to github pages
+build and commit
+github actions automatically deploys from when changes are pushed to main
+ibm 1130 functional characteristics a26 5881 2 the definitive technical reference for the ibm 1130 architecture instruction set and hardware specifications 1966
+ibm 1130 assembler language c26 5927 2 complete assembler language reference including directives macros and programming techniques 1966
+ibm 1130 manual library comprehensive collection of ibm 1130 documentation at ibm1130 org
+ibm 1130 wikipedia overview of the ibm 1130 history and significance
+ibm 1130 functional characteristics html hyperlinked html version of the functional characteristics manual
+bitsavers ibm 1130 archive complete archive of ibm 1130 documentation pdfs
+the ibm 1130 was introduced in 1965 as an affordable scientific computer
+16 bit word size with 15 bit addressing 32k words max
+memory mapped index registers at locations 1 2 3
+single address instruction format with indirect and indexed addressing modes
+popular in universities and small businesses throughout the late 1960s and 1970s
+sw comp history rca 1802 rs
+rca cosmac 1802 assembly emulator
+an interactive browser based educational game for learning the rca cosmac 1802 instruction set architecture
+the rca 1802 was the first cmos microprocessor introduced in 1976 and famous for its use in nasa space missions including galileo hubble space telescope and voyager
+historical rca 1802 cpu emulation 64kb memory 16 general purpose registers
+unique register architecture program counter selector index selector
+complete instruction set ldi plo phi glo ghi str ldn add sub and or xor shl shr branches
+interactive examples covering register loading arithmetic loops and conditionals
+assembly parser with label support
+porting guide how to port assembly games to public repos
+the rca 1802 is unique 8 bit processor with
+r0 rf 16 general purpose 16 bit registers any can be pc or index
+8 bit accumulator for arithmetic
+4 bit program counter selector which register is pc
+4 bit index register selector
+df data flag carry borrow
+single bit output
+ie interrupt enable
+the rca 1802 was chosen for numerous nasa missions due to its radiation hardened cmos design
+galileo jupiter orbiter 1989 2003
+magellan venus radar mapper 1989 1994
+hubble space telescope wide field planetary camera
+ulysses solar polar orbiter 1990 2009
+voyager 1 2 interstellar probes launched 1977
+update gh pages branch
+cdp1802 user manual mpm 201a official rca cosmac 1802 user manual 1977
+cosmac microprocessor wikipedia overview
+joseph weisbecker designed the 1802 at rca in 1974 1976
+first cmos microprocessor extremely low power consumption
+radiation hardened variants cdp1802a used in space
+featured in popular electronics as the cosmac elf computer kit
+sw comp history sw cdp1802 io
+sw cdp1802 io
+live browser demos for the rca cdp1802 cosmac 1802 emulator
+this repository is the web facing companion to the cdp1802 emulator and assembler work in
+it provides yew wasm application that visualizes period style devices while still running real cdp1802 code through the emulator
+demos cosmac elf ii joystick and tv memory display
+the live page opens on the logo demo by default
+use the demo selector to switch to joystick when you want to run the emulated rc timing experiment or pattern when you want to edit small assembly program and run it in the browser
+the joystick demo recreates 1970s cosmac elf ii style experiment
+graphical joystick can be moved across an grid in the browser
+rust emulates the joystick potentiometers and resistor capacitor timing circuit
+compact cdp1802 assembly program clears non code display memory pulses output ports for the and axes polls computes the video address and writes the measured ball position itself
+simulated black and white tv monitor renders memory as 64 32 bit grid with each bit drawn as taller light gray block on black to approximate the stacked elf ii video pixels
+the black and white video behavior is intentionally historically rough
+on the cosmac elf ii style setup the video buffer could include ordinary memory so the program bytes themselves appear as noise pixels
+the joystick widget starts centered and the initial ball lands near the center of the 256 byte memory display
+if the ball moves into the part of the display backed by the running program the program self modifies and can crash on later frame
+that failure mode is part of the demo because it mirrors the behavior of the original hardware experiment
+the logo demo is manually entered static video data in the same 256 byte video page
+there is no drawing code reset executes single instruction while the monitor scans the initialized bytes as pixels
+the demo selector switches the assembled source listing monitor and cpu state view
+the pattern demo is an editable cdp1802 assembly source panel
+assemble runs the rust assembler on the current text and refreshes the listing and loaded memory image
+run assembles the current text starts the emulator and steps one 1802 instruction per browser timer callback so the page yields back to the browser thread between instructions
+the default source writes simple pattern into addresses which are the lower half of the 256 byte memory video page
+yew ui with demo selector conditional joystick controls monitor listing and cpu telemetry
+cdp1802 machine wrapper that assembles the selected source runs the protocol tracks cpu status and updates the 256 byte video page
+joystick cdp1802 assembly source included with rust and assembled at runtime
+manually entered static logo video data included with rust and assembled at runtime
+editable starter cdp1802 assembly source included with rust and loaded into the pattern demo
+tracked github pages output
+trunk build and refresh script
+root wrapper for the pages build
+pages deploy workflow that publishes after github actions is enabled
+install the wasm target and trunk if needed
+run the live development server
+build github pages output
+the script builds the yew wasm application with trunk and refreshes preserving for github pages
+cpu state memory execution joystick rc board and video helpers
+assembler used to assemble the included demo program
+cdp1802 instruction definitions and decode support
+scaffolder and multi repo project layout documentation
+sw embed sw cor24 apl
+sw cor24 apl
+apl interpreter for the cor24 24 bit risc architecture
+minimal apl interpreter targeting the cor24 isa written in
+compiled via tc24r with assembly helpers
+over uart on the cor24 emulator
+uses ascii surface syntax with lowercase reserved words
+for apl operators and uppercase for user
+apl research notes
+requires compiler and emulator on path
+the agentrail saga is complete 81 steps
+the interpreter runs on the
+cor24 emulator in both interactive uart repl and batch apl image
+supported features by area
+right to left recursive descent parser tree walking evaluator
+split into per node type functions to keep frames shallow
+bump allocated heap 4096 words with per iteration reclamation
+integer literals with apl underscore negative convention
+assignment symbol table software divide
+error types syntax domain value length rank ws full
+recovers cleanly on error
+integer scalars and vectors literal stranding
+character vectors string literals
+rank 2 matrices with right justified column display
+nested boxed arrays
+lazy arrays for large ranges
+shape monadic dyadic ravel and dyadic
+selection scalar and multi axis matrix forms
+negative counts bracket indexing vector index
+compress replicate dyadic
+index of grade up grade down dyadic
+arithmetic integer exponent abs residue
+signum factorial binomial ceil floor dyadic max min
+comparison and logic bitwise
+higher order reduce including and
+scan each outer product
+numeric conversion encode decode prng
+integer to string
+set operations union unique intersection
+control flow and functions
+labels stored as variables holding line numbers
+multi line program buffer editing
+user defined monadic dyadic and niladic functions via
+local variables via syntax
+line comments to end of line
+quad variables index origin
+prng seed millisecond delay explicit print
+shared variable offer ap 242 pattern couples apl
+variables to hardware regions indexed read write on coupled
+variables coupling degree checks enable graceful degradation
+apl image format newline separated null terminated
+batch interactive mode auto detected
+uart stays free for
+the apl program via
+reference demo uart echo implemented as pure apl program
+automated batch test runner with expected output comparison
+gnu apl conformance comparison harness
+example target syntax
+blog software wrighter lab
+discord join the community
+youtube software wrighter
+copyright 2026 michael
+mit licensed see license
+sw embed web sw cor24 apl
+web sw cor24 apl
+browser based apl environment running the
+sw cor24 apl interpreter
+on an emulated cor24
+cpu via webassembly
+part of the software wrighter cor24 tools project
+repl panel printer style terminal with 6 space apl indent
+scrolling output and keyboard input
+apl glyph prettification three display modes
+representation shorthand apl glyphs and
+hardware panel emulated cor24 s2 switch and d2 led with
+quad variable access
+demo programs dropdown with pre built examples scalars
+vectors matrices hardware shared variables etc
+file upload load source files from disk
+reset clear workspace and restart the interpreter
+fully client side no server required works offline once loaded
+cor24 apl uses ascii surface syntax with lowercase reserved words
+and uppercase user identifiers
+requires trunk and rust toolchain with
+sw ml study moe microscope
+building mixture of experts models small enough to understand
+micromoe is an educational and experimental mixture of experts model
+written in sw mlpl
+the repository isolates the techniques behind modern
+efficient moe systems routing sparse dispatch low rank experts
+recurrence engram memory distillation quantization expert caching
+heterogeneous execution so each can be inspected and measured on its own
+at scale where every tensor expert routing decision and byte can be
+it is progressively constructing tiny model inspired by
+freetoken hrm trm deepseek engram and sparse routing it does not
+claim that the combined architecture is validated yet
+large moe systems make it hard to see what each mechanism buys
+whole model is tens of thousands of parameters every lesson is readable
+mlpl program that records its own intermediate values every diagram is
+drawn from values test asserts and every claim in this page cites
+results row or measured document
+documentation landing page three reader journeys
+architecture and delivery plan
+results dashboard and the full results table
+the moving parts step by step live on github pages
+pick lesson the dense
+baseline the top 1 and top 2 mixtures or one window through routing and
+dispatch and step through its frames
+it is playback no sw mlpl code
+runs in the browser and every number is read from pinned fixture that
+real training run or its export script wrote
+to produce those fixtures
+yourself run the training at the command line
+see build and run below
+then serves the same page locally
+the blog post about this work
+the wiki mirrors the
+documentation as navigation layer
+demonstrated with measurements dense baseline dn01 top 1 and top 2
+mixtures mx01 mx02 measurable expert specialization exact sparse
+dispatch sd01 the data versus epochs effect ds01 low rank delta
+experts with shared expert ld01 an in repo teacher fixture te01 the
+resource budget rb01 and measured generation benchmark gb01 three
+recordings handed to the generic rust yew host
+still to come recurrence engram distillation quantization the packed
+file the expert cache cpu npu scheduling the 256 mb target the
+configuration frontier and the cuda move with host resident experts
+the saga queue
+what we have learned
+sparse capacity is real the four expert mixture stores 7 096
+parameters and touches 3 064 per token the dense model stores 3 812 and
+touches 2 996
+stored capacity grew 1 86 times for 1 02 times the active
+parameters at the same validation loss 3 76 against 3 79
+evidence mx01 and dn01 rows in the results table
+experts specialize without being told the task under top 1
+routing the specialization score is 0 61 against 0 25 family blind
+baseline prose leans on one expert arithmetic on another
+never saw family tag
+scope the four synthetic families are
+top is cost and quality knob not free improvement top 2
+doubles expert evaluations per token fits the training rows better
+0 86 against 0 62 exact match gives the first held out mlpl answers
+and has worse validation loss 3 92 and flatter specialization map
+evidence mx02 row
+data moves the held out columns epochs do not from 120 to 960
+examples dense validation loss falls 3 48 to 1 11 and the mixture 3 49
+to 1 22 prose becomes solved family held out
+doubling epochs at 120
+examples makes both worse
+the mixture beats dense at 480 examples and
+loses at 960 at twice the cost
+sparse compute is not automatically faster sparse dispatch cuts
+expert row evaluations from 13 440 to 3 360 with outputs that agree
+exactly and is slower in this interpreter 0 74 against 0 42 ms per
+window because gather scatter and loop overhead exceed the three tiny
+evidence sd01 and the
+one more from the last lesson sixteen rank 4 delta experts cost 2 048
+parameters against 4 288 for four full experts and give the best validation
+losses in the table so far 3 46 with shared expert 3 37 without
+how small is micromoe
+every number is labeled measured derived or estimate in
+resource economics the calculator
+behind it is pinned to the lessons measured parameter counts
+one full expert is 1 072 parameters 8 576 bytes at f64 and 536 bytes of
+int4 payload rank 4 delta expert is 128 parameters
+generation runs at
+roughly 6 000 tokens per second dense 3 200 top 1 2 000 top 2 and 3 100
+packed deltas in the interpreter on one laptop with p95 token latency
+under 0 6 ms in every case benchmark
+dense model then routed experts then top then true sparse dispatch
+then recurrence then engram memory then quantization then bounded
+expert cache then heterogeneous execution
+four independent sparsities
+organize it parameter sharing recurrence conditional compute moe
+conditional memory engram and residency cache
+architecture page has the full picture
+the concept pages walk it one mechanism at
+each experiment introduces one mechanism and answers one question
+the machine readable
+second training area first campus docent tiny moe trained in batch
+here and run in the browser to direct visitors of the software wrighter
+research campus site with the campus catalog as the authority for facts
+and the model predicting only intent and destination
+recurrence engram distillation and quantization move the quality and
+resource frontier for roughly the same active budget and whether bounded
+expert cache and heterogeneous execution let the whole model exceed fast
+memory and stay usable
+plan docs overview plan md
+what is here
+build and run
+the adjacent checkout built in release mode
+or an absolute override
+on an absolute override or the adjacent
+for the development process
+the scripts only select existing tools they never install or overwrite them
+validates repository structure documentation links
+peer identical license files the generated agentrail briefing mlpl style
+the native test suites the pinned reproducers and the dm01 and dn01 lessons
+with their diagrams and results row about half minute in total
+each lesson extends the
+gate with its own demo run preview freshness check recording check and
+the interactive host is the generic rust yew wasm microscope and mlpl web
+framework in that rust code is the only part of this
+effort subject to
+work is divided into durable agentrail steps
+in each fresh session run
+then implement only that step run focused
+tests and commit source and metadata by name push
+and only then run
+the full repository protocol and links to it
+copyright and license
+copyright 2026 michael wright
+distributed under the mit license

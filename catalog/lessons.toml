@@ -232,3 +232,19 @@ memory = "no parameters: a signal index of a few hundred weighted tokens (mockup
 speed = "milliseconds per query in the interpreter, no training"
 quality = "scored on the same held-out rows and 54 paraphrases as CD01 with the same metrics; rows MB01 and MB01t in the docent results table"
 status = "accepted"
+
+[[lesson]]
+id = "CD01b"
+slug = "docent-word-vectors"
+title = "Word vectors from the campus's own text in an Engram-style table under the docent"
+source = "demos/docent_wordvec.mlpl"
+library = ["lib/wordvec.mlpl", "lib/docent.mlpl", "lib/matcher.mlpl"]
+test = ["tests/test_wordvec.mlpl"]
+previews = ["assets/previews/wordvec-cooccurrence.svg", "assets/previews/wordvec-neighbours.svg", "assets/previews/wordvec-table.svg"]
+fixture = "fixtures/campus/docs-a.txt"
+implementation = "from-scratch"
+observations = []
+memory = "586 vocabulary words from 4,390 words of campus text; PPMI [586, 586]; vectors [586, 24]; a 1,024 by 24 table (24,576 parameters) under the CD01 body and heads"
+speed = "vectors in about five seconds; two docent trainings of 40 epochs in about a minute each"
+quality = "the same held-out and paraphrase metrics as CD01 and the matchers; rows CD01b (fine-tuned table) and CD01bf (frozen table)"
+status = "accepted"

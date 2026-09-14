@@ -44,6 +44,18 @@ decisions and the usefulness bar are in [`plan.md`](plan.md), Saga 4.
    `mlpl-wasm` bridge, measured latency, the budgeted live-training probe.
 9. `easel-handoff` - the sw-campus work order, recordings, docs and wiki.
 
+Step 5 status: complete. CD01b: word vectors from the campus's own text
+(586 words from 4,390 words of stories, status lines, taglines, and the
+linked READMEs; PPMI, rank 24 by orthogonal iteration) in a 1,024-row
+hashed table under the CD01 docent. Fine-tuned: paraphrase destination
+0.407 (CD01 0.296), held-out destination 0.917, intent 0.942; frozen
+vectors alone: 0.259. Against the text matcher's 0.685 the margin is minus
+28 points: the bar is still not met, though vectors moved the paraphrase
+number by 11 points. F21 filed (adam inside a user function trains local
+copies). The docent saga pauses here; Engram (recurrence-and-Engram) runs
+next by the user's decision, and the remaining docent steps follow as a
+separate saga.
+
 Step 4 status: complete. MB01, the campus mockup's deterministic matcher
 ported to MLPL, and MB01t, the same matcher over all catalog text, scored
 on the docent's held-out rows and paraphrases: destination 0.954 / 0.925,

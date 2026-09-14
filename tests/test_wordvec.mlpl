@@ -1,0 +1,76 @@
+# Word-vector contract: hashed vocabulary, sentence-bounded co-occurrence, positive PMI, orthonormalization, factorization, neighbours, and the hashed table.
+include "lib/wordvec.mlpl";
+
+def u:tiny() {
+  "A four-sentence corpus.";
+  "apl is an array language\narray language with glyphs\nthe 1802 is a microprocessor\nmicroprocessor chip for spacecraft\n"
+}
+
+@test {name: "the vocabulary keeps words seen at least min_count times in order of first appearance", tags: ["wordvec", "vocab"]}
+def u:test_vocab() {
+  "Stop words and one-character tokens are dropped; ids follow first appearance.";
+  v = u:wv_vocab(u:tiny(), 2);
+  u:assert_eq(v.size, 3, "array, language, microprocessor")?;
+  u:assert_text_eq(u:lg(v.words, 0), "array", "first")?;
+  u:assert_text_eq(u:lg(v.words, 2), "microprocessor", "third")?;
+  u:assert_eq(u:wv_word_index(v, "language"), 1, "index lookup")?;
+  u:assert_eq(u:wv_word_index(v, "apl"), -1, "apl appears once: out of vocabulary")?;
+  u:assert_eq(take(v.ids, 0, 0), -1, "the first token, apl, has no id")?;
+  u:assert_eq(take(v.ids, 0, 1), 0, "array is id 0")?;
+  u:assert_eq(v.tokens, 11, "content tokens")
+}
+
+@test {name: "co-occurrence counts pairs within a sentence and window, symmetrically", tags: ["wordvec", "cooccurrence"]}
+def u:test_cooccurrence() {
+  "array and language co-occur twice; language and microprocessor never (different sentences).";
+  v = u:wv_vocab(u:tiny(), 2);
+  C = u:wv_cooccurrence(v.ids, v.sids, v.size, 4);
+  u:assert_shape(C, [3, 3], "square")?;
+  u:assert_eq(reduce_add(abs(C - transpose(C))), 0, "symmetric")?;
+  u:assert_eq(take(take(C, 0, 0), 0, 1), 2, "array with language, twice")?;
+  u:assert_eq(take(take(C, 0, 1), 0, 2), 0, "language never with microprocessor")?;
+  C1 = u:wv_cooccurrence(v.ids, v.sids, v.size, 1);
+  u:assert_eq(take(take(C1, 0, 0), 0, 1), 2, "adjacent in both sentences at window 1")
+}
+
+@test {name: "positive PMI is non-negative and zero for unseen pairs", tags: ["wordvec", "ppmi"]}
+def u:test_ppmi() {
+  "Floor at zero; unseen pairs get nothing.";
+  v = u:wv_vocab(u:tiny(), 2);
+  P = u:wv_ppmi(u:wv_cooccurrence(v.ids, v.sids, v.size, 4));
+  u:assert_true(gt(reduce(:min, P) + 0.0000001, 0), "non-negative")?;
+  u:assert_eq(take(take(P, 0, 1), 0, 2), 0, "unseen pair")?;
+  u:assert_true(gt(take(take(P, 0, 0), 0, 1), 0), "seen pair positive")
+}
+
+@test {name: "orthonormalization and factorization give orthonormal columns and unit rows", tags: ["wordvec", "factor"]}
+def u:test_factor() {
+  "Q transpose Q is the identity; word vectors are unit length.";
+  X = random(1, [6, 3]);
+  Q = u:wv_orthonormalize(X);
+  G = matmul(transpose(Q), Q);
+  u:assert_approx(reduce_add(abs(G - one_hot(range(3), 3))), 0, 0.000001, "orthonormal")?;
+  M = matmul(X, transpose(X));
+  W = u:wv_factor(M, 2, 3, 2);
+  u:assert_shape(W, [6, 2], "rank two")?;
+  u:assert_approx(reduce_add(sqrt(reduce_add(W * W, 1))), 6, 0.0001, "unit rows")?;
+  W2 = u:wv_factor(M, 2, 3, 2);
+  u:assert_eq(reduce_add(abs(W - W2)), 0, "deterministic")
+}
+
+@test {name: "neighbours exclude the word itself and the table places vectors at the docent's slots", tags: ["wordvec", "table"]}
+def u:test_neighbours_table() {
+  "Cosine neighbours and the hashed table.";
+  v = u:wv_vocab(u:tiny(), 2);
+  W = u:wv_factor(u:wv_ppmi(u:wv_cooccurrence(v.ids, v.sids, v.size, 4)), 2, 3, 5);
+  nb = u:wv_neighbours(W, 0, 2);
+  u:assert_eq(reduce_add(eq(nb, 0)), 0, "self excluded")?;
+  u:assert_shape(nb, [2], "two neighbours")?;
+  tb = u:wv_table(W, v, 64, 9);
+  u:assert_shape(tb.table, [64, 2], "table shape")?;
+  u:assert_eq(tb.filled + tb.collisions, 3, "every word placed, collisions counted")?;
+  slot = u:docent_slot("array", 64);
+  u:assert_approx(reduce_add(abs(take(tb.table, 0, slot) - take(W, 0, 0))), 0, 0.000001, "array's row is its vector")
+}
+
+u:run_registered_tests()

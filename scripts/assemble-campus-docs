@@ -1,0 +1,45 @@
+#!/bin/sh
+# Assemble the campus's own text into fixtures/campus/docs-a.txt: the snapshot's stories, status sentences, titles, and taglines, this repository's README, and the READMEs of the repositories linked from snapshot A (fetched once from GitHub, committed so the gate is offline). One normalized sentence per line.
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+out="$repo_root/fixtures/campus/docs-a.txt"
+tmp=$(mktemp -t campus-docs)
+trap 'rm -f "$tmp"' EXIT
+
+# Repositories linked from snapshot A (run and source links), plus this one.
+for repo in sw-comp-history/ibm-1130-rs sw-comp-history/rca-1802-rs sw-comp-history/sw-cdp1802-io sw-embed/sw-cor24-apl sw-embed/web-sw-cor24-apl sw-ml-study/moe-microscope; do
+    printf '\n# %s\n' "$repo" >> "$tmp"
+    curl -sSfL "https://raw.githubusercontent.com/$repo/main/README.md" >> "$tmp" || { echo "could not fetch $repo README" >&2; exit 1; }
+done
+
+python3 - "$repo_root/fixtures/campus/snapshot-a.json" "$tmp" "$out" <<'PY'
+import json, re, sys
+snap = json.load(open(sys.argv[1]))
+raw = open(sys.argv[2], encoding="utf-8", errors="replace").read()
+sources = []
+for i, _ in enumerate(snap["ids"]):
+    sources += [snap["titles"][i], snap["taglines"][i], snap["status_texts"][i]]
+sources += snap["story_titles"] + snap["story_texts"]
+# README markdown: drop code blocks, tables, links' URLs, headings' marks, badges.
+raw = re.sub(r"```.*?```", " ", raw, flags=re.S)
+raw = re.sub(r"`[^`]*`", " ", raw)
+raw = re.sub(r"!\[[^\]]*\]\([^)]*\)", " ", raw)
+raw = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", raw)
+raw = re.sub(r"https?://\S+", " ", raw)
+raw = "\n".join(l for l in raw.split("\n") if not l.strip().startswith("|"))
+sources += re.split(r"(?<=[.!?])\s+|\n+", raw)
+lines = []
+for s in sources:
+    s = s.lower()
+    s = re.sub(r"[^a-z0-9 ]+", " ", s)
+    words = [w for w in s.split() if len(w) > 1 or w.isdigit()]
+    if len(words) >= 3:
+        lines.append(" ".join(words))
+seen = set(); kept = []
+for l in lines:
+    if l not in seen:
+        seen.add(l); kept.append(l)
+open(sys.argv[3], "w").write("\n".join(kept) + "\n")
+print(f"docs-a.txt: {len(kept)} sentences, {sum(len(l.split()) for l in kept)} words")
+PY

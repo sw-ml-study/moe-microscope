@@ -29,6 +29,18 @@ expect_ok() {
     echo "PASS probe $name resolved upstream: $pattern"
 }
 
+expect_output() {
+    name=$1
+    pattern=$2
+    output=$("$mlpl" --source-dir "$repo_root" "$repo_root/probes/$name.mlpl" 2>&1) || {
+        echo "probe $name: expected success; it now fails" >&2
+        printf '%s\n' "$output" | tail -3 >&2
+        exit 1
+    }
+    printf '%s\n' "$output" | grep -q -- "$pattern" || { echo "probe $name: expected '$pattern'; upstream behavior changed, update docs/reference/sw-mlpl-findings.md" >&2; exit 1; }
+    echo "PASS probe $name still reproduces: $pattern"
+}
+
 expect_ok f5_one_hot_in_grad "^mask-in-loss gradient"
 expect_ok f6_repeat_in_grad "^repeat-in-grad gradient"
 expect_error f7_model_argument "must be an array, Result, string"
@@ -44,6 +56,7 @@ expect_error f17_record_field_in_grad "expression form not supported inside grad
 expect_error f18_shape_mismatch_panics_on_tape "shape mismatch"
 expect_error f19_matmul_shape_panics_in_grad "compatible matmul shapes"
 expect_error f20_take_param_index_in_grad "undefined variable: e"
+expect_output f21_adam_in_user_function "^param moved 0 model moved 0"
 "$mlpl" --source-dir "$repo_root" "$repo_root/probes/f18_shape_mismatch_panics_on_tape.mlpl" 2>&1 | grep -q panicked && { echo "probe f18: the tape panicked again" >&2; exit 1; }
 
 expect_error d1_silent_zero_grad "the loss does not depend on"

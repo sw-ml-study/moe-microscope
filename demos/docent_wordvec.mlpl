@@ -1,0 +1,304 @@
+# CD01b docent word vectors: vectors trained on the campus's own text (co-occurrence, positive PMI, orthogonal iteration), stored in an Engram-style hashed table, then the same dense docent as CD01 trained on top of it, fine-tuned and frozen, measured against CD01 and the matchers.
+include "../lib/wordvec.mlpl";
+include "../lib/svg.mlpl";
+
+print("WHAT THIS SHOWS -- Whether in-domain word vectors give the docent meaning its hashed features lack: the vectors, their neighbours, the hashed table, and the docent trained on top, measured on the same held-out rows and paraphrases as CD01 and the matchers.");
+print("SHAPES -- corpus tokens [N]; vocabulary V; co-occurrence and PPMI [V, V]; vectors [V, 24]; table [1024, 24]; the docent as CD01 with the table in place of the embedding.");
+
+out_dir = unwrap(list_get(args(), 0));
+binary = unwrap(list_get(args(), 1));
+S = 1024;
+dm = 24;
+hd = 32;
+ni = 6;
+lr = 0.003;
+epochs = 40;
+every = 5;
+window = 4;
+iters = 5;
+
+text = unwrap(read_text("fixtures/campus/docs-a.txt"));
+docs_bytes = reduce_mul(shape(tokenize_bytes(text)));
+t_v = clock_ms();
+vocab = u:wv_vocab(text, 2);
+C = u:wv_cooccurrence(vocab.ids, vocab.sids, vocab.size, window);
+P = u:wv_ppmi(C);
+W = u:wv_factor(P, dm, iters, 7);
+tb = u:wv_table(W, vocab, S, 3);
+vectors_ms = clock_ms() - t_v;
+print("VECTORS -- vocabulary", vocab.size, "of", vocab.tokens, "content tokens; PPMI nonzero", reduce_add(gt(P, 0)), "; table filled", tb.filled, "collisions", tb.collisions, "; ms", u:svg_round(vectors_ms, 0));
+
+def u:neighbour_line(w, k) {
+  "A word and its k nearest vocabulary words as one line, or a note when the word is out of vocabulary.";
+  i = u:wv_word_index(vocab, w);
+  if lt(i, 0) {
+    str_concat(w, ": not in the vocabulary (seen fewer than twice)")
+  } else {
+    nb = u:wv_neighbours(W, i, k);
+    line = str_concat(w, ":");
+    j = 0;
+    while lt(j, k) {
+      line = str_concat(str_concat(line, " "), u:lg(vocab.words, take(nb, 0, j)));
+      j = j + 1
+    };
+    line
+  }
+}
+
+probe_words = str_split("switches|glyphs|disk|jupiter|apl|minicomputer|cosmac|router", "|");
+c = u:campus_load("fixtures/campus/snapshot-a.json");
+k = unwrap(parse_json(unwrap(read_text("fixtures/campus/corpus-a.json"))));
+pp = unwrap(parse_json(unwrap(read_text("fixtures/campus/paraphrases-a.json"))));
+dest_names = u:dest_names(c);
+nd = list_len(dest_names);
+feat = u:docent_matrix(k.queries, S);
+X = feat.ids;
+M = feat.mask;
+Cn = feat.counts;
+lab = u:docent_labels(c, k.intents, k.dests);
+Yi = lab.yi;
+Yd = lab.yd;
+member = k.train;
+train_rows = compress(member, range(k.n));
+val_rows = compress(1 - member, range(k.n));
+ntrain = reduce_mul(shape(train_rows));
+nval = reduce_mul(shape(val_rows));
+yi_val = reshape(gather_rows(reshape(Yi, [k.n, 1]), val_rows), [nval]);
+yd_val = reshape(gather_rows(reshape(Yd, [k.n, 1]), val_rows), [nval]);
+ex_ids = [u:dest_index(c, "ibm-1130-emulator"), u:dest_index(c, "rca-1802"), u:dest_index(c, "apl")];
+exhibit_sel = eq(yd_val, take(ex_ids, 0, 0)) + eq(yd_val, take(ex_ids, 0, 1)) + eq(yd_val, take(ex_ids, 0, 2));
+pfeat = u:docent_matrix(pp.queries, S);
+plab = u:docent_labels(c, pp.intents, pp.dests);
+np_rows = list_len(pp.queries);
+PX = pfeat.ids;
+PM = pfeat.mask;
+PC = pfeat.counts;
+PYi = plab.yi;
+PYd = plab.yd;
+amb_rows = fill([0], 0);
+amb_a = fill([0], 0);
+amb_b = fill([0], 0);
+j = 0;
+i = 0;
+while lt(i, k.n) {
+  is_amb = str_eq(u:lg(k.kinds, i), "ambiguous");
+  amb_rows = if is_amb {
+    concat(amb_rows, i)
+  } else {
+    amb_rows
+  };
+  pair = if is_amb {
+    str_split(u:lg(c.ambiguous_dests, j), ",")
+  } else {
+    str_split("none,none", ",")
+  };
+  amb_a = if is_amb {
+    concat(amb_a, u:dest_index(c, u:lg(pair, 0)))
+  } else {
+    amb_a
+  };
+  amb_b = if is_amb {
+    concat(amb_b, u:dest_index(c, u:lg(pair, 1)))
+  } else {
+    amb_b
+  };
+  j = j + is_amb;
+  i = i + 1
+};
+
+# Training runs at top level: adam inside a user function updates local copies of the global models (finding F21).
+docent_table = param[1024, 24];
+docent_table = tb.table;
+docent_body = chain(linear(dm, hd, 2), relu_layer());
+docent_head_i = linear(hd, ni, 3);
+docent_head_d = linear(hd, nd, 4);
+p_table = S * dm;
+p_body = param_count(docent_body);
+p_heads = param_count(docent_head_i) + param_count(docent_head_d);
+params = p_table + p_body + p_heads;
+
+def u:measure(label) {
+  "Every CD01 metric for the current table docent.";
+  t0 = clock_ms();
+  ev = u:docent_eval_t(X, M, Cn, Yi, Yd, val_rows, ni, nd);
+  ms = (clock_ms() - t0) / nval;
+  et = u:docent_eval_t(X, M, Cn, Yi, Yd, train_rows, ni, nd);
+  pv = u:docent_eval_t(PX, PM, PC, PYi, PYd, range(np_rows), ni, nd);
+  exhibit_acc = reduce_add(ev.hit_d * exhibit_sel) / reduce_add(exhibit_sel);
+  unsupported_recall = u:acc_where(ev.hit_i, yi_val, u:intent_index("unsupported"));
+  amb = u:top2_set_hits_t(X, M, Cn, amb_rows, amb_a, amb_b, nd);
+  print("QUALITY --", label, "val loss", u:svg_round(ev.loss, 4), "intent acc", u:svg_round(ev.intent_acc, 3), "dest acc", u:svg_round(ev.dest_acc, 3), "top-3", u:svg_round(ev.top3_acc, 3), "exhibit acc", u:svg_round(exhibit_acc, 3), "ambiguous top-2", u:svg_round(amb, 3), "unsupported recall", u:svg_round(unsupported_recall, 3), "paraphrase dest/intent", u:svg_round(pv.dest_acc, 3), u:svg_round(pv.intent_acc, 3), "train acc", u:svg_round(et.intent_acc, 3), u:svg_round(et.dest_acc, 3));
+  {ev: ev, et: et, pv: pv, exhibit_acc: exhibit_acc, unsupported_recall: unsupported_recall, amb: amb, ms: ms}
+}
+
+curve_t = fill([0], 0);
+curve_v = fill([0], 0);
+curve_d = fill([0], 0);
+train_ms = 0;
+e = 0;
+while lt(e, epochs) {
+  ts = clock_ms();
+  i = 0;
+  while lt(i, ntrain) {
+    r = take(train_rows, 0, i);
+    adam(u:docent_loss_t(take(X, 0, r), take(M, 0, r), take(Cn, 0, r), take(Yi, 0, r), take(Yd, 0, r), ni, nd), [docent_table, docent_body, docent_head_i, docent_head_d], lr, 0.9, 0.999, 0.00000001);
+    i = i + 1
+  };
+  train_ms = train_ms + (clock_ms() - ts);
+  e = e + 1;
+  if eq(mod(e, every), 0) {
+    et = u:docent_eval_t(X, M, Cn, Yi, Yd, train_rows, ni, nd);
+    ev = u:docent_eval_t(X, M, Cn, Yi, Yd, val_rows, ni, nd);
+    curve_t = concat(curve_t, et.loss);
+    curve_v = concat(curve_v, ev.loss);
+    curve_d = concat(curve_d, ev.dest_acc);
+    print("epoch", e, "fine-tuned", "train loss", u:svg_round(et.loss, 4), "val loss", u:svg_round(ev.loss, 4), "val intent acc", u:svg_round(ev.intent_acc, 3), "val dest acc", u:svg_round(ev.dest_acc, 3))
+  } else {
+    0
+  }
+};
+run_ft = {curve_t: curve_t, curve_v: curve_v, curve_d: curve_d, train_ms: train_ms};
+m_ft = u:measure("fine-tuned table");
+docent_table = tb.table;
+docent_body = chain(linear(dm, hd, 2), relu_layer());
+docent_head_i = linear(hd, ni, 3);
+docent_head_d = linear(hd, nd, 4);
+curve_t = fill([0], 0);
+curve_v = fill([0], 0);
+curve_d = fill([0], 0);
+train_ms = 0;
+e = 0;
+while lt(e, epochs) {
+  ts = clock_ms();
+  i = 0;
+  while lt(i, ntrain) {
+    r = take(train_rows, 0, i);
+    adam(u:docent_loss_t(take(X, 0, r), take(M, 0, r), take(Cn, 0, r), take(Yi, 0, r), take(Yd, 0, r), ni, nd), [docent_body, docent_head_i, docent_head_d], lr, 0.9, 0.999, 0.00000001);
+    i = i + 1
+  };
+  train_ms = train_ms + (clock_ms() - ts);
+  e = e + 1;
+  if eq(mod(e, every), 0) {
+    et = u:docent_eval_t(X, M, Cn, Yi, Yd, train_rows, ni, nd);
+    ev = u:docent_eval_t(X, M, Cn, Yi, Yd, val_rows, ni, nd);
+    curve_t = concat(curve_t, et.loss);
+    curve_v = concat(curve_v, ev.loss);
+    curve_d = concat(curve_d, ev.dest_acc);
+    print("epoch", e, "frozen", "train loss", u:svg_round(et.loss, 4), "val loss", u:svg_round(ev.loss, 4), "val intent acc", u:svg_round(ev.intent_acc, 3), "val dest acc", u:svg_round(ev.dest_acc, 3))
+  } else {
+    0
+  }
+};
+run_fr = {curve_t: curve_t, curve_v: curve_v, curve_d: curve_d, train_ms: train_ms};
+m_fr = u:measure("frozen table");
+
+def u:row_for(lesson, config, mres, run) {
+  "A docent results row for one variant.";
+  {lesson: lesson, config: config, binary: binary, params: params, active_params: round(reduce_add(Cn) / k.n * dm + p_body + p_heads), bytes_f64: params * 8, bytes_int8: params, ms_per_query: u:svg_round(mres.ms, 4), train_loss: u:svg_round(mres.et.loss, 4), val_loss: u:svg_round(mres.ev.loss, 4), intent_acc: u:svg_round(mres.ev.intent_acc, 3), dest_acc: u:svg_round(mres.ev.dest_acc, 3), top3_acc: u:svg_round(mres.ev.top3_acc, 3), exhibit_acc: u:svg_round(mres.exhibit_acc, 3), ambiguous_top2: u:svg_round(mres.amb, 3), unsupported_recall: u:svg_round(mres.unsupported_recall, 3), paraphrase_acc: u:svg_round(mres.pv.dest_acc, 3), paraphrase_intent_acc: u:svg_round(mres.pv.intent_acc, 3), expert_evals: 0}
+}
+
+row_ft = u:row_for("CD01b", str_concat(str_concat("docent dense over word vectors (PPMI rank-24 on docs-a.txt, ", to_string(vocab.size)), " words) in a 1024-slot table, fine-tuned; corpus A, 40 ep, lr 0.003"), m_ft, run_ft);
+row_fr = u:row_for("CD01bf", "the same with the table frozen: only the body and heads train", m_fr, run_fr);
+w_rows = write_atomic(str_concat(out_dir, "/results-rows.md"), str_concat(str_concat(u:docent_row(row_ft), "\n"), str_concat(u:docent_row(row_fr), "\n")));
+
+def u:top_words(n) {
+  "Indices of the n vocabulary words with the largest PPMI row sums.";
+  argtop_k(reduce_add(P, 1), n)
+}
+
+def u:cooccurrence_svg() {
+  "Diagram: PPMI among the sixteen strongest words and the counting rule.";
+  top = u:top_words(16);
+  sub = gather_rows(transpose(gather_rows(P, top)), top);
+  mx = reduce(:max, sub) + 0.0001;
+  page = u:svg_head("Word co-occurrence and PPMI from the campus text", "Positive pointwise mutual information among the sixteen vocabulary words with the largest PPMI row sums, from sentence-bounded co-occurrence counts over a window of four in the campus's own text.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "CO-OCCURRENCE -- what the campus text says goes together"));
+  page = str_concat(page, u:svg_text(32, 60, "m", str_concat(str_concat(str_concat("WHAT: ", to_string(vocab.size)), " vocabulary words from "), str_concat(str_concat(to_string(vocab.tokens), " content tokens ("), str_concat(to_string(docs_bytes), " bytes of text): counts within four words in a sentence, then PPMI.")))));
+  page = str_concat(page, u:svg_heat(sub / mx, 260, 84, 26));
+  i = 0;
+  while lt(i, 16) {
+    page = str_concat(page, u:svg_text(120, 102 + i * 26, "s", u:lg(vocab.words, take(top, 0, i))));
+    page = str_concat(page, u:svg_text(262 + i * 26, 80, "s", str_slice(u:lg(vocab.words, take(top, 0, i)), 0, 3)));
+    i = i + 1
+  };
+  page = str_concat(page, u:svg_text(700, 110, "k", "HOW"));
+  page = str_concat(page, u:svg_text(700, 132, "", "one_hot(ids) gives O [N, V];"));
+  page = str_concat(page, u:svg_text(700, 152, "", "for d in 1..4: C += O[:-d]' O[d:]"));
+  page = str_concat(page, u:svg_text(700, 172, "", "masked to the same sentence,"));
+  page = str_concat(page, u:svg_text(700, 192, "", "plus the transpose; then"));
+  page = str_concat(page, u:svg_text(700, 212, "", "PPMI = relu(log(P(a,b) / P(a)P(b)))."));
+  page = str_concat(page, u:svg_text(700, 244, "k", "WHY"));
+  page = str_concat(page, u:svg_text(700, 266, "", "Words that share sentences in"));
+  page = str_concat(page, u:svg_text(700, 286, "", "the campus's own text should"));
+  page = str_concat(page, u:svg_text(700, 306, "", "end up near each other, so a"));
+  page = str_concat(page, u:svg_text(700, 326, "", "paraphrase can reach a place"));
+  page = str_concat(page, u:svg_text(700, 346, "", "through words no alias holds."));
+  page = str_concat(page, u:svg_text(700, 378, "m", "No external data: stories,"));
+  page = str_concat(page, u:svg_text(700, 398, "m", "status lines, taglines, and the"));
+  page = str_concat(page, u:svg_text(700, 418, "m", "linked repositories' READMEs."));
+  page = str_concat(page, u:svg_text(40, 520, "m", "Shading is PPMI over the block maximum; row labels are the words, column labels their first three letters."));
+  str_concat(page, "</svg>")
+}
+
+def u:neighbours_svg() {
+  "Diagram: the factorization and nearest neighbours of probe words.";
+  page = u:svg_head("Word vectors: factorization and nearest neighbours", "Rank-24 vectors from five orthogonal iterations over the PPMI matrix, and the five nearest vocabulary words of eight probe words by cosine similarity.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "WORD VECTORS -- rank-24 by orthogonal iteration, nearest neighbours"));
+  page = str_concat(page, u:svg_text(32, 60, "m", "WHAT: Q = orthonormalize(random [V, 24]); repeat five times Q = orthonormalize(P Q); vectors = rows of P Q, unit length."));
+  i = 0;
+  while lt(i, 8) {
+    page = str_concat(page, u:svg_text(40, 96 + i * 24, "", u:neighbour_line(u:lg(probe_words, i), 5)));
+    i = i + 1
+  };
+  page = str_concat(page, u:svg_rect(30, 300, 900, 220, "panel"));
+  page = str_concat(page, u:svg_text(50, 328, "", "WHY: orthogonal iteration is power iteration for several vectors at once; with Gram-Schmidt between steps the columns"));
+  page = str_concat(page, u:svg_text(50, 350, "", "     converge to the leading eigenvectors of the symmetric PPMI matrix, the same subspace a truncated SVD would give."));
+  page = str_concat(page, u:svg_text(50, 376, "", "HOW: u:wv_orthonormalize is Gram-Schmidt over columns (concat on axis 1); u:wv_factor multiplies by P and re-orthonormalizes;"));
+  page = str_concat(page, u:svg_text(50, 398, "", "     u:wv_neighbours ranks cosine similarities with argtop_k, the word itself excluded. Everything is deterministic (seeded)."));
+  page = str_concat(page, u:svg_text(50, 424, "", "WHY IT MAY NOT BE ENOUGH: a few thousand tokens give noisy neighbours; words seen once have no vector at all, and"));
+  page = str_concat(page, u:svg_text(50, 446, "", "     hashing 586 words into 1,024 rows makes some share a row. The paraphrase columns decide, not the neighbour lists."));
+  page = str_concat(page, u:svg_text(50, 476, "m", "Numbers: docent results table rows CD01b (fine-tuned) and CD01bf (frozen) beside CD01, MB01, and MB01t."));
+  str_concat(page, "</svg>")
+}
+
+def u:curve_xs(n) {
+  "Frame indices mapped to pixel x positions.";
+  60 + range(n) * (340 / (n - 1 + eq(n, 1)))
+}
+
+def u:table_svg() {
+  "Diagram: the hashed table and the two training runs over it.";
+  page = u:svg_head("The word-vector table and the docent trained on it", "The Engram-style hashed table (rows for vocabulary words at the docent's hash slots, small random rows elsewhere), with the held-out destination accuracy over epochs for the fine-tuned and the frozen table.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "HASHED TABLE -- vectors at the docent's slots, then the docent on top"));
+  what = str_concat(str_concat(str_concat("WHAT: ", to_string(S)), " rows of 24: "), str_concat(str_concat(to_string(tb.filled), " hold vocabulary vectors ("), str_concat(to_string(tb.collisions), " words collided into an occupied row); the rest are random at 0.05 scale.")));
+  page = str_concat(page, u:svg_text(32, 60, "m", what));
+  page = str_concat(page, u:svg_text(40, 92, "k", "held-out destination accuracy"));
+  page = str_concat(page, u:svg_rect(60, 102, 340, 120, "cell"));
+  nf = reduce_mul(shape(run_ft.curve_d));
+  page = str_concat(page, u:svg_polyline(u:curve_xs(nf), 222 - run_ft.curve_d * 115, "l1"));
+  page = str_concat(page, u:svg_polyline(u:curve_xs(nf), 222 - run_fr.curve_d * 115, "l2"));
+  page = str_concat(page, u:svg_text(60, 238, "s", "0 .. 1 over 40 epochs, every 5; amber fine-tuned table, pink frozen"));
+  page = str_concat(page, u:svg_text(460, 92, "k", "validation loss over epochs"));
+  page = str_concat(page, u:svg_rect(460, 102, 340, 120, "cell"));
+  vmax = reduce(:max, concat(run_ft.curve_v, run_fr.curve_v)) + 0.0001;
+  page = str_concat(page, u:svg_polyline(400 + u:curve_xs(nf), 222 - run_ft.curve_v * (115 / vmax), "l1"));
+  page = str_concat(page, u:svg_polyline(400 + u:curve_xs(nf), 222 - run_fr.curve_v * (115 / vmax), "l2"));
+  page = str_concat(page, u:svg_text(460, 238, "s", str_concat("0 .. ", to_string(u:svg_round(vmax, 2)))));
+  page = str_concat(page, u:svg_text(40, 274, "k", "example rows of the table, first 8 of 24 values (apl and cosmac before fine-tuning)"));
+  page = str_concat(page, u:svg_text(40, 296, "", str_concat("apl     ", u:svg_vec(u:domain_slice(take(tb.table, 0, u:docent_slot("apl", S)), 0, 8), 2))));
+  page = str_concat(page, u:svg_text(40, 316, "", str_concat("cosmac  ", u:svg_vec(u:domain_slice(take(tb.table, 0, u:docent_slot("cosmac", S)), 0, 8), 2))));
+  page = str_concat(page, u:svg_rect(30, 340, 900, 180, "panel"));
+  page = str_concat(page, u:svg_text(50, 366, "", "WHY: an Engram-style table is addressed by a hash of the input, not by a dictionary, so unseen words still land on a row;"));
+  page = str_concat(page, u:svg_text(50, 388, "", "     here the rows start as meaning (word vectors) instead of noise, and fine-tuning may keep or erase that meaning."));
+  page = str_concat(page, u:svg_text(50, 414, "", "HOW: docent_table is a param [1024, 24] assigned the table; u:docent_pooled_t gathers rows (gather_rows is differentiable,"));
+  page = str_concat(page, u:svg_text(50, 436, "", "     finding F4) and averages them; the frozen run lists only the body and heads in adam. Same features as CD01 (modulo 1024)."));
+  page = str_concat(page, u:svg_text(50, 462, "", "WHAT DECIDES: the paraphrase columns in the docent results table against MB01t; the bar needs plus 20 points."));
+  page = str_concat(page, u:svg_text(50, 492, "m", "Bigram slots have no vectors (random rows); word rows shared by hash collisions carry the last word written."));
+  str_concat(page, "</svg>")
+}
+
+w1 = write_atomic(str_concat(out_dir, "/wordvec-cooccurrence.svg"), u:cooccurrence_svg());
+w2 = write_atomic(str_concat(out_dir, "/wordvec-neighbours.svg"), u:neighbours_svg());
+w3 = write_atomic(str_concat(out_dir, "/wordvec-table.svg"), u:table_svg());
+print("MEMORY -- params", params, "(table", p_table, "); docs bytes", docs_bytes, "; vocabulary", vocab.size, "; table filled", tb.filled, "collisions", tb.collisions);
+print("SPEED -- vectors ms", u:svg_round(vectors_ms, 0), "fine-tuned train ms", u:svg_round(run_ft.train_ms, 0), "frozen train ms", u:svg_round(run_fr.train_ms, 0), "ms/query", u:svg_round(m_ft.ms, 4), "(", binary, ")");

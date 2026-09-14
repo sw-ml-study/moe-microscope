@@ -227,3 +227,74 @@ def u:docent_row(row) {
   };
   out
 }
+
+def u:docent_pooled_t(ids, mask, n) {
+  "Table variant of the pooled embedding: rows gathered from the caller's global docent_table (a param [slots, d] initialized from word vectors) instead of an embed model.";
+  matmul(reshape(mask, [1, 24]), gather_rows(docent_table, ids)) / n
+}
+
+def u:docent_hidden_t(ids, mask, n) {
+  "Table variant of the hidden representation.";
+  apply(docent_body, u:docent_pooled_t(ids, mask, n))
+}
+
+def u:docent_loss_t(ids, mask, n, yi, yd, ni, nd) {
+  "Table variant of the intent plus destination loss.";
+  hdn = u:docent_hidden_t(ids, mask, n);
+  u:docent_ce(apply(docent_head_i, hdn), yi, ni) + u:docent_ce(apply(docent_head_d, hdn), yd, nd)
+}
+
+def u:docent_logits_t(ids, mask, n) {
+  "Table variant of the intent and destination logit rows.";
+  hdn = u:docent_hidden_t(ids, mask, n);
+  {intent: apply(docent_head_i, hdn), dest: apply(docent_head_d, hdn)}
+}
+
+def u:docent_eval_t(X, M, counts, yi, yd, rows, ni, nd) {
+  "Table variant of u:docent_eval: the same metrics through docent_table.";
+  nr = reduce_mul(shape(rows));
+  total = 0;
+  pred_i = fill([0], 0);
+  pred_d = fill([0], 0);
+  hit_i = fill([0], 0);
+  hit_d = fill([0], 0);
+  hit_3 = fill([0], 0);
+  k = 0;
+  while lt(k, nr) {
+    r = take(rows, 0, k);
+    ids = take(X, 0, r);
+    mask = take(M, 0, r);
+    n = take(counts, 0, r);
+    ti = take(yi, 0, r);
+    td = take(yd, 0, r);
+    lg = u:docent_logits_t(ids, mask, n);
+    total = total + u:docent_ce(lg.intent, ti, ni) + u:docent_ce(lg.dest, td, nd);
+    pi = argmax(lg.intent);
+    pd = argmax(lg.dest);
+    top3 = argtop_k(reshape(lg.dest, [nd]), 3);
+    pred_i = concat(pred_i, pi);
+    pred_d = concat(pred_d, pd);
+    hit_i = concat(hit_i, eq(pi, ti));
+    hit_d = concat(hit_d, eq(pd, td));
+    hit_3 = concat(hit_3, gt(reduce_add(eq(top3, td)), 0));
+    k = k + 1
+  };
+  {loss: total / nr, intent_acc: reduce_add(hit_i) / nr, dest_acc: reduce_add(hit_d) / nr, top3_acc: reduce_add(hit_3) / nr, pred_i: pred_i, pred_d: pred_d, hit_i: hit_i, hit_d: hit_d, count: nr}
+}
+
+def u:top2_set_hits_t(X, M, counts, rows, expected_a, expected_b, nd) {
+  "Table variant of u:top2_set_hits.";
+  nr = reduce_mul(shape(rows));
+  hits = 0;
+  k = 0;
+  while lt(k, nr) {
+    r = take(rows, 0, k);
+    lg = u:docent_logits_t(take(X, 0, r), take(M, 0, r), take(counts, 0, r));
+    top2 = argtop_k(reshape(lg.dest, [nd]), 2);
+    a = take(expected_a, 0, k);
+    b = take(expected_b, 0, k);
+    hits = hits + gt(reduce_add(eq(top2, a)), 0) * gt(reduce_add(eq(top2, b)), 0);
+    k = k + 1
+  };
+  hits / nr
+}

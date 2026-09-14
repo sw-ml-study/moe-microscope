@@ -34,7 +34,7 @@ upstream `moe-microscope-followups-2` saga (`mlpl-repl` 08:11, `mlpl-serve`
 | F11 nested traced call lost a parameter used in index arithmetic | gather index arithmetic resolves in the traced scope | `813526d6`, verified against the 13:29 rebuilt binary | probe file expects success ("grad rows 0 0 0" then the selected rows of ones); lessons keep eager slicing by choice |
 | F13 `attention_weights` could not find an attention layer inside `residual(chain(...))` | the walk now enters `residual` and nested `chain` blocks | `8282cd6a`, verified against the 14:37 rebuilt binary | probe file expects success ("weights 5 5"); DN01 keeps its explicit residual by choice, for readability |
 
-## Open, queued upstream as `moe-microscope-followups` (F7, F8, F16, F17, F19, F20, S1; upstream `followups-2` is closing)
+## Open, queued upstream as `moe-microscope-followups` (F7, F8, F16, F17, F19, F20, F21, S1; upstream `followups-2` is closing)
 
 ### F7: a model value cannot be a user-function argument
 
@@ -103,6 +103,25 @@ but not `take`'s index, and an out-of-range `take` on the tape panics the
 process rather than erroring (as F19 for matmul). Workaround: inline the
 `take` with a literal index. Affects: any helper that selects a column
 inside a loss; the silent fall-through to a global is the dangerous part.
+
+### F21: `adam` inside a user function trains local copies; the global model and param are unchanged
+
+```
+def u:step() { "..."; adam(loss_over(W, h), [W, h], 0.1, 0.9, 0.999, 1e-8) }
+u:step(); u:step()
+# W and h are exactly as before; the same adam call at top level moves them
+```
+
+Reproducer: `probes/f21_adam_in_user_function.mlpl` (the probe passes
+while the defect is present: it asserts that nothing moved). Met in CD01b,
+where a training loop wrapped in a user function reported good in-loop
+accuracy and chance-level accuracy afterwards: the loop had trained
+function-local copies of `docent_table`, `docent_body`, and the heads.
+Every earlier lesson trains at top level, which is why it went unnoticed.
+Workaround: keep `adam` loops at top level (the two CD01b variants are
+inlined). Affects: any helper that wraps training. Proposed fix: resolve the
+optimizer's parameter list against the caller's bindings, or document the
+copy semantics loudly.
 
 ### F16: the `eval_stream` surface has no source provider, sandbox, or arguments
 

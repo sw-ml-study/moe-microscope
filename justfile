@@ -32,6 +32,14 @@ docent mode="check":
 matcher mode="check":
     ./scripts/run-matcher-demo {{mode}}
 
+# Run CD01b, the docent over word vectors from the campus's own text (about three minutes), and check its diagrams and rows; `just wordvec write` regenerates them.
+wordvec mode="check":
+    ./scripts/run-wordvec-demo {{mode}}
+
+# Reassemble fixtures/campus/docs-a.txt from the snapshot's text and the linked repositories' READMEs (network).
+campus-docs:
+    ./scripts/assemble-campus-docs
+
 # Export (or check) the routing and dispatch walkthrough fixture the live demo steps through; `just walkthrough write` regenerates it.
 walkthrough mode="check":
     ./scripts/run-walkthrough-export {{mode}}
