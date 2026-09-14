@@ -13,7 +13,7 @@ for it.
 |---|---|
 | Deploy | Pages workflow run for commit `ff20545` completed successfully |
 | URL | `https://sw-ml-study.github.io/moe-microscope/` returns HTTP 200 |
-| Build info in the footer | `runnervmlun5p · ff20545 · 2026-09-14T00:22:58Z` (host, short SHA, UTC timestamp written by the workflow) |
+| Build info in the footer | `runnervmlun5p / ff20545 / 2026-09-14T00:22:58Z` (drawn with separator dots on the page) (host, short SHA, UTC timestamp written by the workflow) |
 | Footer links | campus, blog (the about page until the post exists), Discord, GitHub repository; license and copyright present |
 | `?verify=1` on the live page (headless Chrome, 2026-09-14T00:24:54Z) | title `verified: ok` |
 | DN01 dense baseline | 13 frames stepped, 29 observations rendered, last step 300 |
