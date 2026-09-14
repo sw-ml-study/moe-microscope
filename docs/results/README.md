@@ -10,6 +10,8 @@ Concise answers first; the evidence is one link deeper.
   including the data-scale sweep
 - [Generation benchmark](../reference/generation-benchmark.md): measured
   time to first token, throughput, tail latency
+- [Live demo verification](live-demo.md): what was checked on the
+  published GitHub Pages site after each deploy
 - [Full results table](../reference/results.md): every run, every column
 - [Docent results table](../reference/docent-results.md): the campus
   docent runs (CD series), including the held-out paraphrase columns where

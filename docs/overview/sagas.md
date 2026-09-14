@@ -44,6 +44,15 @@ decisions and the usefulness bar are in [`plan.md`](plan.md), Saga 4.
    `mlpl-wasm` bridge, measured latency, the budgeted live-training probe.
 9. `easel-handoff` - the sw-campus work order, recordings, docs and wiki.
 
+Step 3 status: complete. The first live demo is published at
+https://sw-ml-study.github.io/moe-microscope/ and linked from the README:
+the three pinned training recordings and a new walkthrough fixture (one
+window of the trained MX01 mixture, stage by stage) stepped frame by frame
+with the standard footer and build info; verified on the live site (every
+lesson to its last frame, no errors) and recorded in
+`docs/results/live-demo.md`. F20 filed. First publication milestone: the
+repository side is done; the campus lobby feature and the blog post remain.
+
 Step 2 status: complete. CD01, the flat dense docent (1,024 hash slots,
 width 24, hidden 32, 26,003 parameters): held-out intent 0.938 and
 destination 0.925 on templated rows, but 0.296 destination on the 54
