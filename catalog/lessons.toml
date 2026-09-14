@@ -200,3 +200,19 @@ memory = "26,003 parameters (embedding 24,576); about 1,664 active per query; 20
 speed = "about 46 s to train 724 rows for 40 epochs in the interpreter; 0.91 ms per query at inference"
 quality = "held-out intent 0.938, destination 0.925, top-3 0.963, exhibit 0.927; paraphrases 0.296 destination and 0.481 intent; unsupported recall 0.3; ambiguous top-2 0.091"
 status = "accepted"
+
+[[lesson]]
+id = "LV01"
+slug = "live-demo"
+title = "The moving parts step by step, live on GitHub Pages"
+source = "demos/walkthrough_export.mlpl"
+library = ["lib/dense.mlpl", "lib/moe.mlpl"]
+test = ["tests/test_moe.mlpl"]
+previews = []
+fixture = "fixtures/recordings/walkthrough-v0.json"
+implementation = "builtin"
+observations = ["walk/tokens", "walk/hidden", "walk/logits", "walk/probs", "walk/mask", "walk/gate", "walk/groups", "walk/expert0-rows", "walk/dense-out", "walk/sparse-out", "walk/parity", "walk/next-tokens"]
+memory = "one 28-token window of the trained MX01 mixture recorded stage by stage: about 2,400 values in 10 frames; the page reads the three pinned training recordings too"
+speed = "the export trains 40 epochs (about 10 s) in the gate; the page is static JavaScript over fetched JSON with no build step"
+quality = "parity between the dense-masked and sparse outputs on the recorded window is exact (0); every frame the page renders is a recorded value"
+status = "accepted"

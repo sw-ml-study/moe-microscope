@@ -18,6 +18,7 @@ grep -q '^id = "RB01"$' "$catalog"
 grep -q '^id = "GB01"$' "$catalog"
 grep -q '^id = "CD00"$' "$catalog"
 grep -q '^id = "CD01"$' "$catalog"
+grep -q '^id = "LV01"$' "$catalog"
 grep -Eq '^implementation = "(builtin|from-scratch|both)"$' "$catalog"
 
 for path in $(grep -oE '"(demos|lib|tests|assets|fixtures)/[^"]+"' "$catalog" | tr -d '"' | sort -u); do

@@ -22,6 +22,16 @@ results row or a measured document.
 - [Architecture](docs/overview/architecture.md) and [delivery plan](docs/overview/plan.md)
 - [Results dashboard](docs/results/README.md) and the [full results table](docs/reference/results.md)
 
+## Live demo
+
+The moving parts step by step, live on GitHub Pages:
+<https://sw-ml-study.github.io/moe-microscope/>. Pick a lesson (the dense
+baseline, the top-1 and top-2 mixtures, or one window through routing and
+dispatch) and step through its frames; every number is read from a pinned
+recording that a real training run wrote. The blog:
+<https://blog.softwarewrighter.com/about/> (the post about this work is
+linked here once published).
+
 ## Status
 
 Demonstrated, with measurements: a dense baseline (DN01); top-1 and top-2

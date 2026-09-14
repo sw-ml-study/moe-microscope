@@ -34,7 +34,7 @@ upstream `moe-microscope-followups-2` saga (`mlpl-repl` 08:11, `mlpl-serve`
 | F11 nested traced call lost a parameter used in index arithmetic | gather index arithmetic resolves in the traced scope | `813526d6`, verified against the 13:29 rebuilt binary | probe file expects success ("grad rows 0 0 0" then the selected rows of ones); lessons keep eager slicing by choice |
 | F13 `attention_weights` could not find an attention layer inside `residual(chain(...))` | the walk now enters `residual` and nested `chain` blocks | `8282cd6a`, verified against the 14:37 rebuilt binary | probe file expects success ("weights 5 5"); DN01 keeps its explicit residual by choice, for readability |
 
-## Open, queued upstream as `moe-microscope-followups` (F7, F8, F16, F17, F19, S1; upstream `followups-2` is closing)
+## Open, queued upstream as `moe-microscope-followups` (F7, F8, F16, F17, F19, F20, S1; upstream `followups-2` is closing)
 
 ### F7: a model value cannot be a user-function argument
 
@@ -84,6 +84,25 @@ F18 made elementwise shape mismatches a clean error ("shape mismatch: 16 vs
 eagerly before tracing (`apply` the same expression outside `grad` first).
 Affects: every lesson that composes user-written layers. Proposed fix:
 route the matmul shape check through the same structured error as F18.
+
+### F20: `take`'s index parameter is not bound inside an inlined function on the tape
+
+```
+def u:col(g, e) { "..."; reshape(take(g, 1, e), [4, 1]) }
+grad(reduce_add(u:col(W, 1) * W), W)
+# error: undefined variable: e
+```
+
+Reproducer: `probes/f20_take_param_index_in_grad.mlpl`. Met while writing
+the walkthrough export's dense-masked mixture through `u:gate_column`: the
+loss also lives in a file whose training loop has a global `e`, so the
+unbound parameter silently resolved to the epoch counter and `take` then
+panicked out of range ("take compatible axis/idx: ShapeMismatch"). Two
+defects: the inliner binds `gather_rows` index arithmetic (F11, resolved)
+but not `take`'s index, and an out-of-range `take` on the tape panics the
+process rather than erroring (as F19 for matmul). Workaround: inline the
+`take` with a literal index. Affects: any helper that selects a column
+inside a loss; the silent fall-through to a global is the dangerous part.
 
 ### F16: the `eval_stream` surface has no source provider, sandbox, or arguments
 

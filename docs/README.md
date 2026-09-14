@@ -8,6 +8,8 @@ the same hierarchy as a navigation layer. Three reader journeys:
 ## I want to understand the idea
 
 - [Project overview](../README.md)
+- [Live demo](https://sw-ml-study.github.io/moe-microscope/): the pinned
+  recordings stepped frame by frame in the browser
 - [Architecture](overview/architecture.md): the model under the lens, the
   four sparsities, ownership and layering
 - [Delivery plan](overview/plan.md): the sagas, the two scales, the visual

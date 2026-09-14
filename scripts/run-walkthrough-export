@@ -1,0 +1,24 @@
+#!/bin/sh
+# Export (or check) the routing and dispatch walkthrough fixture the live replay page steps through; training is deterministic, so the fixture is byte-stable.
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+mlpl=$("$repo_root/scripts/select-mlpl")
+mode=${1:-check}
+tmp_rel="tmp/walkthrough"
+mkdir -p "$repo_root/$tmp_rel"
+committed="$repo_root/fixtures/recordings/walkthrough-v0.json"
+
+"$mlpl" --source-dir "$repo_root" "$repo_root/demos/walkthrough_export.mlpl" -- "$tmp_rel/walkthrough-v0.json"
+generated="$repo_root/$tmp_rel/walkthrough-v0.json"
+[ -s "$generated" ] || { echo "walkthrough export wrote nothing" >&2; exit 1; }
+python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d["schema"]=="sw-ml-study.moe-microscope-walkthrough" and len(d["frames"])==10, "shape"' "$generated"
+
+if [ "$mode" = "write" ]; then
+    cp "$generated" "$committed"
+elif ! cmp -s "$generated" "$committed"; then
+    echo "fixtures/recordings/walkthrough-v0.json is stale; run scripts/run-walkthrough-export write" >&2
+    exit 1
+fi
+rm -rf "$repo_root/$tmp_rel"
+echo "PASS routing and dispatch walkthrough fixture ($mode)"

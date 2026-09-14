@@ -1,0 +1,15 @@
+#!/bin/sh
+# Compose the live demo site into a directory: the static page under learn/, the pinned recordings it reads, and build-info.json (host, short SHA, UTC timestamp).
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+out=${1:?usage: scripts/build-site OUT_DIR}
+rm -rf "$out"
+mkdir -p "$out/fixtures/recordings"
+cp "$repo_root"/learn/index.html "$repo_root"/learn/app.js "$repo_root"/learn/style.css "$out/"
+cp "$repo_root"/fixtures/recordings/*.json "$out/fixtures/recordings/"
+sha=$(git -C "$repo_root" rev-parse --short HEAD 2>/dev/null || echo unknown)
+host=$(hostname 2>/dev/null || echo unknown)
+stamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+printf '{"host":"%s","sha":"%s","timestamp":"%s"}\n' "$host" "$sha" "$stamp" > "$out/build-info.json"
+echo "site composed in $out ($sha, $stamp)"

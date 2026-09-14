@@ -1,0 +1,255 @@
+// MoE Microscope live demo: steps through pinned recordings frame by frame.
+// The recordings are the source of truth; this file only names, lays out, and
+// draws the values it finds. No lesson semantics are computed here.
+'use strict';
+
+const LESSONS = [
+  { id: 'dn01', title: 'DN01 dense baseline: a training run', path: 'fixtures/recordings/dense-baseline-run-v0.json',
+    caption: 'One transformer block with a single feed-forward network, trained 300 epochs on 90 windows. Frames every 25 epochs.' },
+  { id: 'mx01', title: 'MX01 top-1 mixture: a training run', path: 'fixtures/recordings/moe-top1-run-v0.json',
+    caption: 'The same block with four experts behind a top-1 router and a load-balance term. Watch the per-expert load spread while the loss falls.' },
+  { id: 'mx02', title: 'MX02 top-2 mixture: a training run', path: 'fixtures/recordings/moe-top2-run-v0.json',
+    caption: 'Two experts per token with renormalized gates. Compare the loads, the entropy, and the family-by-expert map with MX01.' },
+  { id: 'walk', title: 'Routing and dispatch: one window, stage by stage', path: 'fixtures/recordings/walkthrough-v0.json',
+    caption: 'A trained top-1 mixture on one 28-token window. Each frame is the next stage a token passes through, from the hidden rows the router sees to the exact sum the sparse path reassembles.' },
+];
+
+const FAMILIES = ['arithmetic', 'sequence', 'mlpl', 'prose', 'overall'];
+const EXPERTS = ['E0', 'E1', 'E2', 'E3'];
+
+// Labels per observation name (naming only). rows/cols for matrices, items for vectors.
+const LABELS = {
+  'dense/config': { items: ['d_model', 'hidden', 'T', 'epochs', 'train', 'val'] },
+  'moe/config': { items: ['d_model', 'hidden', 'E', 'top-k', 'T', 'epochs', 'train', 'val'] },
+  'moe2/config': { items: ['d_model', 'hidden', 'E', 'top-k', 'T', 'epochs', 'train', 'val'] },
+  'dense/accuracy/val': { items: FAMILIES }, 'dense/accuracy/train': { items: FAMILIES },
+  'moe/accuracy/val': { items: FAMILIES }, 'moe/accuracy/train': { items: FAMILIES },
+  'moe2/accuracy/val': { items: FAMILIES }, 'moe2/accuracy/train': { items: FAMILIES },
+  'moe/load': { items: EXPERTS }, 'moe2/load': { items: EXPERTS },
+  'moe/family-by-expert': { rows: FAMILIES.slice(0, 4), cols: EXPERTS },
+  'moe2/family-by-expert': { rows: FAMILIES.slice(0, 4), cols: EXPERTS },
+  'moe/route/example': { items: ['2', '+', '3', '=', '|', '5', '.'] },
+  'moe2/route/example': { rows: ['2', '+', '3', '=', '|', '5', '.'], cols: EXPERTS },
+  'dense/logits/example-argmax': { items: ['2', '+', '3', '=', '|', '5', '.'] },
+  'dense/attention/example': { rows: ['2', '+', '3', '=', '|', '5', '.'], cols: ['2', '+', '3', '=', '|', '5', '.'] },
+  'walk/config': { items: ['d_model', 'hidden', 'E', 'T', 'epochs'] },
+  'walk/load': { items: EXPERTS },
+  'walk/expert-evals': { items: ['dense-masked', 'sparse'] },
+};
+
+// One line of what/why/how per observation name, taken from the lesson pages.
+const CAPTIONS = {
+  'dense/config': 'WHAT: the run configuration. Frame 0 of every recording states the shapes so the rest can be read without the source.',
+  'dense/loss/train': 'WHAT: mean masked cross-entropy on the training rows. WHY it keeps falling: 3,812 parameters can memorize 90 windows.',
+  'dense/loss/val': 'WHAT: the same loss on the 30 held-out rows. WHY it turns up after a few frames: the model memorizes instead of generalizing (finding 4: data, not epochs).',
+  'dense/accuracy/val': 'WHAT: exact match by task family on held-out prompts. Only prose, a local pattern, generalizes at 120 examples.',
+  'dense/accuracy/train': 'WHAT: exact match on the training prompts, the memorization the loss curve shows.',
+  'dense/logits/example-argmax': 'WHAT: the argmax prediction at each position of the example window 2+3=|5. (the answer 5 and the stop token are the graded positions).',
+  'dense/attention/example': 'WHAT: the causal attention weights of the example, rows attend to columns at or before them. HOW: attention_weights over the trained block.',
+  'moe/config': 'WHAT: the mixture configuration: four experts, top-1, the same widths as DN01, plus the balance weight in the lesson.',
+  'moe/loss/train': 'WHAT: masked cross-entropy on training rows, dense-masked training: every expert runs and the gate zeroes the unchosen ones.',
+  'moe/loss/val': 'WHAT: held-out loss. The mixture stores 1.86 times the parameters of DN01 and lands at the same validation loss (finding 1).',
+  'moe/load': 'WHAT: tokens routed to each expert in the last epoch. WHY it stays spread: the balance term (weight 0.01) penalizes collapse onto one expert.',
+  'moe/entropy': 'WHAT: mean router entropy over tokens; lower means more decisive routing.',
+  'moe/balance': 'WHAT: the Switch balance term E times the sum of routed fraction times mean probability; 1.0 when perfectly even.',
+  'moe/family-by-expert': 'WHAT: the share of each task family\'s answer tokens sent to each expert. The router never saw a family label; the structure is emergent (finding 2).',
+  'moe/accuracy/val': 'WHAT: held-out exact match by family, same harness as DN01.',
+  'moe/accuracy/train': 'WHAT: training exact match by family.',
+  'moe/route/example': 'WHAT: the expert chosen for each position of the example window.',
+  'moe2/config': 'WHAT: the top-2 configuration: the same four experts, two per token, gates renormalized over the kept pair.',
+  'moe2/loss/train': 'WHAT: training loss under top-2; two experts per token fit the rows better (finding 3).',
+  'moe2/loss/val': 'WHAT: held-out loss under top-2, worse than top-1 at this data size while training fit is better.',
+  'moe2/load': 'WHAT: tokens per expert; every token counts twice under top-2.',
+  'moe2/entropy': 'WHAT: mean router entropy.',
+  'moe2/balance': 'WHAT: the balance term, computed over the top-2 mask.',
+  'moe2/family-by-expert': 'WHAT: family-by-expert shares under top-2, flatter than top-1 by construction (specialization 0.42 against 0.61).',
+  'moe2/accuracy/val': 'WHAT: held-out exact match by family; the first held-out MLPL answers appear here.',
+  'moe2/accuracy/train': 'WHAT: training exact match by family.',
+  'moe2/route/example': 'WHAT: the top-2 gate per position of the example window; two nonzero entries per row.',
+  'moe2/specialization': 'WHAT: mean over families of the largest expert share; 0.25 would mean routing ignores the family.',
+  'walk/config': 'WHAT: the walkthrough model: d_model 16, hidden 32, four experts, window 28, trained 40 epochs so routing is learned.',
+  'walk/tokens': 'WHAT: the token ids of the window 17+25=|42. padded with id 0. HOW: u:domain_encode maps characters to alphabet indices.',
+  'walk/hidden': 'WHAT: what the router sees: 28 rows of 16 after embedding, position, attention with a residual, and RMS norm.',
+  'walk/logits': 'WHAT: router logits, one row per token, one column per expert. HOW: a single linear layer 16 to 4.',
+  'walk/probs': 'WHAT: softmax of the logits per row. WHY: the chosen expert\'s probability becomes the gate, which is how the router gets a gradient.',
+  'walk/entropy': 'WHAT: mean entropy of the rows; decisive routing is low.',
+  'walk/mask': 'WHAT: the top-1 mask, a one-hot per row from argmax. HOW: argmax and one_hot are stop-gradient constants on the tape (finding F5).',
+  'walk/load': 'WHAT: rows per expert in this window.',
+  'walk/balance': 'WHAT: the balance term for this window, 1.0 when even.',
+  'walk/gate': 'WHAT: gate = probabilities times mask (Switch style). Each row keeps one nonzero entry.',
+  'walk/gate-row-sum': 'WHAT: the kept probability per token; a renormalized top-1 gate would be identically 1 and give the router no gradient.',
+  'walk/groups': 'WHAT: the expert index per token: the dispatch table.',
+  'walk/group-order': 'WHAT: token indices sorted by expert: the order the sparse path gathers rows in.',
+  'walk/expert0-rows': 'WHAT: the hidden rows gathered for expert 0 (compress by its mask column); the expert runs once on this sub-batch.',
+  'walk/expert0-out': 'WHAT: expert 0\'s output rows, scaled by the gate before the scatter.',
+  'walk/expert-evals': 'WHAT: expert row evaluations, dense-masked (every expert on every token) against sparse (one expert per token).',
+  'walk/dense-out': 'WHAT: the dense-masked mixture output, sum over experts of expert(x) times its gate column.',
+  'walk/sparse-out': 'WHAT: the sparse output, each expert\'s rows scattered back through a one-hot selection matmul (u:place_rows).',
+  'walk/parity': 'WHAT: max |dense - sparse| over the window. WHY it is 0: the two paths are the same function (SD01).',
+  'walk/next-tokens': 'WHAT: the argmax next token at every position through the head; the graded positions are the answer 42 and the stop.',
+};
+
+const HOWTO = [
+  ['Recording', 'A JSON list of frames; each frame is a training step with named observations (name, shape, values). emit_frame in the lesson wrote them; the gate pins their hashes.'],
+  ['Scalars', 'Shown with their history across frames as a sparkline, so loss curves appear as you step.'],
+  ['Vectors', 'Bars with the labels the lesson uses (experts, task families).'],
+  ['Matrices', 'Tables shaded by value; pink cells are the one-hot or gate entries that are on.'],
+  ['Groups', 'In the walkthrough, tokens are drawn as chips colored by the expert that received them.'],
+];
+
+const state = { lesson: null, data: null, frame: 0, timer: null, alphabet: null };
+
+const $ = (id) => document.getElementById(id);
+const fmt = (v) => (Number.isInteger(v) ? String(v) : (Math.abs(v) >= 100 ? v.toFixed(1) : v.toFixed(3)));
+
+function reshape(values, shape) {
+  if (shape.length <= 1) return values;
+  const [r, c] = shape;
+  const rows = [];
+  for (let i = 0; i < r; i++) rows.push(values.slice(i * c, (i + 1) * c));
+  return rows;
+}
+
+function historyOf(name) {
+  const out = [];
+  for (let i = 0; i <= state.frame; i++) {
+    const fr = state.data.frames[i];
+    const o = fr.observations.find((x) => x.name === name);
+    if (o && o.values.length === 1) out.push({ step: fr.step, v: o.values[0] });
+  }
+  return out;
+}
+
+function sparkline(points) {
+  if (points.length < 2) return '';
+  const w = 360, h = 60, pad = 4;
+  const vs = points.map((p) => p.v);
+  const lo = Math.min(...vs), hi = Math.max(...vs);
+  const sx = (i) => pad + (i * (w - 2 * pad)) / (points.length - 1);
+  const sy = (v) => (hi === lo ? h / 2 : h - pad - ((v - lo) * (h - 2 * pad)) / (hi - lo));
+  const d = points.map((p, i) => `${i ? 'L' : 'M'}${sx(i).toFixed(1)},${sy(p.v).toFixed(1)}`).join(' ');
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" role="img" aria-label="history"><path d="${d}" fill="none" stroke="#fbbf24" stroke-width="2"/></svg>`;
+}
+
+function tokenLabels(values) {
+  if (!state.alphabet) return values.map(String);
+  return values.map((id) => (state.alphabet[id] === ' ' ? 'sp' : state.alphabet[id] || String(id)));
+}
+
+function renderObservation(o, frameIndex) {
+  const labels = LABELS[o.name] || {};
+  const cap = CAPTIONS[o.name] || '';
+  let body = '';
+  if (o.values.length === 1) {
+    const hist = historyOf(o.name);
+    body = `<div class="scalar">${fmt(o.values[0])}</div>${sparkline(hist)}<div class="history">${hist.length} frames so far</div>`;
+  } else if (o.shape.length <= 1) {
+    if (o.name === 'walk/tokens' || o.name === 'walk/next-tokens') {
+      const chars = tokenLabels(o.values);
+      body = `<div class="chips">${chars.map((c, i) => `<span class="chip" title="position ${i}">${c}</span>`).join('')}</div>`;
+    } else if (o.name === 'walk/groups') {
+      const toks = state.data.frames[0].observations.find((x) => x.name === 'walk/tokens');
+      const chars = tokenLabels(toks.values);
+      body = `<div class="chips">${o.values.map((e, i) => `<span class="chip e${e}" title="token ${i} to expert ${e}">${chars[i]}</span>`).join('')}</div>`;
+    } else {
+      const max = Math.max(...o.values.map(Math.abs), 1e-9);
+      const items = labels.items || o.values.map((_, i) => String(i));
+      body = `<div class="bars">${o.values.map((v, i) => `<div class="bar-row"><span>${items[i] ?? i}</span><div class="bar" style="width:${(100 * Math.abs(v)) / max}%"></div><span>${fmt(v)}</span></div>`).join('')}</div>`;
+    }
+  } else {
+    const rows = reshape(o.values, o.shape);
+    const max = Math.max(...o.values.map(Math.abs), 1e-9);
+    const rl = labels.rows || rows.map((_, i) => String(i));
+    const cl = labels.cols || rows[0].map((_, j) => String(j));
+    const wide = rows[0].length > 8;
+    const shown = wide ? rows.map((r) => r.slice(0, 8)) : rows;
+    const cls = (v) => (o.name.endsWith('/mask') ? (v ? 'on' : '') : (Math.abs(v) > 0.5 * max ? 'hi' : ''));
+    body = `<table class="grid"><thead><tr><th></th>${cl.slice(0, shown[0].length).map((c) => `<th>${c}</th>`).join('')}${wide ? '<th>...</th>' : ''}</tr></thead><tbody>` +
+      shown.map((r, i) => `<tr><th>${rl[i] ?? i}</th>${r.map((v) => `<td class="${cls(v)}">${fmt(v)}</td>`).join('')}${wide ? '<td>...</td>' : ''}</tr>`).join('') +
+      `</tbody></table>${wide ? `<div class="history">first 8 of ${rows[0].length} columns shown</div>` : ''}`;
+  }
+  return `<div class="obs"><span class="name">${o.name}</span><span class="shape">[${o.shape.join(', ')}]</span>${cap ? `<p class="caption">${cap}</p>` : ''}${body}</div>`;
+}
+
+function render() {
+  const fr = state.data.frames[state.frame];
+  $('frame-label').textContent = `frame ${state.frame + 1} of ${state.data.frames.length} (step ${fr.step})`;
+  $('slider').value = String(state.frame);
+  $('frame').innerHTML = fr.observations.map((o) => renderObservation(o, state.frame)).join('');
+}
+
+async function loadLesson(id) {
+  const lesson = LESSONS.find((l) => l.id === id) || LESSONS[0];
+  const res = await fetch(lesson.path);
+  if (!res.ok) throw new Error(`${lesson.path}: HTTP ${res.status}`);
+  const data = await res.json();
+  state.lesson = lesson; state.data = data; state.frame = 0;
+  state.alphabet = data.alphabet ? data.alphabet.a : null;
+  $('lesson-title').textContent = lesson.title;
+  $('lesson-caption').textContent = lesson.caption + (data.text ? ` Window text: ${data.text.t}` : '');
+  $('slider').max = String(data.frames.length - 1);
+  render();
+}
+
+function step(delta) {
+  const n = state.data.frames.length;
+  state.frame = Math.min(n - 1, Math.max(0, state.frame + delta));
+  render();
+}
+
+function togglePlay() {
+  if (state.timer) { clearInterval(state.timer); state.timer = null; $('play').textContent = 'Play'; return; }
+  $('play').textContent = 'Pause';
+  state.timer = setInterval(() => {
+    if (state.frame >= state.data.frames.length - 1) { togglePlay(); return; }
+    step(1);
+  }, 700);
+}
+
+async function verifyAll() {
+  const lines = [];
+  for (const l of LESSONS) {
+    try {
+      await loadLesson(l.id);
+      let frames = 0, observations = 0;
+      for (let i = 0; i < state.data.frames.length; i++) { state.frame = i; render(); frames++; observations += state.data.frames[i].observations.length; }
+      lines.push(`${l.id}: ${frames} frames stepped, ${observations} observations rendered, last step ${state.data.frames[frames - 1].step}`);
+    } catch (e) {
+      lines.push(`${l.id}: ERROR ${e.message}`);
+    }
+  }
+  const pre = $('verify');
+  pre.hidden = false;
+  pre.textContent = lines.join('\n');
+  document.title = 'verified: ' + (lines.some((x) => x.includes('ERROR')) ? 'errors' : 'ok');
+}
+
+async function main() {
+  const sel = $('lesson');
+  for (const l of LESSONS) { const o = document.createElement('option'); o.value = l.id; o.textContent = l.title; sel.appendChild(o); }
+  $('howto').innerHTML = HOWTO.map(([t, d]) => `<dt>${t}</dt><dd>${d}</dd>`).join('');
+  sel.addEventListener('change', () => loadLesson(sel.value).catch(showError));
+  $('prev').addEventListener('click', () => step(-1));
+  $('next').addEventListener('click', () => step(1));
+  $('play').addEventListener('click', togglePlay);
+  $('slider').addEventListener('input', (e) => { state.frame = Number(e.target.value); render(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'ArrowRight') step(1); if (e.key === 'ArrowLeft') step(-1); });
+  try {
+    const bi = await (await fetch('build-info.json')).json();
+    $('build-info').textContent = `${bi.host} · ${bi.sha} · ${bi.timestamp}`;
+  } catch (e) { $('build-info').textContent = 'local build'; }
+  const params = new URLSearchParams(location.search);
+  if (params.get('verify') === '1') { await verifyAll(); return; }
+  const wanted = params.get('lesson') || 'mx01';
+  sel.value = wanted;
+  await loadLesson(wanted);
+  const f = Number(params.get('frame'));
+  if (Number.isInteger(f) && f > 0) { state.frame = Math.min(f - 1, state.data.frames.length - 1); render(); }
+}
+
+function showError(e) {
+  $('lesson-title').textContent = 'Could not load the recording';
+  $('lesson-caption').textContent = e.message;
+}
+
+main().catch(showError);

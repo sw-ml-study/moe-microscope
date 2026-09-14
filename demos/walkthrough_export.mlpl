@@ -1,0 +1,156 @@
+# Routing and dispatch walkthrough export: the MX01 mixture trained briefly, then one window recorded stage by stage (hidden rows, router logits, probabilities, mask, gate, dispatch groups, expert outputs, scatter, exact sum, next tokens) into a pinned fixture the live replay page steps through.
+include "../lib/dense.mlpl";
+include "../lib/moe.mlpl";
+
+print("WHAT THIS SHOWS -- One window of the trained top-1 mixture, recorded as the stages a token passes through: what the router sees, what it computes, which expert runs, and how the sparse path reassembles the exact dense result.");
+print("SHAPES -- window [T=28, d=16]; router logits, probabilities, mask, gate [28, 4]; groups [28]; dense and sparse outputs [28, 16]; parity scalar.");
+
+out_path = unwrap(list_get(args(), 0));
+m = unwrap(u:domain_load_mixture(u:domain_mixture_path()));
+d = u:domain_build(m);
+w = unwrap(u:domain_windows(d.texts, m.window));
+s = u:domain_split(d.count, m.train_fraction, m.seed);
+V = u:domain_vocab_size();
+T = m.window;
+dm = 16;
+hidden = 32;
+E = 4;
+epochs = 40;
+lr = 0.003;
+alpha = 0.01;
+ntrain = reduce_mul(shape(s.train));
+train_x = gather_rows(w.x, s.train);
+train_y = gather_rows(w.y, s.train);
+train_m = gather_rows(w.mask, s.train);
+posT = u:positions(T, dm);
+emb = embed(V, dm, 0);
+att = chain(rms_norm(dm), causal_attention(dm, 1, 1));
+pre = rms_norm(dm);
+router = linear(dm, E, 9);
+ex0 = chain(linear(dm, hidden, 20), relu_layer(), linear(hidden, dm, 21));
+ex1 = chain(linear(dm, hidden, 22), relu_layer(), linear(hidden, dm, 23));
+ex2 = chain(linear(dm, hidden, 24), relu_layer(), linear(hidden, dm, 25));
+ex3 = chain(linear(dm, hidden, 26), relu_layer(), linear(hidden, dm, 27));
+norm = rms_norm(dm);
+head = linear(dm, V, 4);
+
+def u:moe_dense(h1) {
+  "Dense-masked mixture: every expert runs on every token; the Switch gate zeroes all but the chosen one (gate columns inlined: a take with a parameter-bound index inside a traced helper panics, finding F20).";
+  x = apply(pre, h1);
+  gate = u:switch_gate(apply(router, x), E);
+  reshape(take(gate, 1, 0), [T, 1]) * apply(ex0, x) + reshape(take(gate, 1, 1), [T, 1]) * apply(ex1, x) + reshape(take(gate, 1, 2), [T, 1]) * apply(ex2, x) + reshape(take(gate, 1, 3), [T, 1]) * apply(ex3, x)
+}
+
+def u:expert_out(e, rows) {
+  "Run expert e on a sub-batch of rows.";
+  if eq(e, 0) {
+    apply(ex0, rows)
+  } else {
+    if eq(e, 1) {
+      apply(ex1, rows)
+    } else {
+      if eq(e, 2) {
+        apply(ex2, rows)
+      } else {
+        apply(ex3, rows)
+      }
+    }
+  }
+}
+
+def u:moe_sparse(h1) {
+  "Sparse dispatch: for each expert, gather its routed rows, run it once, scale by the gate, scatter back; idle experts are skipped.";
+  x = apply(pre, h1);
+  logits = apply(router, x);
+  mask = u:top1_mask(logits, E);
+  gate = u:router_probs(logits) * mask;
+  out = fill([T, dm], 0);
+  e = 0;
+  while lt(e, E) {
+    col = take(mask, 1, e);
+    n_e = reduce_add(col);
+    out = if n_e {
+      out + u:place_rows(u:expert_out(e, u:dispatch_rows(x, col)) * u:dispatch_gate(take(gate, 1, e), col), col, T)
+    } else {
+      out
+    };
+    e = e + 1
+  };
+  out
+}
+
+def u:body_dense(h0) {
+  "Attention, dense-masked mixture, norm, head.";
+  h1 = h0 + apply(att, h0);
+  apply(head, apply(norm, h1 + u:moe_dense(h1)))
+}
+
+e = 0;
+while lt(e, epochs) {
+  i = 0;
+  while lt(i, ntrain) {
+    x1 = take(train_x, 0, i);
+    y1 = take(train_y, 0, i);
+    m1 = take(train_m, 0, i);
+    h0 = apply(emb, x1) + posT;
+    adam(u:masked_ce(u:body_dense(h0), y1, m1, V) + alpha * u:balance_loss(u:router_probs(apply(router, apply(pre, h0 + apply(att, h0)))), u:top1_mask(apply(router, apply(pre, h0 + apply(att, h0))), E), E, T), [emb, att, pre, router, ex0, ex1, ex2, ex3, norm, head], lr, 0.9, 0.999, 0.00000001);
+    i = i + 1
+  };
+  e = e + 1
+};
+print("TRAINED --", epochs, "epochs so the routing is learned rather than arbitrary");
+
+example = "17+25=|42.";
+ex_ids = u:pad_to(unwrap(u:domain_encode(example)), T);
+h0 = apply(emb, ex_ids) + posT;
+h1 = h0 + apply(att, h0);
+x = apply(pre, h1);
+logits = apply(router, x);
+probs = u:router_probs(logits);
+mask = u:top1_mask(logits, E);
+gate = probs * mask;
+load = u:expert_load(mask);
+entropy = u:router_entropy(probs);
+balance = u:balance_loss(probs, mask, E, T);
+groups = argmax(logits, 1);
+order = grade_up(groups);
+dense_out = u:moe_dense(h1);
+sparse_out = u:moe_sparse(h1);
+parity = reduce(:max, abs(dense_out - sparse_out));
+next_ids = argmax(u:body_dense(h0), 1);
+gate_sum = reduce_add(gate, 1);
+ex_rows_0 = u:dispatch_rows(x, take(mask, 1, 0));
+n0 = reduce_add(take(mask, 1, 0));
+expert0_out = u:expert_out(0, ex_rows_0);
+
+def u:obs(name, arr) {
+  "One observation as JSON: name, shape, flat values.";
+  n = reduce_mul(shape(arr));
+  unwrap(to_json({name: name, shape: shape(arr), values: reshape(arr, [n])}))
+}
+
+def u:frame(step, body) {
+  "One frame as JSON from a comma-joined observation list.";
+  str_concat(str_concat(str_concat(str_concat("{\"step\":", to_string(step)), ",\"observations\":["), body), "]}")
+}
+
+def u:join2(a, b) {
+  "Two JSON fragments joined by a comma.";
+  str_concat(str_concat(a, ","), b)
+}
+
+f0 = u:frame(0, u:join2(u:obs("walk/config", [dm, hidden, E, T, epochs]), u:obs("walk/tokens", ex_ids)));
+f1 = u:frame(1, u:obs("walk/hidden", x));
+f2 = u:frame(2, u:obs("walk/logits", logits));
+f3 = u:frame(3, u:join2(u:obs("walk/probs", probs), u:obs("walk/entropy", fill([1], entropy))));
+f4 = u:frame(4, u:join2(u:join2(u:obs("walk/mask", mask), u:obs("walk/load", load)), u:obs("walk/balance", fill([1], balance))));
+f5 = u:frame(5, u:join2(u:obs("walk/gate", gate), u:obs("walk/gate-row-sum", gate_sum)));
+f6 = u:frame(6, u:join2(u:obs("walk/groups", groups), u:obs("walk/group-order", order)));
+f7 = u:frame(7, u:join2(u:join2(u:obs("walk/expert0-rows", ex_rows_0), u:obs("walk/expert0-out", expert0_out)), u:obs("walk/expert-evals", [E * T, reduce_add(mask)])));
+f8 = u:frame(8, u:join2(u:obs("walk/dense-out", dense_out), u:obs("walk/sparse-out", sparse_out)));
+f9 = u:frame(9, u:join2(u:obs("walk/parity", fill([1], parity)), u:obs("walk/next-tokens", next_ids)));
+frames = u:join2(u:join2(u:join2(u:join2(f0, f1), u:join2(f2, f3)), u:join2(u:join2(f4, f5), u:join2(f6, f7))), u:join2(f8, f9));
+alphabet = u:domain_alphabet();
+doc = str_concat(str_concat(str_concat(str_concat("{\"schema\":\"sw-ml-study.moe-microscope-walkthrough\",\"version\":0,\"lesson\":\"routing-walkthrough\",\"text\":", unwrap(to_json({t: example}))), ",\"alphabet\":"), unwrap(to_json({a: alphabet}))), str_concat(str_concat(",\"frames\":[", frames), "]}\n"));
+w_out = write_atomic(out_path, doc);
+print("EXPORT --", out_path, "frames 10; window", example, "; expert loads", load, "; parity max |dense - sparse|", parity, "; expert row evals dense", E * T, "sparse", reduce_add(mask));

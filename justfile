@@ -28,6 +28,18 @@ campus mode="check":
 docent mode="check":
     ./scripts/run-docent-demo {{mode}}
 
+# Export (or check) the routing and dispatch walkthrough fixture the live demo steps through; `just walkthrough write` regenerates it.
+walkthrough mode="check":
+    ./scripts/run-walkthrough-export {{mode}}
+
+# Check that the live demo page references committed files only and carries the standard footer.
+check-learn:
+    ./scripts/check-learn
+
+# Compose the live demo into tmp/site and serve it locally.
+serve-learn port="8765":
+    ./scripts/build-site tmp/site && cd tmp/site && python3 -m http.server {{port}}
+
 # Run the DN01 dense baseline (about 16 seconds) and check its diagrams and results row; `just dense write` regenerates them.
 dense mode="check":
     ./scripts/run-dense-demo {{mode}}

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MoE Microscope live demo</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>MoE Microscope: the moving parts, step by step</h1>
+  <p>Every number on this page is read from a recording that a real training run wrote (<code>emit_frame</code> in sw-MLPL), pinned in the repository and checked by its gate. Nothing here is simulated. Pick a lesson, then step through its frames.</p>
+</header>
+<section class="controls" aria-label="Playback">
+  <label for="lesson">Lesson</label>
+  <select id="lesson"></select>
+  <button type="button" id="prev">Previous</button>
+  <button type="button" id="next">Next</button>
+  <button type="button" id="play">Play</button>
+  <input type="range" id="slider" min="0" max="0" value="0" aria-label="Frame">
+  <span class="frame-label" id="frame-label">frame 0</span>
+</section>
+<main>
+  <section class="panel" aria-live="polite">
+    <h2 id="lesson-title">Loading</h2>
+    <p class="caption" id="lesson-caption"></p>
+    <div id="frame"></div>
+  </section>
+  <aside class="panel howto">
+    <h2>What you are looking at</h2>
+    <dl id="howto"></dl>
+    <h2>Where it comes from</h2>
+    <p class="caption">Recordings: <code>fixtures/recordings/*.json</code> in the <a href="https://github.com/sw-ml-study/moe-microscope">moe-microscope</a> repository. Each lesson page there explains the experiment, its diagrams, and its measured numbers: <a href="https://github.com/sw-ml-study/moe-microscope/blob/main/docs/experiments/README.md">experiments</a>, <a href="https://github.com/sw-ml-study/moe-microscope/blob/main/docs/results/current-findings.md">findings</a>.</p>
+    <pre id="verify" hidden></pre>
+  </aside>
+</main>
+<footer>
+  <span>MIT License</span><span class="sep">&middot;</span>
+  <span>&copy; 2026 Michael A Wright</span><span class="sep">&middot;</span>
+  <a href="https://software-wrighter-lab.github.io/sw-campus/" target="_blank" rel="noopener">Campus</a><span class="sep">&middot;</span>
+  <a href="https://blog.softwarewrighter.com/about/" target="_blank" rel="noopener">Blog</a><span class="sep">&middot;</span>
+  <a href="https://discord.com/invite/Ctzk5uHggZ" target="_blank" rel="noopener">Discord</a><span class="sep">&middot;</span>
+  <a href="https://github.com/sw-ml-study/moe-microscope" target="_blank" rel="noopener">GitHub</a><span class="sep">&middot;</span>
+  <span id="build-info">build info unavailable</span>
+</footer>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+# F20 reproducer: take's index parameter is not bound inside an inlined user function on the tape (undefined variable: e); with a same-named global the index silently resolves to it and can panic out of range; checked by scripts/run-probes.
+W = param[4, 4];
+W = reshape(range(16), [4, 4]);
+def u:col(g, e) {
+  "Column e of g as a [4, 1] factor.";
+  reshape(take(g, 1, e), [4, 1])
+}
+print("eager", u:col(W, 1));
+print("grad", grad(reduce_add(u:col(W, 1) * W), W))
