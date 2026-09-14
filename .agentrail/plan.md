@@ -594,7 +594,7 @@ and another on request; the live-training budget measured;
 dense, four-expert, and eight-expert rows sit in the results table with the
 docent metrics; snapshot A is preserved with its provenance; sw-campus has an
 implementation-ready easel handoff.
-## Saga 7: recurrence and Engram
+## Saga 5: recurrence and Engram
 
 1. **recurrent-block (RC01).** Shared block applied `R` times with recorded
    state per recurrence, accuracy versus `R`, and the deep-supervision loss.
@@ -615,7 +615,7 @@ implementation-ready easel handoff.
 
 Exit: the ablation matrix rows through RE01 exist with diagrams and triples;
 the live demo has a written, implementation-ready handoff.
-## Saga 8: campus docent, routed and in the browser
+## Saga 6: campus docent, routed and in the browser
 
 The docent saga continued after Engram: the same design decisions and the
 same usefulness bar as Saga 4. Steps, renumbered from Saga 4's 6 to 9:
