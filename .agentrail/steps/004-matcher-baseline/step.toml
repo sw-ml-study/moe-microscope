@@ -1,9 +1,10 @@
 number = 4
 slug = "matcher-baseline"
-status = "pending"
+status = "completed"
 description = "MB01 matcher baseline. Implement in lib/matcher.mlpl the deterministic alias-..."
 role = "production"
 context_files = []
 created_at = "2026-09-13T15:51:25"
+completed_at = "2026-09-13T18:19:30"
 task_type = "mlpl-lesson"
-commits = []
+commits = ["01d71b5507ff95f1dcc279d0a6393c29a37a58da"]

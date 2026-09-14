@@ -1,0 +1,11 @@
+{
+  "task_type": "mlpl-lesson",
+  "state": {
+    "number": 4,
+    "step": "matcher-baseline"
+  },
+  "action": "MB01 done: lib/matcher.mlpl (mockup scorer and intent rules ported; text variant), demo with one diagram and two docent rows, six tests, gate script, catalog entry, MB01 report; finding 8 recorded: the mockup matcher beats the dense docent on destinations (0.954 vs 0.925), paraphrases (0.630 vs 0.296), and unsupported recall (1.0 vs 0.3); the docent wins only on intent (0.938 vs 0.78); bar not met. Wiki and README updated with sw-MLPL, live demo, and docent links. LinkedIn carousel PDF added under docs. Gate passed; pushed.",
+  "result": "success",
+  "reward": 1,
+  "timestamp": "2026-09-13T18:19:30"
+}
