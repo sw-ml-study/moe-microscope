@@ -1,9 +1,10 @@
 number = 1
 slug = "recurrent-block"
-status = "pending"
+status = "completed"
 description = "RC01 recurrent block. One physical transformer block (the DN01 block: attenti..."
 role = "production"
 context_files = []
 created_at = "2026-09-14T08:44:00"
+completed_at = "2026-09-14T15:27:23"
 task_type = "mlpl-lesson"
-commits = []
+commits = ["e9ee2b97b6c8ce948b5f53af7dac9d73aef289c9"]

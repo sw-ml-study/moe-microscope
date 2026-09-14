@@ -1,0 +1,9 @@
+number = 3
+slug = "recurrent-moe"
+status = "pending"
+description = "RM01 recurrent MoE: routing over reasoning time. The MX01 mixture (four exper..."
+role = "production"
+context_files = []
+created_at = "2026-09-14T08:44:00"
+task_type = "mlpl-lesson"
+commits = []
