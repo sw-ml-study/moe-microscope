@@ -1,0 +1,395 @@
+# Deterministic docent matchers: the campus mockup's alias-and-concept scorer and keyword intent rules ported to MLPL (partial matches as prefix or suffix containment), plus a stronger variant that also reads the catalog's story and status text; the yardstick every trained docent must beat.
+include "campus.mlpl";
+
+def u:matcher_lower_clean(s) {
+  "Lowercase ASCII letters, keep letters, digits, and spaces, and turn every other character into a space (the mockup's tokenizer normalization).";
+  upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  lower = "abcdefghijklmnopqrstuvwxyz";
+  keep = "abcdefghijklmnopqrstuvwxyz0123456789 ";
+  n = str_len(s);
+  out = "";
+  i = 0;
+  while lt(i, n) {
+    ch = str_slice(s, i, 1);
+    up = str_find(upper, ch);
+    piece = if gt(up, -1) {
+      str_slice(lower, up, 1)
+    } else {
+      if gt(str_find(keep, ch), -1) {
+        ch
+      } else {
+        " "
+      }
+    };
+    out = str_concat(out, piece);
+    i = i + 1
+  };
+  out
+}
+
+def u:matcher_stop_words() {
+  "The mockup's stop-word list as a pipe-delimited field.";
+  "|a|an|the|of|in|on|at|to|for|is|are|was|were|be|i|me|my|you|your|it|this|that|what|where|which|who|how|why|can|could|would|like|want|see|show|take|go|tell|about|something|some|any|and|or|with|from|do|does|did|there|here|please|wing|wings|building|lobby|exhibit|exhibits|demo|demos|page|place|"
+}
+
+def u:matcher_is_stop(t) {
+  "Whether a token is a stop word.";
+  gt(str_find(u:matcher_stop_words(), str_concat(str_concat("|", t), "|")), -1)
+}
+
+def u:matcher_tokens(s) {
+  "Content tokens of a text: normalized, split on spaces, empty and stop words dropped; a record with the newline-joined list and its count (zero means none).";
+  parts = str_split(u:matcher_lower_clean(s), " ");
+  m = list_len(parts);
+  acc = "";
+  n = 0;
+  i = 0;
+  while lt(i, m) {
+    t = u:lg(parts, i);
+    keep = gt(str_len(t), 0) * (1 - u:matcher_is_stop(t));
+    acc = if keep {
+      u:row_join(acc, t)
+    } else {
+      acc
+    };
+    n = n + keep;
+    i = i + 1
+  };
+  {list: str_split(acc, "\n"), n: n}
+}
+
+def u:matcher_buckets() {
+  "Signal weights in descending order; bucket b of a place holds the tokens carrying weight b.";
+  [4, 3, 2, 1.5, 1]
+}
+
+def u:matcher_bucket_of(w) {
+  "Bucket index of a weight (4, 3, 2, 1.5, 1).";
+  if eq(w, 4) {
+    0
+  } else {
+    if eq(w, 3) {
+      1
+    } else {
+      if eq(w, 2) {
+        2
+      } else {
+        if eq(w, 1.5) {
+          3
+        } else {
+          4
+        }
+      }
+    }
+  }
+}
+
+def u:matcher_add(all5, long5, text, w) {
+  "Append every token of a text to a place's five bucket strings (all tokens, and tokens of five or more characters), returning the two updated pipe-delimited lists; a token string looks like |a|b|c|.";
+  tk = u:matcher_tokens(text);
+  b = u:matcher_bucket_of(w);
+  a = str_split(all5, "\n");
+  l = str_split(long5, "\n");
+  cur_a = u:lg(a, b);
+  cur_l = u:lg(l, b);
+  i = 0;
+  while lt(i, tk.n) {
+    t = u:lg(tk.list, i);
+    entry = str_concat(t, "|");
+    cur_a = if str_len(cur_a) {
+      str_concat(cur_a, entry)
+    } else {
+      str_concat("|", entry)
+    };
+    cur_l = if gt(str_len(t), 4) {
+      if str_len(cur_l) {
+        str_concat(cur_l, entry)
+      } else {
+        str_concat("|", entry)
+      }
+    } else {
+      cur_l
+    };
+    i = i + 1
+  };
+  out_a = "";
+  out_l = "";
+  j = 0;
+  while lt(j, 5) {
+    out_a = str_concat(str_concat(out_a, if eq(j, b) {
+          cur_a
+        } else {
+          u:lg(a, j)
+        }), if lt(j, 4) {
+        "\n"
+      } else {
+        ""
+      });
+    out_l = str_concat(str_concat(out_l, if eq(j, b) {
+          cur_l
+        } else {
+          u:lg(l, j)
+        }), if lt(j, 4) {
+        "\n"
+      } else {
+        ""
+      });
+    j = j + 1
+  };
+  {all5: out_a, long5: out_l, n: tk.n}
+}
+
+def u:matcher_index(c, with_text) {
+  "Signal index over the snapshot: for each place five bucket strings of tokens (weights 4, 3, 2, 1.5, 1) and five of the long tokens only, as string lists indexed place * 5 + bucket. Weights follow the mockup: title 2, aliases 3, concepts 4, tagline 1.5; with_text adds story and status sentences at 1.";
+  np = u:campus_count(c);
+  ns = u:story_count(c);
+  acc_a = "";
+  acc_l = "";
+  total = 0;
+  i = 0;
+  while lt(i, np) {
+    all5 = "\n\n\n\n";
+    long5 = "\n\n\n\n";
+    r = u:matcher_add(all5, long5, u:lg(c.titles, i), 2);
+    total = total + r.n;
+    r = u:matcher_add(r.all5, r.long5, u:lg(c.taglines, i), 1.5);
+    total = total + r.n;
+    aliases = u:lg(c.aliases, i);
+    na = u:field_count(aliases);
+    a = 0;
+    while lt(a, na) {
+      r = u:matcher_add(r.all5, r.long5, u:field_get(aliases, a), 3);
+      total = total + r.n;
+      a = a + 1
+    };
+    concepts = u:lg(c.concepts, i);
+    nc = u:field_count(concepts);
+    k = 0;
+    while lt(k, nc) {
+      r = u:matcher_add(r.all5, r.long5, u:field_get(concepts, k), 4);
+      total = total + r.n;
+      k = k + 1
+    };
+    r = if with_text {
+      u:matcher_add(r.all5, r.long5, u:lg(c.status_texts, i), 1)
+    } else {
+      r
+    };
+    total = total + r.n * with_text;
+    id = u:lg(c.ids, i);
+    k = 0;
+    while lt(k, ns * with_text) {
+      mine = str_eq(u:lg(c.story_places, k), id);
+      r = if mine {
+        u:matcher_add(r.all5, r.long5, u:lg(c.story_texts, k), 1)
+      } else {
+        r
+      };
+      total = total + r.n * mine;
+      k = k + 1
+    };
+    acc_a = if str_len(acc_a) {
+      str_concat(str_concat(acc_a, "\n"), r.all5)
+    } else {
+      r.all5
+    };
+    acc_l = if str_len(acc_l) {
+      str_concat(str_concat(acc_l, "\n"), r.long5)
+    } else {
+      r.long5
+    };
+    i = i + 1
+  };
+  {all: str_split(acc_a, "\n"), long: str_split(acc_l, "\n"), n: total, places_count: np}
+}
+
+def u:matcher_token_best(idx, p, t) {
+  "Best signal weight of one query token at one place: the heaviest bucket holding the token exactly; else, for tokens of five or more characters, 0.8 times the heaviest bucket whose long token contains it or is a prefix or suffix of it.";
+  buckets = u:matcher_buckets();
+  needle = str_concat(str_concat("|", t), "|");
+  best = 0;
+  b = 0;
+  while lt(b, 5) {
+    hit = gt(str_find(u:lg(idx.all, p * 5 + b), needle), -1);
+    best = if hit * eq(best, 0) {
+      take(buckets, 0, b)
+    } else {
+      best
+    };
+    b = b + 1
+  };
+  n = str_len(t);
+  pbest = 0;
+  b = 0;
+  while lt(b, 5 * eq(best, 0) * gt(n, 4)) {
+    long = u:lg(idx.long, p * 5 + b);
+    hit = gt(str_find(long, t), -1);
+    len = 5;
+    while lt(len, n) {
+      hit = hit + gt(str_find(long, str_concat(str_concat("|", str_slice(t, 0, len)), "|")), -1) + gt(str_find(long, str_concat(str_concat("|", str_slice(t, n - len, len)), "|")), -1);
+      len = len + 1
+    };
+    pbest = if gt(hit, 0) * eq(pbest, 0) {
+      take(buckets, 0, b) * 0.8
+    } else {
+      pbest
+    };
+    b = b + 1
+  };
+  best + pbest
+}
+
+def u:matcher_scores(c, idx, q) {
+  "Per-place scores for a query, as the mockup computes them: per query token the best exact signal weight, else 0.8 times the best partial match, summed; plus 0.5 for an open place and 0.5 for an exhibit when anything matched; plus 4 when an alias longer than three characters appears in the query verbatim.";
+  np = idx.places_count;
+  qt = u:matcher_tokens(q);
+  scores = fill([np], 0);
+  p = 0;
+  while lt(p, np) {
+    s = 0;
+    t = 0;
+    while lt(t, qt.n) {
+      s = s + u:matcher_token_best(idx, p, u:lg(qt.list, t));
+      t = t + 1
+    };
+    s = if gt(s, 0) {
+      s + 0.5 * str_eq(u:lg(c.status, p), "open") + 0.5 * str_eq(u:lg(c.kinds, p), "exhibit")
+    } else {
+      s
+    };
+    aliases = u:lg(c.aliases, p);
+    na = u:field_count(aliases);
+    bonus = 0;
+    a = 0;
+    while lt(a, na) {
+      alias = u:field_get(aliases, a);
+      hit = gt(str_len(alias), 3) * gt(str_find(q, alias), -1);
+      bonus = if hit * eq(bonus, 0) {
+        4
+      } else {
+        bonus
+      };
+      a = a + 1
+    };
+    scores = scatter(scores, p, s + bonus);
+    p = p + 1
+  };
+  scores
+}
+
+def u:matcher_has_phrase(q, phrases) {
+  "Whether any pipe-delimited phrase occurs in the query as whole words.";
+  padded = str_concat(str_concat(" ", u:matcher_lower_clean(q)), " ");
+  n = u:field_count(phrases);
+  hit = 0;
+  i = 0;
+  while lt(i, n) {
+    hit = hit + gt(str_find(padded, str_concat(str_concat(" ", u:field_get(phrases, i)), " ")), -1);
+    i = i + 1
+  };
+  gt(hit, 0)
+}
+
+def u:matcher_intent_rule(q) {
+  "The mockup's keyword intent rules in their order; again maps to story and here to explain; the default is navigate.";
+  if u:matcher_has_phrase(q, "again|repeat|once more") {
+    "story"
+  } else {
+    if u:matcher_has_phrase(q, "status|finished|done|complete|completed|working|in progress|progress|ready|how far|wip|work in progress|planned|what works") {
+      "status"
+    } else {
+      if u:matcher_has_phrase(q, "story|stories|anecdote|tell me about|history of|background") {
+        "story"
+      } else {
+        if u:matcher_has_phrase(q, "where am i|what is here|whats here|around here|nearby") {
+          "explain"
+        } else {
+          if u:matcher_has_phrase(q, "where|take me|go to|show me|find|get to|how do i get") {
+            "navigate"
+          } else {
+            if u:matcher_has_phrase(q, "recommend|suggest|interested|i like|something|worth seeing|what should") {
+              "recommend"
+            } else {
+              if u:matcher_has_phrase(q, "what is|whats|explain|about|why|how does|what did") {
+                "explain"
+              } else {
+                "navigate"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+def u:matcher_predict(c, idx, q) {
+  "The mockup's answer for a query: intent by rule (unsupported when nothing matched and the intent needs a place), the top destination (none when nothing matched), and the ranked top three place indices.";
+  scores = u:matcher_scores(c, idx, q);
+  order = grade_down(scores);
+  top = take(order, 0, 0);
+  top_score = take(scores, 0, top);
+  np = idx.places_count;
+  rule = u:matcher_intent_rule(q);
+  needs_place = str_eq(rule, "navigate") + str_eq(rule, "recommend") + str_eq(rule, "explain");
+  intent = if eq(top_score, 0) * gt(needs_place, 0) {
+    "unsupported"
+  } else {
+    rule
+  };
+  dest = if gt(top_score, 0) {
+    top
+  } else {
+    np
+  };
+  second = if gt(take(scores, 0, take(order, 0, 1)), 0) {
+    take(order, 0, 1)
+  } else {
+    np
+  };
+  third = if gt(take(scores, 0, take(order, 0, 2)), 0) {
+    take(order, 0, 2)
+  } else {
+    np
+  };
+  {intent: intent, dest: dest, second: second, third: third, score: top_score, scores: scores}
+}
+
+def u:matcher_eval(c, idx, queries, intents, dests, rows) {
+  "Evaluate the matcher on the selected rows with the docent's metrics: intent accuracy, destination accuracy, top-3 destination accuracy, per-row hits and predictions, and mean milliseconds per query.";
+  nr = reduce_mul(shape(rows));
+  hit_i = fill([0], 0);
+  hit_d = fill([0], 0);
+  hit_3 = fill([0], 0);
+  pred_d = fill([0], 0);
+  t0 = clock_ms();
+  k = 0;
+  while lt(k, nr) {
+    r = take(rows, 0, k);
+    pr = u:matcher_predict(c, idx, u:lg(queries, r));
+    ti = u:intent_index(u:lg(intents, r));
+    td = u:dest_index(c, u:lg(dests, r));
+    hit_i = concat(hit_i, str_eq(pr.intent, u:lg(intents, r)));
+    hit_d = concat(hit_d, eq(pr.dest, td));
+    hit_3 = concat(hit_3, gt(eq(pr.dest, td) + eq(pr.second, td) + eq(pr.third, td), 0));
+    pred_d = concat(pred_d, pr.dest);
+    k = k + 1
+  };
+  ms = (clock_ms() - t0) / nr;
+  {intent_acc: reduce_add(hit_i) / nr, dest_acc: reduce_add(hit_d) / nr, top3_acc: reduce_add(hit_3) / nr, hit_i: hit_i, hit_d: hit_d, pred_d: pred_d, count: nr, ms_per_query: ms}
+}
+
+def u:matcher_top2_hits(c, idx, queries, rows, expected_a, expected_b) {
+  "Fraction of the given rows whose ranked top two places equal the expected pair (order-free).";
+  nr = reduce_mul(shape(rows));
+  hits = 0;
+  k = 0;
+  while lt(k, nr) {
+    pr = u:matcher_predict(c, idx, u:lg(queries, take(rows, 0, k)));
+    a = take(expected_a, 0, k);
+    b = take(expected_b, 0, k);
+    hits = hits + gt(eq(pr.dest, a) + eq(pr.second, a), 0) * gt(eq(pr.dest, b) + eq(pr.second, b), 0);
+    k = k + 1
+  };
+  hits / nr
+}

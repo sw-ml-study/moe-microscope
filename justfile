@@ -28,6 +28,10 @@ campus mode="check":
 docent mode="check":
     ./scripts/run-docent-demo {{mode}}
 
+# Run MB01, the deterministic matcher baseline (seconds), and check its diagram and docent rows; `just matcher write` regenerates them.
+matcher mode="check":
+    ./scripts/run-matcher-demo {{mode}}
+
 # Export (or check) the routing and dispatch walkthrough fixture the live demo steps through; `just walkthrough write` regenerates it.
 walkthrough mode="check":
     ./scripts/run-walkthrough-export {{mode}}

@@ -216,3 +216,19 @@ memory = "one 28-token window of the trained MX01 mixture recorded stage by stag
 speed = "the export trains 40 epochs (about 10 s) in the gate; the page is static JavaScript over fetched JSON with no build step"
 quality = "parity between the dense-masked and sparse outputs on the recorded window is exact (0); every frame the page renders is a recorded value"
 status = "accepted"
+
+[[lesson]]
+id = "MB01"
+slug = "matcher-baseline"
+title = "The deterministic matcher the trained docent must beat"
+source = "demos/matcher_baseline.mlpl"
+library = ["lib/matcher.mlpl", "lib/docent.mlpl", "lib/campus.mlpl"]
+test = ["tests/test_matcher.mlpl"]
+previews = ["assets/previews/matcher-scores.svg"]
+fixture = "fixtures/campus/paraphrases-a.json"
+implementation = "from-scratch"
+observations = []
+memory = "no parameters: a signal index of a few hundred weighted tokens (mockup) or about a thousand (with story and status text)"
+speed = "milliseconds per query in the interpreter, no training"
+quality = "scored on the same held-out rows and 54 paraphrases as CD01 with the same metrics; rows MB01 and MB01t in the docent results table"
+status = "accepted"

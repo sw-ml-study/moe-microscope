@@ -44,6 +44,16 @@ decisions and the usefulness bar are in [`plan.md`](plan.md), Saga 4.
    `mlpl-wasm` bridge, measured latency, the budgeted live-training probe.
 9. `easel-handoff` - the sw-campus work order, recordings, docs and wiki.
 
+Step 4 status: complete. MB01, the campus mockup's deterministic matcher
+ported to MLPL, and MB01t, the same matcher over all catalog text, scored
+on the docent's held-out rows and paraphrases: destination 0.954 / 0.925,
+paraphrases 0.630 / 0.685, unsupported recall 1.0 / 0.4, intent 0.78 /
+0.76. The dense docent CD01 loses to both on paraphrases by 33 to 39 points
+and wins only on intent; the usefulness bar is not met, and the campus
+keeps its matcher until CD01b or CD02 changes that. A LinkedIn carousel
+(`docs/20260913-LinkedIn.pdf`, generated from the HTML beside it) summarizes
+the results so far.
+
 Step 3 status: complete. The first live demo is published at
 https://sw-ml-study.github.io/moe-microscope/ and linked from the README:
 the three pinned training recordings and a new walkthrough fixture (one

@@ -1,0 +1,99 @@
+# Deterministic matcher contract: normalization and stop words, the intent rules, the signal index, scoring with the phrase bonus, and the text variant's reach.
+include "lib/matcher.mlpl";
+
+def u:snap() {
+  "The committed snapshot A.";
+  u:campus_load("fixtures/campus/snapshot-a.json")
+}
+
+@test {name: "normalization lowercases, strips punctuation, and drops stop words", tags: ["matcher", "tokens"]}
+def u:test_tokens() {
+  "The mockup's tokenizer, ported.";
+  u:assert_text_eq(u:matcher_lower_clean("Where's the IBM 1130?"), "where s the ibm 1130 ", "lowercase and punctuation to spaces")?;
+  tk = u:matcher_tokens("where is the cosmac demo");
+  u:assert_eq(tk.n, 1, "only cosmac survives the stop list")?;
+  u:assert_text_eq(u:lg(tk.list, 0), "cosmac", "the surviving token")?;
+  u:assert_eq(u:matcher_tokens("show me").n, 0, "all stop words")?;
+  u:assert_true(u:matcher_is_stop("demo"), "demo is a stop word")?;
+  u:assert_eq(u:matcher_is_stop("cosmac"), 0, "cosmac is not")?;
+  idx = u:matcher_index(u:snap(), 0);
+  u:assert_eq(u:matcher_token_best(idx, u:campus_index(u:snap(), "rca-1802"), "cosmac"), 3, "exact alias hit at weight 3")?;
+  u:assert_eq(u:matcher_token_best(idx, u:campus_index(u:snap(), "rca-1802"), "microprocessors"), 3.2, "plural partial: 0.8 of the concept weight")?;
+  u:assert_eq(u:matcher_token_best(idx, u:campus_index(u:snap(), "rca-1802"), "banana"), 0, "no hit")
+}
+
+@test {name: "intent rules follow the mockup's order and map again and here", tags: ["matcher", "intent"]}
+def u:test_intent_rules() {
+  "Keyword rules with whole-word matching.";
+  u:assert_text_eq(u:matcher_intent_rule("where is the 1130"), "navigate", "where")?;
+  u:assert_text_eq(u:matcher_intent_rule("what is apl"), "explain", "what is")?;
+  u:assert_text_eq(u:matcher_intent_rule("i am interested in microprocessors"), "recommend", "interested")?;
+  u:assert_text_eq(u:matcher_intent_rule("tell me a story about apl"), "story", "story")?;
+  u:assert_text_eq(u:matcher_intent_rule("is the 1802 demo finished"), "status", "finished")?;
+  u:assert_text_eq(u:matcher_intent_rule("tell me that again"), "story", "again maps to story")?;
+  u:assert_text_eq(u:matcher_intent_rule("where am i"), "explain", "here maps to explain")?;
+  u:assert_text_eq(u:matcher_intent_rule("cosmac"), "navigate", "default")
+}
+
+@test {name: "the signal index holds weighted tokens per place and the text variant is larger", tags: ["matcher", "index"]}
+def u:test_index() {
+  "Titles, aliases, concepts, and taglines; stories and status sentences only with text.";
+  c = u:snap();
+  a = u:matcher_index(c, 0);
+  b = u:matcher_index(c, 1);
+  u:assert_gt(a.n, 100, "mockup index has signals")?;
+  u:assert_gt(b.n, a.n + 200, "text index adds story and status tokens")?;
+  u:assert_eq(list_len(a.all), 60, "five bucket strings per place")?;
+  u:assert_eq(list_len(a.long), 60, "five long-token strings per place")?;
+  u:assert_true(gt(str_find(u:lg(a.all, u:campus_index(c, "rca-1802") * 5 + 1), "|cosmac|"), -1), "cosmac is a weight-3 alias token of the 1802")?;
+  u:assert_true(gt(str_find(u:lg(b.all, u:campus_index(c, "rca-1802") * 5 + 4), "|jupiter|"), -1), "jupiter is a weight-1 story token with text")?;
+  u:assert_eq(a.places_count, 12, "places")
+}
+
+@test {name: "an alias query scores its place highest with the phrase bonus and an off-topic query scores nothing", tags: ["matcher", "score"]}
+def u:test_scores() {
+  "The mockup's scorer on known queries.";
+  c = u:snap();
+  idx = u:matcher_index(c, 0);
+  pr = u:matcher_predict(c, idx, "where is the cosmac demo");
+  u:assert_eq(pr.dest, u:campus_index(c, "rca-1802"), "cosmac routes to the 1802")?;
+  u:assert_text_eq(pr.intent, "navigate", "navigate")?;
+  u:assert_true(gt(pr.score, 7), "concept 4 or alias 3 plus the phrase bonus 4 plus 1 for open exhibit")?;
+  off = u:matcher_predict(c, idx, "what is the weather today");
+  u:assert_eq(off.dest, 12, "no place: none")?;
+  u:assert_text_eq(off.intent, "unsupported", "explain without a place is unsupported")?;
+  st = u:matcher_predict(c, idx, "what is finished");
+  u:assert_text_eq(st.intent, "status", "status survives without a place")?;
+  u:assert_eq(st.dest, 12, "and has no destination")
+}
+
+@test {name: "the text matcher reaches words only the stories contain", tags: ["matcher", "text"]}
+def u:test_text_reach() {
+  "Jupiter appears only in an 1802 story.";
+  c = u:snap();
+  plain = u:matcher_predict(c, u:matcher_index(c, 0), "a computer chip that flew to jupiter");
+  text = u:matcher_predict(c, u:matcher_index(c, 1), "a computer chip that flew to jupiter");
+  e = u:campus_index(c, "rca-1802");
+  u:assert_true(gt(take(text.scores, 0, e), 0), "the text matcher gives the 1802 a score from its story")?;
+  u:assert_eq(u:matcher_token_best(u:matcher_index(c, 1), e, "jupiter"), 1, "jupiter is a weight-1 story token with text")?;
+  u:assert_eq(u:matcher_token_best(u:matcher_index(c, 0), e, "jupiter"), 0, "and unknown to the mockup matcher")?;
+  u:assert_eq(eq(text.dest, e), 0, "the museum's computer alias still ranks first: an exact story hit at weight 1 replaces the 3.2 partial, as in the mockup")
+}
+
+@test {name: "evaluation helpers count hits and top-2 pairs", tags: ["matcher", "eval"]}
+def u:test_eval() {
+  "Three rows through the metrics.";
+  c = u:snap();
+  idx = u:matcher_index(c, 0);
+  q = str_split("where is the cosmac demo|what is apl|what is the weather today", "|");
+  ev = u:matcher_eval(c, idx, q, str_split("navigate|explain|unsupported", "|"), str_split("rca-1802|apl|none", "|"), range(3));
+  u:assert_eq(ev.count, 3, "rows")?;
+  u:assert_eq(ev.intent_acc, 1, "intents")?;
+  u:assert_eq(ev.dest_acc, 1, "destinations")?;
+  u:assert_eq(ev.top3_acc, 1, "top-3")?;
+  u:assert_true(gt(ev.ms_per_query, 0), "timed")?;
+  h = u:matcher_top2_hits(c, idx, str_split("show me an old computer", "|"), [0], [u:campus_index(c, "ibm-1130-emulator")], [u:campus_index(c, "rca-1802")]);
+  u:assert_true(gt(h + 1, 0), "a fraction in [0, 1]")
+}
+
+u:run_registered_tests()

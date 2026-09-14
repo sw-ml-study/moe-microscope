@@ -1,0 +1,143 @@
+# MB01 matcher baseline: the campus mockup's deterministic alias-and-concept matcher, and a variant that also reads the catalog's story and status text, scored on the docent's held-out rows and paraphrases with the docent's own metrics; the yardstick every trained docent must beat.
+include "../lib/matcher.mlpl";
+include "../lib/docent.mlpl";
+include "../lib/svg.mlpl";
+
+print("WHAT THIS SHOWS -- What a deterministic matcher over the same catalog already achieves on the docent's held-out rows and on the paraphrases, so that any trained docent's value is a measured margin, not a claim.");
+print("SHAPES -- signal index: tokens [N], weights [N], places [N]; per-query scores [P=12]; the same held-out rows and 54 paraphrases as CD01.");
+
+out_dir = unwrap(list_get(args(), 0));
+binary = unwrap(list_get(args(), 1));
+c = u:campus_load("fixtures/campus/snapshot-a.json");
+k = unwrap(parse_json(unwrap(read_text("fixtures/campus/corpus-a.json"))));
+pp = unwrap(parse_json(unwrap(read_text("fixtures/campus/paraphrases-a.json"))));
+member = k.train;
+val_rows = compress(1 - member, range(k.n));
+nval = reduce_mul(shape(val_rows));
+np_rows = list_len(pp.queries);
+dest_names = u:dest_names(c);
+nd = list_len(dest_names);
+lab = u:docent_labels(c, k.intents, k.dests);
+yi_val = reshape(gather_rows(reshape(lab.yi, [k.n, 1]), val_rows), [nval]);
+yd_val = reshape(gather_rows(reshape(lab.yd, [k.n, 1]), val_rows), [nval]);
+ex_ids = [u:dest_index(c, "ibm-1130-emulator"), u:dest_index(c, "rca-1802"), u:dest_index(c, "apl")];
+exhibit_sel = eq(yd_val, take(ex_ids, 0, 0)) + eq(yd_val, take(ex_ids, 0, 1)) + eq(yd_val, take(ex_ids, 0, 2));
+
+amb_rows = fill([0], 0);
+amb_a = fill([0], 0);
+amb_b = fill([0], 0);
+j = 0;
+i = 0;
+while lt(i, k.n) {
+  is_amb = str_eq(u:lg(k.kinds, i), "ambiguous");
+  amb_rows = if is_amb {
+    concat(amb_rows, i)
+  } else {
+    amb_rows
+  };
+  pair = if is_amb {
+    str_split(u:lg(c.ambiguous_dests, j), ",")
+  } else {
+    str_split("none,none", ",")
+  };
+  amb_a = if is_amb {
+    concat(amb_a, u:dest_index(c, u:lg(pair, 0)))
+  } else {
+    amb_a
+  };
+  amb_b = if is_amb {
+    concat(amb_b, u:dest_index(c, u:lg(pair, 1)))
+  } else {
+    amb_b
+  };
+  j = j + is_amb;
+  i = i + 1
+};
+
+t_idx = clock_ms();
+idx_plain = u:matcher_index(c, 0);
+idx_text = u:matcher_index(c, 1);
+index_ms = clock_ms() - t_idx;
+print("INDEX -- mockup signals", idx_plain.n, "text signals", idx_text.n, "built in ms", u:svg_round(index_ms, 0));
+
+def u:measure(idx, label) {
+  "All docent metrics for one matcher: validation rows, exhibits, unsupported, ambiguous pairs, paraphrases.";
+  ev = u:matcher_eval(c, idx, k.queries, k.intents, k.dests, val_rows);
+  pv = u:matcher_eval(c, idx, pp.queries, pp.intents, pp.dests, range(np_rows));
+  exhibit_acc = reduce_add(ev.hit_d * exhibit_sel) / reduce_add(exhibit_sel);
+  unsupported_recall = u:acc_where(ev.hit_i, yi_val, u:intent_index("unsupported"));
+  amb = u:matcher_top2_hits(c, idx, k.queries, amb_rows, amb_a, amb_b);
+  print("QUALITY --", label, "intent acc", u:svg_round(ev.intent_acc, 3), "dest acc", u:svg_round(ev.dest_acc, 3), "top-3", u:svg_round(ev.top3_acc, 3), "exhibit acc", u:svg_round(exhibit_acc, 3), "ambiguous top-2", u:svg_round(amb, 3), "unsupported recall", u:svg_round(unsupported_recall, 3), "paraphrase dest/intent", u:svg_round(pv.dest_acc, 3), u:svg_round(pv.intent_acc, 3), "ms/query", u:svg_round(ev.ms_per_query, 3));
+  {ev: ev, pv: pv, exhibit_acc: exhibit_acc, unsupported_recall: unsupported_recall, amb: amb}
+}
+
+mp = u:measure(idx_plain, "mockup matcher");
+mt = u:measure(idx_text, "text matcher");
+cd01_para = u:svg_round(0, 3);
+
+def u:row_for(lesson, config, mres, idx) {
+  "A docent results row for one matcher.";
+  {lesson: lesson, config: config, binary: binary, params: 0, active_params: 0, bytes_f64: idx.n * 8, bytes_int8: idx.n, ms_per_query: u:svg_round(mres.ev.ms_per_query, 4), intent_acc: u:svg_round(mres.ev.intent_acc, 3), dest_acc: u:svg_round(mres.ev.dest_acc, 3), top3_acc: u:svg_round(mres.ev.top3_acc, 3), exhibit_acc: u:svg_round(mres.exhibit_acc, 3), ambiguous_top2: u:svg_round(mres.amb, 3), unsupported_recall: u:svg_round(mres.unsupported_recall, 3), paraphrase_acc: u:svg_round(mres.pv.dest_acc, 3), paraphrase_intent_acc: u:svg_round(mres.pv.intent_acc, 3), expert_evals: 0}
+}
+
+row_plain = u:row_for("MB01", str_concat(str_concat("mockup alias-and-concept matcher ported to MLPL: title 2, aliases 3, concepts 4, tagline 1.5, partial 0.8, phrase +4; ", to_string(idx_plain.n)), " signals; no training"), mp, idx_plain);
+row_text = u:row_for("MB01t", str_concat(str_concat("the same matcher over all catalog text (stories and status sentences at 1); ", to_string(idx_text.n)), " signals; no training"), mt, idx_text);
+w_rows = write_atomic(str_concat(out_dir, "/results-rows.md"), str_concat(str_concat(u:docent_row(row_plain), "\n"), str_concat(u:docent_row(row_text), "\n")));
+
+q_alias = "where is the cosmac demo";
+q_para = "the machine with the toggle switches and hex displays";
+s_ap = u:matcher_predict(c, idx_plain, q_alias);
+s_at = u:matcher_predict(c, idx_text, q_alias);
+s_pp = u:matcher_predict(c, idx_plain, q_para);
+s_pt = u:matcher_predict(c, idx_text, q_para);
+
+def u:score_rows(x0, y0, scores) {
+  "Twelve place score bars with labels at a position.";
+  page = "";
+  mx = reduce(:max, scores) + 0.0001;
+  i = 0;
+  while lt(i, 12) {
+    y = y0 + i * 15;
+    v = take(scores, 0, i);
+    page = str_concat(page, u:svg_text(x0, y + 10, "s", u:lg(c.ids, i)));
+    page = str_concat(page, u:svg_rect(x0 + 130, y + 1, v * (120 / mx), 10, if gt(v, 0) {
+          "tr"
+        } else {
+          "pad"
+        }));
+    page = str_concat(page, u:svg_text(x0 + 258, y + 10, "s", to_string(u:svg_round(v, 1))));
+    i = i + 1
+  };
+  page
+}
+
+def u:matcher_svg() {
+  "Diagram: an alias query and a paraphrase through both matchers, their per-place scores, and where the matcher fails.";
+  page = u:svg_head("Deterministic matcher baseline", "An alias query and a paraphrase scored by the mockup's alias-and-concept matcher and by the same matcher over all catalog text: per-place scores, the intent rule that fired, and the failure a paraphrase causes.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "MATCHER BASELINE -- what deterministic matching already gets right"));
+  page = str_concat(page, u:svg_text(32, 60, "m", str_concat(str_concat("WHAT: the mockup's predict() in MLPL (", to_string(idx_plain.n)), str_concat(str_concat(" weighted signals) and a text variant (", to_string(idx_text.n)), " signals); per-place scores for two queries."))));
+  page = str_concat(page, u:svg_text(40, 90, "k", str_concat("alias query: ", q_alias)));
+  page = str_concat(page, u:svg_text(40, 108, "m", str_concat(str_concat("mockup: ", s_ap.intent), str_concat(" / ", u:lg(dest_names, s_ap.dest)))));
+  page = str_concat(page, u:score_rows(40, 116, s_ap.scores));
+  page = str_concat(page, u:svg_text(340, 108, "m", str_concat(str_concat("text: ", s_at.intent), str_concat(" / ", u:lg(dest_names, s_at.dest)))));
+  page = str_concat(page, u:score_rows(340, 116, s_at.scores));
+  page = str_concat(page, u:svg_text(640, 90, "k", "paraphrase (no alias):"));
+  page = str_concat(page, u:svg_text(640, 104, "k", "the machine with the toggle"));
+  page = str_concat(page, u:svg_text(640, 118, "k", "switches and hex displays"));
+  page = str_concat(page, u:svg_text(640, 136, "m", str_concat(str_concat("mockup: ", s_pp.intent), str_concat(" / ", u:lg(dest_names, s_pp.dest)))));
+  page = str_concat(page, u:svg_text(640, 152, "m", str_concat(str_concat("text: ", s_pt.intent), str_concat(" / ", u:lg(dest_names, s_pt.dest)))));
+  page = str_concat(page, u:score_rows(640, 160, s_pt.scores));
+  page = str_concat(page, u:svg_rect(30, 340, 900, 180, "panel"));
+  page = str_concat(page, u:svg_text(50, 366, "", "WHY: the docent must add value above this, measurably: same catalog, same held-out rows, same metrics, side by side in"));
+  page = str_concat(page, u:svg_text(50, 388, "", "     docent-results.md. On templated rows the matcher is near perfect because the rows were generated from the aliases."));
+  page = str_concat(page, u:svg_text(50, 414, "", "HOW: each query token takes the best exact signal weight for a place, else 0.8 of the best partial (five-plus letters, one"));
+  page = str_concat(page, u:svg_text(50, 436, "", "     containing the other); +0.5 open, +0.5 exhibit, +4 for an alias phrase; intent by keyword rules; no place means unsupported."));
+  page = str_concat(page, u:svg_text(50, 462, "", "HOW: the text variant indexes story and status sentences at weight 1, which is the only way a matcher can reach words like"));
+  page = str_concat(page, u:svg_text(50, 484, "", "     toggle, hex, jupiter; the mockup's weights still favor an alias hit, so the paraphrase is often lost or misrouted."));
+  page = str_concat(page, u:svg_text(50, 508, "m", "Numbers are in the docent results table (MB01, MB01t beside CD01); tests/test_matcher.mlpl pins the rules and the scorer."));
+  str_concat(page, "</svg>")
+}
+
+w1 = write_atomic(str_concat(out_dir, "/matcher-scores.svg"), u:matcher_svg());
+print("MEMORY -- mockup signals", idx_plain.n, "text signals", idx_text.n, "(string list plus two vectors each); no parameters");
+print("SPEED -- ms/query mockup", u:svg_round(mp.ev.ms_per_query, 3), "text", u:svg_round(mt.ev.ms_per_query, 3), "(", binary, ")");

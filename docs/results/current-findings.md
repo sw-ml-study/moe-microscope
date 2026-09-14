@@ -96,12 +96,29 @@ can help distillation, but it does not model superior generalizable
 behavior. A stronger teacher (more data, wider, or an external model in the
 same fixture schema) is the documented option if KD01 needs one.
 
+## 8. A trained docent does not yet beat keyword matching
+
+Evidence: on the docent's held-out rows the mockup's deterministic matcher
+scores 0.954 destination accuracy and 0.630 on paraphrases with no
+parameters; the dense docent CD01 scores 0.925 and 0.296 with 26,003
+parameters; the docent wins only on intent (0.938 against 0.780).
+
+Interpretation: hashed features learn the training templates and nothing
+beyond them, while the catalog's own words carry most of the signal a
+matcher needs. Value must come from features that generalize (word vectors
+from the campus's text) or from capacity that specializes, and it must be
+shown on the paraphrase set.
+
+Limitation: 54 paraphrases and 241 templated held-out rows; one corpus
+revision.
+
 ## Supported now versus plausible but not demonstrated
 
 Supported: more stored than active capacity; measurable specialization; a
 real top-k tradeoff; exact sparse dispatch; dispatch overhead outweighing
 theoretical savings at tiny scale; data quantity governing whether
-architectural differences show.
+architectural differences show; a deterministic matcher as a hard baseline
+for a tiny classifier over templated data.
 
 Plausible, not demonstrated: recurrence improving quality per parameter;
 Engram removing memorization pressure; distillation improving this student;

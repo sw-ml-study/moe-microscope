@@ -23,6 +23,7 @@ was not proved, and where the raw evidence lives. Numbers cite a row of the
 | 12 | [Recordings and host handoff](recordings.md) | What does the generic host render? |
 | 13 | [CD00 campus snapshot A](CD00.md) | What does the campus docent see, and is its corpus honest? |
 | 14 | [CD01 docent dense classifier](CD01.md) | How well does a flat classifier predict intent and destination, and where does it fail? |
+| 15 | [MB01 matcher baseline](MB01.md) | What does deterministic matching already achieve, and by how much must a docent beat it? |
 
 The machine-readable inventory is [`catalog/lessons.toml`](../../catalog/lessons.toml).
 Experiments planned for later sagas (RC01, RM01, EG01, RE01, KD01, RW01,

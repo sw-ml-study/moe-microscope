@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MoE Microscope carousel</title>
+<style>
+@page { size: 1080px 1080px; margin: 0; }
+html, body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+* { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; color: #f1f5f9; background: #0b1220; }
+.slide { width: 1080px; height: 1080px; page-break-after: always; box-sizing: border-box; padding: 72px 80px 60px; position: relative; background: #0b1220; overflow: hidden; }
+.slide:last-child { page-break-after: auto; }
+.eyebrow { font-size: 22px; letter-spacing: 0.14em; text-transform: uppercase; color: #fbbf24; margin: 0 0 18px; font-weight: 600; }
+h1 { font-size: 64px; line-height: 1.08; margin: 0 0 28px; font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: 50px; line-height: 1.12; margin: 0 0 26px; font-weight: 700; letter-spacing: -0.01em; }
+p, li { font-size: 27px; line-height: 1.4; margin: 0 0 14px; color: #dbeafe; }
+ul { padding-left: 30px; margin: 0 0 16px; }
+li { margin-bottom: 10px; }
+.muted { color: #a5b4fc; }
+.cards { display: table; width: 100%; border-spacing: 18px 0; margin: 10px -18px 0; }
+.card { display: table-cell; width: 33%; background: #172033; border: 2px solid #52627a; border-radius: 14px; padding: 26px 26px 20px; vertical-align: top; }
+.card .big { font-size: 58px; font-weight: 700; color: #fbbf24; line-height: 1; margin: 0 0 10px; }
+.card .lbl { font-size: 22px; color: #a5b4fc; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 0.06em; }
+.card p { font-size: 23px; margin: 0; }
+.rows { width: 100%; border-collapse: collapse; margin-top: 8px; }
+.rows th, .rows td { font-size: 25px; padding: 10px 12px; border-bottom: 1px solid #52627a; text-align: left; }
+.rows th { color: #a5b4fc; font-weight: 600; }
+.rows td.n { text-align: right; font-variant-numeric: tabular-nums; }
+.rows td.hi { color: #fbbf24; font-weight: 700; }
+.foot { position: absolute; left: 80px; right: 80px; bottom: 44px; display: table; width: 920px; font-size: 21px; color: #a5b4fc; }
+.foot span { display: table-cell; }
+.foot .r { text-align: right; }
+.fig { width: 920px; border-radius: 10px; border: 2px solid #52627a; display: block; margin: 8px 0 14px; background: #0f172a; }
+.callout { background: #172033; border-left: 8px solid #db2777; padding: 20px 26px; border-radius: 8px; margin: 14px 0 0; }
+.callout p { margin: 0; font-size: 26px; }
+.links p { font-size: 25px; margin: 0 0 10px; }
+.links b { color: #fbbf24; }
+.cover h1 { font-size: 78px; margin-top: 40px; }
+.cover p.lead { font-size: 32px; max-width: 880px; }
+.pill { display: inline-block; background: #172033; border: 2px solid #52627a; border-radius: 999px; padding: 8px 20px; font-size: 22px; color: #dbeafe; margin: 6px 10px 0 0; }
+</style>
+</head>
+<body>
+
+<section class="slide cover">
+  <p class="eyebrow">sw-ml-study / moe-microscope</p>
+  <h1>A mixture-of-experts language model you can see all of</h1>
+  <p class="lead">A tiny MoE built from scratch in sw-MLPL, one mechanism at a time, with every router decision, expert load, and byte measured and recorded. Results from the first three sagas, plus an honest early answer about a trained "campus docent".</p>
+  <div>
+    <span class="pill">7,096 parameters</span><span class="pill">4 experts, top-1 and top-2</span><span class="pill">live demo on GitHub Pages</span><span class="pill">everything measured</span>
+  </div>
+  <div class="foot"><span>Michael A Wright, September 2026</span><span class="r">01 / 08 &nbsp; Swipe for the why &rarr;</span></div>
+</section>
+
+<section class="slide">
+  <p class="eyebrow">Why</p>
+  <h2>Store far more model than you execute</h2>
+  <p>FreeToken-style inference wants a model whose experts live on disk, whose hot experts sit in a cache, whose memorized patterns live in a lookup table, and whose depth comes from reusing one block. Each of those is a kind of sparsity, and each can be isolated at microscope scale.</p>
+  <table class="rows">
+    <tr><th>Sparsity</th><th>Avoid paying for</th><th>Mechanism</th></tr>
+    <tr><td>Parameter</td><td>many unique layers</td><td>recurrence</td></tr>
+    <tr><td>Compute</td><td>every expert on every token</td><td>top-k routing, sparse dispatch</td></tr>
+    <tr><td>Memory lookup</td><td>reconstructing common patterns in weights</td><td>Engram table</td></tr>
+    <tr><td>Residency</td><td>the whole expert bank in fast memory</td><td>expert cache</td></tr>
+  </table>
+  <p class="muted" style="margin-top:18px">Large models hide these parts. A model of a few thousand parameters can show them, if every intermediate value is recorded and drawn.</p>
+  <div class="foot"><span>moe-microscope</span><span class="r">02 / 08 &nbsp; Swipe for what was built &rarr;</span></div>
+</section>
+
+<section class="slide">
+  <p class="eyebrow">What</p>
+  <h2>The microscope, not just the model</h2>
+  <ul>
+    <li><b>MicroMoE:</b> a one-block transformer over a 52-symbol synthetic domain (arithmetic, sequences, MLPL fragments, prose), then four experts behind a router with a load-balance term, then top-2, then true sparse dispatch, then sixteen low-rank delta experts.</li>
+    <li><b>Every lesson records itself:</b> named frames from the training run, annotated what/why/how diagrams, and three measurements: memory, speed, quality.</li>
+    <li><b>Written in sw-MLPL</b>, an array language for ML; twenty language findings met on the way, most fixed upstream the same day.</li>
+    <li><b>A live demo</b> replays the pinned recordings frame by frame in the browser. It is a playback, not a live computation, and it says so.</li>
+  </ul>
+  <div class="callout"><p>Rule of the repository: prefer a shipped feature; build from scratch only when watching it work is the lesson, then show both forms with a parity check.</p></div>
+  <div class="foot"><span>moe-microscope</span><span class="r">03 / 08 &nbsp; Swipe for results &rarr;</span></div>
+</section>
+
+<section class="slide">
+  <p class="eyebrow">Results</p>
+  <h2>Sparse capacity works, and experts specialize</h2>
+  <div class="cards">
+    <div class="card"><p class="lbl">Stored capacity</p><p class="big">1.86x</p><p>the dense model's parameters, for 1.02x the active parameters per token, at the same validation loss (3.76 vs 3.79).</p></div>
+    <div class="card"><p class="lbl">Specialization</p><p class="big">0.61</p><p>mean largest family share per expert under top-1, against 0.25 if routing ignored the task. The router never saw a family label.</p></div>
+    <div class="card"><p class="lbl">Sparse dispatch</p><p class="big">4x</p><p>fewer expert row evaluations (13,440 to 3,360) with outputs equal to the bit. And slower in the interpreter: dispatch overhead beats tiny matmuls.</p></div>
+  </div>
+  <table class="rows" style="margin-top:26px">
+    <tr><th>Run</th><th>Params</th><th>Active / token</th><th>Val loss</th><th>Note</th></tr>
+    <tr><td>DN01 dense</td><td class="n">3,812</td><td class="n">2,996</td><td class="n">3.79</td><td>baseline</td></tr>
+    <tr><td>MX01 top-1 of 4</td><td class="n">7,096</td><td class="n">3,064</td><td class="n hi">3.76</td><td>specialization 0.61</td></tr>
+    <tr><td>MX02 top-2 of 4</td><td class="n">7,096</td><td class="n">4,136</td><td class="n">3.92</td><td>fits better, generalizes differently</td></tr>
+    <tr><td>LD01 16 rank-4 deltas</td><td class="n">5,060</td><td class="n">2,324</td><td class="n hi">3.37</td><td>half the bytes of 4 full experts</td></tr>
+  </table>
+  <div class="foot"><span>moe-microscope, docs/results/current-findings.md</span><span class="r">04 / 08 &nbsp; Swipe for the data lesson &rarr;</span></div>
+</section>
+
+<section class="slide">
+  <p class="eyebrow">Results</p>
+  <h2>Data moves the frontier. Epochs do not.</h2>
+  <table class="rows">
+    <tr><th>Training examples</th><th>Dense val loss</th><th>MoE val loss</th><th>Held-out prose exact match</th></tr>
+    <tr><td>120, 200 epochs</td><td class="n">3.48</td><td class="n">3.49</td><td class="n">0.67</td></tr>
+    <tr><td>120, 400 epochs</td><td class="n">3.89</td><td class="n">4.17</td><td class="n">0.67</td></tr>
+    <tr><td>480, 200 epochs</td><td class="n">1.66</td><td class="n hi">1.42</td><td class="n hi">1.00</td></tr>
+    <tr><td>960, 200 epochs</td><td class="n hi">1.11</td><td class="n">1.22</td><td class="n">1.00 / 0.75</td></tr>
+  </table>
+  <p style="margin-top:22px">Doubling epochs at 120 examples makes both models worse. Eightfold data cuts validation loss by two thirds. The small mixture wins at 480 examples and loses at 960: at this scale neither architecture dominates, and the difference only shows once there is enough data.</p>
+  <div class="callout"><p>Every claim cites a results row, a diagram, or a finding, and states its limitation. One seed per point; interpreter timings on one laptop.</p></div>
+  <div class="foot"><span>moe-microscope, docs/experiments/DS01.md</span><span class="r">05 / 08 &nbsp; Swipe for the routing picture &rarr;</span></div>
+</section>
+
+<section class="slide">
+  <p class="eyebrow">How</p>
+  <h2>One window through the router, stage by stage</h2>
+  <img class="fig" src="../assets/previews/moe2-specialization.svg" alt="Family-by-expert share heatmaps for top-1 and top-2 routing">
+  <p>Router logits, softmax probabilities, a one-hot mask, a gate that keeps the chosen probability (so the router gets a gradient), per-expert loads, the balance term, then dispatch: gather each expert's rows, run it once, scatter back. The live demo steps through exactly these recorded values.</p>
+  <div class="foot"><span>moe-microscope, live demo: sw-ml-study.github.io/moe-microscope</span><span class="r">06 / 08 &nbsp; Swipe for the docent &rarr;</span></div>
+</section>
+
+<section class="slide">
+  <p class="eyebrow">An honest interim result</p>
+  <h2>Does a tiny model beat keyword matching?</h2>
+  <p>Second training area: a "campus docent" that reads a visitor's question and predicts only an intent and a destination on a museum-style campus site. The catalog supplies every word it says, so it cannot invent an exhibit.</p>
+  <table class="rows">
+    <tr><th>Held-out rows</th><th>Dense docent (trained)</th><th>Keyword matcher (no model)</th></tr>
+    <tr><td>Destination accuracy</td><td class="n">0.925</td><td class="n hi">0.954</td></tr>
+    <tr><td>Intent accuracy</td><td class="n hi">0.938</td><td class="n">0.780</td></tr>
+    <tr><td>Paraphrases (no alias verbatim)</td><td class="n">0.296</td><td class="n hi">0.630</td></tr>
+    <tr><td>Off-topic rejected</td><td class="n">0.30</td><td class="n hi">1.00</td></tr>
+  </table>
+  <div class="callout"><p>Today the trained docent does not add value over a deterministic matcher. The bar is written down: beat the matcher by 20 points on paraphrases or the site keeps the matcher. Word vectors from the campus's own text and the routed experts are next.</p></div>
+  <div class="foot"><span>moe-microscope, docs/reference/docent-results.md</span><span class="r">07 / 08 &nbsp; Swipe for conclusions &rarr;</span></div>
+</section>
+
+<section class="slide links">
+  <p class="eyebrow">Conclusions</p>
+  <h2>What held up, and what is next</h2>
+  <ul>
+    <li>Top-1 routing nearly doubles stored capacity at the same active cost; experts specialize on their own when the tasks have structure.</li>
+    <li>Sparse dispatch is exact and saves work, but not time, until experts are big enough for the kernels to matter.</li>
+    <li>Data quantity decides whether architectural differences show at all.</li>
+    <li>A measured yardstick beats a claim: the docent has to earn its place against a matcher.</li>
+  </ul>
+  <p><b>Next:</b> word vectors and routed experts for the docent, then recurrence (HRM/TRM style), the Engram table, distillation, quantization, an expert cache, and CPU/GPU heterogeneous execution.</p>
+  <p style="margin-top:22px"><b>Live demo</b> sw-ml-study.github.io/moe-microscope</p>
+  <p><b>Code and results</b> github.com/sw-ml-study/moe-microscope &nbsp; <b>Wiki</b> github.com/sw-ml-study/moe-microscope/wiki</p>
+  <p><b>Language</b> github.com/sw-ml-study/sw-mlpl &nbsp; <b>Blog</b> blog.softwarewrighter.com</p>
+  <div class="foot"><span>Michael A Wright, September 2026. MIT License.</span><span class="r">08 / 08</span></div>
+</section>
+
+</body>
+</html>
