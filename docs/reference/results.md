@@ -28,3 +28,5 @@ No rows yet. DN01 adds the first row in Saga 1 step 4.
 | RC01@2 | recurrent block R=2 deep supervision, d16 h32 1head T28 120ex 300ep lr0.003 | mlpl-repl 0.22.0 | 3812 | 5092 | - | - | 1 | 40736 | - | 0.037 | 3.4545 | 31.64 | 0 | 0 | 0 | 0.667 | - | - | - | - |
 | RC01@3 | recurrent block R=3 deep supervision, d16 h32 1head T28 120ex 300ep lr0.003 | mlpl-repl 0.22.0 | 3812 | 7188 | - | - | 1 | 57504 | - | 0.0537 | 3.7294 | 41.65 | 0 | 0 | 0.286 | 0.667 | - | - | - | - |
 | RC01@4 | recurrent block R=4 deep supervision, d16 h32 1head T28 120ex 300ep lr0.003 | mlpl-repl 0.22.0 | 3812 | 9284 | - | - | 1 | 74272 | - | 0.0708 | 4.2207 | 68.08 | 0 | 0 | 0.143 | 0.667 | - | - | - | - |
+| RM01@2 | recurrent moe E4 top1 R=2 deep supervision, d16 h32 1head T28 120ex 300ep lr0.003 alpha0.01 | mlpl-repl 0.22.0 | 7096 | 5228 | - | - | 2 | 41824 | - | 0.0818 | 4.0934 | 59.94 | 0 | 0 | 0.143 | 0.667 | - | 0.813 | 1.116 | 0.478 |
+| RM01@3 | recurrent moe E4 top1 R=3 deep supervision, d16 h32 1head T28 120ex 300ep lr0.003 alpha0.01 | mlpl-repl 0.22.0 | 7096 | 7392 | - | - | 3 | 59136 | - | 0.1218 | 3.4152 | 30.42 | 0 | 0 | 0.286 | 0.667 | - | 0.808 | 1.225 | 0.532 |

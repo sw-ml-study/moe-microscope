@@ -27,3 +27,4 @@ Concise answers first; the evidence is one link deeper.
 | Does sparse dispatch save work? | Yes: 13,440 to 3,360 expert row evaluations, outputs exactly equal | [finding 5](current-findings.md) |
 | Is sparse dispatch faster yet? | No: dispatch bookkeeping outweighs the tiny matmuls skipped | [finding 5](current-findings.md) |
 | Are cheap experts worth it? | Sixteen rank-4 deltas cost half of four full experts and give the best validation losses so far | [finding 6](current-findings.md) |
+| Can compute replace parameters? | Partly: the mixture block applied three times reaches the lowest 120-example validation loss (3.42), and 38 to 46 percent of tokens change expert between recurrences; not a converging loop | [finding 9](current-findings.md) |

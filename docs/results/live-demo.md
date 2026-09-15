@@ -24,7 +24,7 @@ for it.
 
 What the page does and does not do: it is a playback. No sw-MLPL code runs
 in the browser and no model runs in the page. Every number it draws is read
-from a fixture in the repository: the three training recordings were
+from a fixture in the repository: the five training recordings were
 written by `emit_frame` during real training runs and captured over
 `mlpl-serve`; the walkthrough fixture was written by
 `demos/walkthrough_export.mlpl` after training the mixture for 40 epochs.

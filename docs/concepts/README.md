@@ -23,7 +23,7 @@ flowchart LR
 | 2, 3 | Can we store more model than we execute, and what does the second expert cost? | [Routing and top-k](routing.md) | measured (MX01, MX02) |
 | 4 | Can conditional compute actually avoid the unused work? | [Sparse dispatch](sparse-dispatch.md) | measured (SD01, GB01) |
 | 2b | How many experts can we afford? | [Low-rank delta experts](delta-experts.md) | measured (LD01) |
-| 5 | Can compute replace parameters? | [Recurrence](recurrence.md) | measured (RC01) |
+| 5 | Can compute replace parameters? | [Recurrence](recurrence.md) | measured (RC01, RM01) |
 | 6 | Can cheap lookup memory replace learned memorization? | [Engram](engram.md) | planned |
 | 6b | Can a teacher improve a tiny student? | [Distillation](distillation.md) | teacher fixture exists (TE01) |
 | 7 | How many experts fit in the same storage? | [Quantization](quantization.md) | projected (RB01) |
@@ -34,7 +34,7 @@ flowchart LR
 
 | Sparsity | We avoid paying for | Mechanism | Where it is measured |
 |---|---|---|---|
-| Parameter | many unique layers | recurrence | RC01 (measured), RM01 (planned) |
+| Parameter | many unique layers | recurrence | RC01, RM01 (measured) |
 | Compute | every expert on every token | top-k routing and sparse dispatch | MX01, MX02, SD01 |
 | Memory lookup | reconstructing common patterns with neural weights | Engram | EG01 (planned) |
 | Residency | the whole expert bank in fast memory | expert cache | XC01 (planned); RB01 gives the estimates |

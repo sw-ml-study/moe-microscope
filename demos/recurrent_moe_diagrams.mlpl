@@ -1,0 +1,159 @@
+# RM01 diagram drawer: reads the metrics of the R = 2 and R = 3 runs (one process each, finding F22) and draws the expert strip, the change-of-expert and load panels, and the per-recurrence specialization maps from those recorded values.
+include "../lib/svg.mlpl";
+include "../lib/domain.mlpl";
+
+print("WHAT THIS SHOWS -- Routing over reasoning time drawn from the recorded routing statistics of two separate runs of the recurrent mixture.");
+
+dir = unwrap(list_get(args(), 0));
+m2 = unwrap(parse_json(unwrap(read_text(str_concat(dir, "/metrics-2.json")))));
+m3 = unwrap(parse_json(unwrap(read_text(str_concat(dir, "/metrics-3.json")))));
+E = 4;
+families = str_split("arith|seq|mlpl|prose", "|");
+
+def u:expert_class(e) {
+  "Fill class of an expert index.";
+  if eq(e, 0) {
+    "t0"
+  } else {
+    if eq(e, 1) {
+      "t1"
+    } else {
+      if eq(e, 2) {
+        "t2"
+      } else {
+        "t3"
+      }
+    }
+  }
+}
+
+def u:strip(x0, y0, route, rows, cols) {
+  "A strip of expert cells: rows are recurrences, columns are token positions, each cell colored by the chosen expert.";
+  page = "";
+  r = 0;
+  while lt(r, rows) {
+    c = 0;
+    while lt(c, cols) {
+      e = take(route, 0, r * cols + c);
+      page = str_concat(page, u:svg_rect(x0 + c * 34, y0 + r * 26, 30, 22, u:expert_class(e)));
+      page = str_concat(page, u:svg_text(x0 + c * 34 + 10, y0 + r * 26 + 16, "", str_concat("E", to_string(e))));
+      c = c + 1
+    };
+    page = str_concat(page, u:svg_text(x0 - 34, y0 + r * 26 + 16, "s", str_concat("r=", to_string(r + 1))));
+    r = r + 1
+  };
+  page
+}
+
+def u:strip_svg() {
+  "Diagram: the expert chosen for each position of the example window at each recurrence, R = 3 run.";
+  page = u:svg_head("Expert sequence per token over recurrences", "For the example window 2+3=|5., the expert each token is routed to at recurrence 1, 2, and 3 of the trained R=3 mixture, and the change-of-expert share over the training rows.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "ROUTING OVER REASONING TIME -- which expert, at which recurrence"));
+  page = str_concat(page, u:svg_text(32, 60, "m", "WHAT: rows are recurrences, columns are the positions of 2+3=|5.; a cell is the expert chosen from that state."));
+  page = str_concat(page, u:svg_text(80, 90, "k", "input"));
+  page = str_concat(page, u:svg_chars("2+3=|5.", 120, 76, 34));
+  page = str_concat(page, u:strip(120, 116, m3.route, 3, 7));
+  page = str_concat(page, u:svg_text(420, 90, "k", "change-of-expert share over the training rows"));
+  page = str_concat(page, u:svg_text(420, 114, "", str_concat("R=2: ", to_string(u:svg_round(m2.change, 3)))));
+  page = str_concat(page, u:svg_text(420, 136, "", str_concat("R=3: ", to_string(u:svg_round(m3.change, 3)))));
+  page = str_concat(page, u:svg_text(420, 160, "m", "share of masked tokens whose expert differs between consecutive"));
+  page = str_concat(page, u:svg_text(420, 178, "m", "recurrences; zero would mean the router ignores reasoning time."));
+  page = str_concat(page, u:svg_text(80, 220, "k", "legend"));
+  page = str_concat(page, u:svg_rect(140, 206, 30, 18, "t0"));
+  page = str_concat(page, u:svg_rect(180, 206, 30, 18, "t1"));
+  page = str_concat(page, u:svg_rect(220, 206, 30, 18, "t2"));
+  page = str_concat(page, u:svg_rect(260, 206, 30, 18, "t3"));
+  page = str_concat(page, u:svg_text(300, 220, "", "experts 0, 1, 2, 3"));
+  page = str_concat(page, u:svg_rect(30, 250, 900, 270, "panel"));
+  page = str_concat(page, u:svg_text(50, 278, "", "WHY: in a recurrent mixture the router runs once per recurrence, so the same token can consult different experts in"));
+  page = str_concat(page, u:svg_text(50, 300, "", "     sequence; that is routing over reasoning time, the RM01 question. A strip that never changes color means the"));
+  page = str_concat(page, u:svg_text(50, 322, "", "     recurrences add compute but not a new decision."));
+  page = str_concat(page, u:svg_text(50, 348, "", "HOW: u:rm_route reads the router's argmax from a state; u:rm_step advances the state (attention residual, routed"));
+  page = str_concat(page, u:svg_text(50, 370, "", "     mixture residual); u:rm_change_share counts masked tokens whose expert differs between consecutive recurrences."));
+  page = str_concat(page, u:svg_text(50, 396, "", "HOW: training is deep-supervised (the head scored at every recurrence) with the balance term applied to every"));
+  page = str_concat(page, u:svg_text(50, 418, "", "     recurrence's routing (alpha 0.01), one process per R (finding F22); the R=3 run is the pinned recording."));
+  page = str_concat(page, u:svg_text(50, 448, "m", "The recording's rm/route/example holds these cells; rows RM01@2 and RM01@3 hold loss, accuracy, entropy, balance, and"));
+  page = str_concat(page, u:svg_text(50, 470, "m", "specialization; ms per token is in the results table only."));
+  str_concat(page, "</svg>")
+}
+
+def u:bars(x0, y0, vals, labels, scale, cls) {
+  "Labeled horizontal bars with values.";
+  page = "";
+  i = 0;
+  while lt(i, reduce_mul(shape(vals))) {
+    y = y0 + i * 20;
+    v = take(vals, 0, i);
+    page = str_concat(page, u:svg_text(x0, y + 12, "s", unwrap(list_get(labels, i))));
+    page = str_concat(page, u:svg_rect(x0 + 50, y + 2, v * scale, 12, cls));
+    page = str_concat(page, u:svg_text(x0 + 56 + v * scale, y + 12, "s", to_string(u:svg_round(v, 3))));
+    i = i + 1
+  };
+  page
+}
+
+def u:change_svg() {
+  "Diagram: loads per expert per recurrence for both runs, with entropy, balance, and the change share.";
+  page = u:svg_head("Recurrent mixture: loads, entropy, balance, and change per recurrence", "Tokens per expert at each recurrence for the R=2 and R=3 runs over the masked training positions, with mean router entropy, mean balance, the change-of-expert share, and the held-out results.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "LOADS PER RECURRENCE -- do the experts stay balanced at every step?"));
+  page = str_concat(page, u:svg_text(32, 60, "m", "WHAT: tokens routed to each expert at each recurrence over the 90 training windows' masked positions (E0..E3), per run."));
+  page = str_concat(page, u:svg_text(40, 92, "k", "R=2 run: recurrence 1"));
+  page = str_concat(page, u:bars(40, 100, u:domain_slice(m2.load, 0, 4), str_split("E0|E1|E2|E3", "|"), 0.5, "tr"));
+  page = str_concat(page, u:svg_text(40, 190, "k", "R=2 run: recurrence 2"));
+  page = str_concat(page, u:bars(40, 198, u:domain_slice(m2.load, 4, 4), str_split("E0|E1|E2|E3", "|"), 0.5, "tr"));
+  page = str_concat(page, u:svg_text(340, 92, "k", "R=3 run: recurrence 1"));
+  page = str_concat(page, u:bars(340, 100, u:domain_slice(m3.load, 0, 4), str_split("E0|E1|E2|E3", "|"), 0.5, "va"));
+  page = str_concat(page, u:svg_text(340, 190, "k", "R=3 run: recurrence 2"));
+  page = str_concat(page, u:bars(340, 198, u:domain_slice(m3.load, 4, 4), str_split("E0|E1|E2|E3", "|"), 0.5, "va"));
+  page = str_concat(page, u:svg_text(340, 288, "k", "R=3 run: recurrence 3"));
+  page = str_concat(page, u:bars(340, 296, u:domain_slice(m3.load, 8, 4), str_split("E0|E1|E2|E3", "|"), 0.5, "va"));
+  page = str_concat(page, u:svg_text(640, 92, "k", "diagnostics"));
+  page = str_concat(page, u:svg_text(640, 116, "", str_concat("entropy      R=2 ", str_concat(to_string(u:svg_round(m2.entropy, 3)), str_concat("   R=3 ", to_string(u:svg_round(m3.entropy, 3)))))));
+  page = str_concat(page, u:svg_text(640, 138, "", str_concat("balance      R=2 ", str_concat(to_string(u:svg_round(m2.balance, 3)), str_concat("   R=3 ", to_string(u:svg_round(m3.balance, 3)))))));
+  page = str_concat(page, u:svg_text(640, 160, "", str_concat("change share R=2 ", str_concat(to_string(u:svg_round(m2.change, 3)), str_concat("   R=3 ", to_string(u:svg_round(m3.change, 3)))))));
+  page = str_concat(page, u:svg_text(640, 182, "", str_concat("val loss     R=2 ", str_concat(to_string(u:svg_round(m2.val_loss, 3)), str_concat("   R=3 ", to_string(u:svg_round(m3.val_loss, 3)))))));
+  page = str_concat(page, u:svg_text(640, 204, "", str_concat("held-out mlpl R=2 ", str_concat(to_string(u:svg_round(m2.mlpl, 3)), str_concat("   R=3 ", to_string(u:svg_round(m3.mlpl, 3)))))));
+  page = str_concat(page, u:svg_text(640, 226, "", str_concat("held-out prose R=2 ", str_concat(to_string(u:svg_round(m2.prose, 3)), str_concat("   R=3 ", to_string(u:svg_round(m3.prose, 3)))))));
+  page = str_concat(page, u:svg_rect(30, 390, 900, 130, "panel"));
+  page = str_concat(page, u:svg_text(50, 418, "", "WHY: the balance term is applied at every recurrence, so loads should stay spread at each step; a recurrence whose"));
+  page = str_concat(page, u:svg_text(50, 440, "", "     loads collapse onto one expert would mean the later routing decisions carry no information."));
+  page = str_concat(page, u:svg_text(50, 466, "", "HOW: u:routing_stats re-routes every training window through the trained model and accumulates masked counts per"));
+  page = str_concat(page, u:svg_text(50, 488, "", "     recurrence; entropy and balance are means over windows and recurrences. Compare MX01 at R=1: loads 208, 30, 47, 121."));
+  str_concat(page, "</svg>")
+}
+
+def u:maps_svg() {
+  "Diagram: family-by-expert share maps per recurrence for the R=3 run, with the specialization score per recurrence.";
+  page = u:svg_head("Specialization per recurrence", "The share of each task family's masked tokens sent to each expert at recurrence 1, 2, and 3 of the trained R=3 mixture (rows families, columns experts), with the specialization score of each map.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "SPECIALIZATION PER RECURRENCE -- by family, and by step"));
+  page = str_concat(page, u:svg_text(32, 60, "m", "WHAT: rows arithmetic, sequence, mlpl, prose; columns experts 0..3; each row normalized to its family's token count."));
+  r = 0;
+  while lt(r, 3) {
+    x0 = 60 + r * 300;
+    fam = reshape(u:domain_slice(m3.family, r * 16, 16), [4, 4]);
+    rowsum = reduce_add(fam, 1) + eq(reduce_add(fam, 1), 0);
+    norm = fam / reshape(rowsum, [4, 1]);
+    page = str_concat(page, u:svg_text(x0, 92, "k", str_concat(str_concat("recurrence ", to_string(r + 1)), str_concat(", specialization ", to_string(u:svg_round(take(m3.spec, 0, r), 3))))));
+    page = str_concat(page, u:svg_heat(norm, x0 + 60, 104, 40));
+    f = 0;
+    while lt(f, 4) {
+      page = str_concat(page, u:svg_text(x0, 128 + f * 40, "s", unwrap(list_get(families, f))));
+      f = f + 1
+    };
+    page = str_concat(page, u:svg_text(x0 + 60, 280, "s", "E0      E1      E2      E3"));
+    r = r + 1
+  };
+  page = str_concat(page, u:svg_text(40, 316, "m", str_concat(str_concat("R=2 run specialization per recurrence: ", u:svg_vec(m2.spec, 3)), "; MX01 (R=1) scored 0.61.")));
+  page = str_concat(page, u:svg_rect(30, 340, 900, 180, "panel"));
+  page = str_concat(page, u:svg_text(50, 368, "", "WHY: if experts specialize by family at every recurrence, the mixture keeps its structure through reasoning time;"));
+  page = str_concat(page, u:svg_text(50, 390, "", "     if a later recurrence's map is flat, that step's routing is not about the task family."));
+  page = str_concat(page, u:svg_text(50, 416, "", "HOW: family-by-expert counts per recurrence come from u:routing_stats; the specialization score is the mean over"));
+  page = str_concat(page, u:svg_text(50, 438, "", "     families of the largest expert share (0.25 when routing ignores the family), as in MX02."));
+  page = str_concat(page, u:svg_text(50, 468, "m", "Limitation: 90 windows, one seed; the four families are separable by construction (see the MX02 report)."));
+  str_concat(page, "</svg>")
+}
+
+w1 = write_atomic(str_concat(dir, "/rm-strip.svg"), u:strip_svg());
+w2 = write_atomic(str_concat(dir, "/rm-change.svg"), u:change_svg());
+w3 = write_atomic(str_concat(dir, "/rm-maps.svg"), u:maps_svg());
+print("DIAGRAMS -- change share", m2.change, m3.change, "specialization per recurrence R=3", m3.spec);

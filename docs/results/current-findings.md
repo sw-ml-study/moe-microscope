@@ -117,15 +117,37 @@ the same words directly (0.685).
 Limitation: 54 paraphrases and 241 templated held-out rows; one corpus
 revision.
 
+## 9. Reusing a block buys quality per parameter, and the router re-decides
+
+Evidence: the dense block applied twice with deep supervision (RC01)
+reaches validation loss 3.45 against 3.79 for the same 3,812 parameters
+applied once, and the mixture block applied three times (RM01) reaches
+3.42 against 3.76 for the same 7,096 parameters. In RM01 the router runs
+at every recurrence and 38 to 46 percent of tokens change expert between
+consecutive recurrences; specialization is strongest at the first
+recurrence (0.65) and weaker after it (0.45, 0.49).
+
+Interpretation: compute can substitute for parameters at this scale, but
+the gain is not a converging reasoning loop: the RC01 models score best
+when stopped after their first recurrence, and RM01's R=2 point is worse
+than R=1. Deep supervision regularizes the block; the later recurrences
+are new routing decisions whose value is not yet separated from that
+regularization.
+
+Limitation: one seed per point, 90 training windows, a non-monotonic curve
+over R.
+
 ## Supported now versus plausible but not demonstrated
 
 Supported: more stored than active capacity; measurable specialization; a
 real top-k tradeoff; exact sparse dispatch; dispatch overhead outweighing
 theoretical savings at tiny scale; data quantity governing whether
 architectural differences show; a deterministic matcher as a hard baseline
-for a tiny classifier over templated data.
+for a tiny classifier over templated data; a reused block improving
+validation loss per parameter, with the router re-deciding at every
+recurrence.
 
-Plausible, not demonstrated: recurrence improving quality per parameter;
+Plausible, not demonstrated: recurrence as a converging reasoning loop;
 Engram removing memorization pressure; distillation improving this student;
 quantization raising expert count at acceptable quality; routing locality
 giving useful cache hit rates; heterogeneous execution beating simpler

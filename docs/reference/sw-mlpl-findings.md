@@ -33,8 +33,10 @@ upstream `moe-microscope-followups-2` saga (`mlpl-repl` 08:11, `mlpl-serve`
 | F12 shape-derived size arithmetic rejected inside `grad` | parameter-independent subexpressions such as `reduce_mul(shape(...))` are constant-folded on the tape | `82e55a6a`, verified against the 12:52 rebuilt binary | probe file expects success ("grad 3 3 3"); `u:masked_ce` keeps its explicit `vocab` argument by choice |
 | F11 nested traced call lost a parameter used in index arithmetic | gather index arithmetic resolves in the traced scope | `813526d6`, verified against the 13:29 rebuilt binary | probe file expects success ("grad rows 0 0 0" then the selected rows of ones); lessons keep eager slicing by choice |
 | F13 `attention_weights` could not find an attention layer inside `residual(chain(...))` | the walk now enters `residual` and nested `chain` blocks | `8282cd6a`, verified against the 14:37 rebuilt binary | probe file expects success ("weights 5 5"); DN01 keeps its explicit residual by choice, for readability |
+| F16 `eval_stream` had no include, sandbox, or args | the eval request takes an `includes` map (in-memory provider, relative-only and no-escape), `--fs-root` gives a filesystem sandbox, and an `args` field feeds `args()` | `902f14e2`, `855fb551`, `f85cc657`, verified against the 16:35 rebuilt server | `scripts/run-emit-frame-loops` resolves nested includes through the map; residual: a parent-relative include (`../lib/x.mlpl`, how the demos are written) is refused by the no-escape rule, so `scripts/bundle-program` stays until a program path can be declared |
+| S1 stale adjacent `mlpl-serve` | serve is rebuilt on evaluator changes | process | `scripts/select-mlpl-serve` prefers `MLPL_SERVE`, then a local build, then the adjacent binary |
 
-## Open, queued upstream as `moe-microscope-followups` (F7, F8, F16, F17, F19, F20, F21, F22, S1; upstream `followups-2` is closing)
+## Open, queued upstream as `moe-microscope-followups` (F7, F8, F17, F19, F20, F21, F22, F23; upstream `followups-4` is working F19 and F20 first)
 
 ### F7: a model value cannot be a user-function argument
 
@@ -123,6 +125,32 @@ inlined). Affects: any helper that wraps training. Proposed fix: resolve the
 optimizer's parameter list against the caller's bindings, or document the
 copy semantics loudly.
 
+### F23: a reshape whose row count comes from `shape()` loses the gradient inside `grad`
+
+```
+def u:lit(x) { g = softmax(matmul(x, W)); reshape(take(g, 1, 0), [4, 1]) * x }
+def u:der(x) { g = softmax(matmul(x, W)); n = reduce_mul(shape(take(g, 1, 0))); reshape(take(g, 1, 0), [n, 1]) * x }
+grad(reduce_add(u:lit(x) * u:lit(x)), W)   # a gradient
+grad(reduce_add(u:der(x) * u:der(x)), W)   # error: the loss does not depend on 'W'
+```
+
+Reproducer: `probes/f23_shape_derived_reshape_in_grad.mlpl`. Met in RM01:
+the mixture block computed its gate row count from the gate's shape so
+that prompts of any length could pass through it, and the R = 2 run
+collapsed onto expert 0 (loads 406, 0, 0, 0; change share 0; every
+accuracy 0) with no error, because the router's gradient vanished while
+the experts still trained. With a literal count the same run routes
+normally (loads 145, 101, 110, 50). In the small reproducer the loss
+depends on W only through the reshaped gate, so the tape reports "no
+gradient flows"; in the lesson the experts kept a path to the loss and
+the failure was silent. Workaround: literal shapes inside traced blocks
+(the window length is a global), and pad evaluation prompts to that
+length. Affects: any traced block that sizes a reshape from a value's
+shape. Proposed fix: treat `shape()` of a tracked value as a constant
+whose consumer keeps the tracked operand differentiable, or reject
+shape-derived reshapes inside `grad` with an error instead of dropping
+the gradient.
+
 ### F22: `adam` state is keyed by name and outlives the model; no reset
 
 ```
@@ -143,23 +171,6 @@ two variants in one process under the same names (CD01bf was contaminated
 and re-measured; LD01r used distinct names and stands; DS01 runs one point
 per process). Proposed fix: clear optimizer state when a name is
 rebound to a new model, and add `reset_optimizer()`.
-
-### F16: the `eval_stream` surface has no source provider, sandbox, or arguments
-
-```
-include "lib/observe.mlpl"     # error: include is a script-mode construct ... this surface has no source provider
-read_text("fixtures/x.json")   # Err(read_text: no filesystem sandbox on this surface ...)
-args()                          # empty
-```
-
-Reproducer: `scripts/run-emit-frame-loops` (third check). A lesson that is
-split into library modules cannot be submitted to `mlpl-serve` as written.
-Workaround: `scripts/bundle-program` inlines the include tree into one
-program, the mixture fixture has an inline twin (`u:domain_mixture_v0`,
-pinned equal by test), and file writes are skipped when `args()` is empty.
-Affects: every recorded lesson. Proposed fix: let a session declare a
-read-only source root (or accept a multi-file program body) so includes and
-fixture reads work on the connect path.
 
 ### F17: record field access is rejected inside `grad`
 

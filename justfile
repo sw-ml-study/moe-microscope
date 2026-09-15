@@ -56,6 +56,10 @@ serve-learn port="8765":
 recur mode="check":
     ./scripts/run-recur-demo {{mode}}
 
+# Run RM01, the recurrent mixture at R = 2 and 3 (minutes), and check its diagrams and rows; `just rm write` regenerates them.
+rm mode="check":
+    ./scripts/run-rm-demo {{mode}}
+
 # Run the DN01 dense baseline (about 16 seconds) and check its diagrams and results row; `just dense write` regenerates them.
 dense mode="check":
     ./scripts/run-dense-demo {{mode}}

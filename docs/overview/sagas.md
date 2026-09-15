@@ -43,8 +43,16 @@ work by the user's decision.
    and now trains one variant per process with a drawer composing the table
    diagram. AGENTS.md states the rule: one training run per process,
    training loops at top level.
-3. `recurrent-moe` - RM01: re-routing per recurrence, the change-of-expert
-   statistic, per-recurrence specialization maps.
+3. `recurrent-moe` - done: RM01, the MX01 block applied R times with the
+   router run at every recurrence and the balance term per recurrence.
+   Tokens change expert between consecutive recurrences (share 0.464 at
+   R=2, 0.381 at R=3); the R=3 mixture reaches validation loss 3.42, the
+   lowest of any 120-example model here, with training exact match 0.43;
+   R=2 is worse than MX01 (4.09). Specialization 0.65 at the first
+   recurrence, 0.45 and 0.49 after it. Three diagrams, rows RM01@2 and
+   RM01@3, a recording replayed in the live demo. F23 found on the way: a
+   reshape sized from `shape()` inside `grad` drops the gradient silently
+   (the first R=2 run collapsed onto one expert); pinned by a probe.
 4. `engram-from-scratch` - EG01: ngram_hash addressing, gather_rows
    retrieval, projection, gate; parity with the builtin; the table-size
    sweep.

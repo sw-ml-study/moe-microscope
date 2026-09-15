@@ -264,3 +264,19 @@ memory = "3,812 parameters at every R (the DN01 block); active parameters per to
 speed = "the sweep trains four models for 300 epochs each, minutes in the interpreter; ms per token grows with R"
 quality = "validation loss and per-family exact match against R at fixed parameters; the R=4 model's loss when stopped after each recurrence"
 status = "accepted"
+
+[[lesson]]
+id = "RM01"
+slug = "recurrent-moe"
+title = "Routing over reasoning time: the mixture block applied R times"
+source = "demos/recurrent_moe.mlpl"
+library = ["lib/recur.mlpl", "lib/moe.mlpl", "lib/dense.mlpl"]
+test = ["tests/test_recur.mlpl"]
+previews = ["assets/previews/rm-strip.svg", "assets/previews/rm-change.svg", "assets/previews/rm-maps.svg"]
+fixture = "fixtures/recordings/recurrent-moe-run-v0.json"
+implementation = "from-scratch"
+observations = ["rm/config", "rm/loss/train", "rm/loss/val", "rm/load", "rm/entropy", "rm/balance", "rm/change-share", "rm/specialization-per-recurrence", "rm/family-by-expert/1", "rm/family-by-expert/2", "rm/family-by-expert/3", "rm/route/example", "rm/accuracy/val", "rm/accuracy/train"]
+memory = "7,096 parameters (the MX01 mixture) at every R; active per token grows by one attention block, router, and expert per recurrence"
+speed = "two processes (R = 2 and 3) of 300 epochs each, minutes in the interpreter; the R = 3 run is also the pinned recording"
+quality = "validation loss and per-family exact match at R = 2 and 3, the change-of-expert share, loads and specialization per recurrence"
+status = "accepted"

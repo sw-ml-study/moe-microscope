@@ -72,4 +72,37 @@ def u:test_train() {
   u:assert_lt(u:recur_loss(apply(emb, wx) + pos, wy, wm, V, 2), before * 0.7, "loss fell (record fields bound eagerly, finding F17)")
 }
 
+rm_T = 12;
+recur_pre = rms_norm(dm);
+recur_router = linear(dm, 4, 9);
+recur_ex0 = chain(linear(dm, hidden, 20), relu_layer(), linear(hidden, dm, 21));
+recur_ex1 = chain(linear(dm, hidden, 22), relu_layer(), linear(hidden, dm, 23));
+recur_ex2 = chain(linear(dm, hidden, 24), relu_layer(), linear(hidden, dm, 25));
+recur_ex3 = chain(linear(dm, hidden, 26), relu_layer(), linear(hidden, dm, 27));
+
+@test {name: "the recurrent mixture re-routes at every recurrence and its deep-supervised loss trains", tags: ["recur", "moe"]}
+def u:test_recurrent_moe() {
+  "Routing per recurrence, the change-of-expert share, and a few adam steps.";
+  w = unwrap(u:domain_window("17+25=|42.", 12));
+  wx = w.x;
+  wy = w.y;
+  wm = w.mask;
+  h0 = apply(emb, wx) + u:positions(12, dm);
+  r1 = u:rm_route(h0);
+  u:assert_shape(r1, [12], "one expert per token")?;
+  u:assert_true(lt(reduce(:max, r1), 4), "expert indices below four")?;
+  share = u:rm_change_share(h0, wm, 3);
+  u:assert_true(gt(share + 1, 0), "share is a fraction")?;
+  u:assert_eq(u:rm_change_share(h0, wm, 1), 0, "no change at R = 1")?;
+  s2 = u:rm_state(h0, 2);
+  u:assert_shape(s2, [12, dm], "state shape")?;
+  before = u:rm_loss(h0, wy, wm, V, 2, 0.01);
+  k = 0;
+  while lt(k, 20) {
+    adam(u:rm_loss(apply(emb, wx) + u:positions(12, dm), wy, wm, V, 2, 0.01), [emb, recur_att, recur_pre, recur_router, recur_ex0, recur_ex1, recur_ex2, recur_ex3, recur_norm, recur_head], 0.01, 0.9, 0.999, 0.00000001);
+    k = k + 1
+  };
+  u:assert_lt(u:rm_loss(apply(emb, wx) + u:positions(12, dm), wy, wm, V, 2, 0.01), before * 0.8, "loss fell")
+}
+
 u:run_registered_tests()

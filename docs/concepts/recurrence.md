@@ -37,10 +37,19 @@ model scores best when stopped after its first recurrence (3.29 for the R=2
 model), so the gain is a regularization effect of scoring every state, not
 a converging reasoning loop. One seed, 90 windows.
 
+RM01 (the MX01 mixture block reused, the router run at every recurrence,
+7,096 parameters at every R): 46 percent (R=2) and 38 percent (R=3) of
+tokens change expert between consecutive recurrences, so the recurrences
+are new routing decisions. The R=3 mixture reaches validation loss 3.42,
+the lowest of any 120-example model in the results table, with the lowest
+training exact match (0.43); R=2 is worse than the single application
+(4.09 against 3.76). Specialization is strongest at the first recurrence
+(0.65) and weaker after it (0.45, 0.49). One seed.
+
 ## Status
 
-RC01 measured; RM01 (routing over reasoning time) next in the
-recurrence-and-Engram saga. sw-MLPL traces `repeat` with literal and
+RC01 and RM01 measured; the recurrent Engram lesson (RE01) adds the
+ablation table in the recurrence-and-Engram saga. sw-MLPL traces `repeat` with literal and
 parameter-bound counts (findings F6 and F15, resolved), so depth is a
 function argument.
 

@@ -26,6 +26,7 @@ was not proved, and where the raw evidence lives. Numbers cite a row of the
 | 15 | [MB01 matcher baseline](MB01.md) | What does deterministic matching already achieve, and by how much must a docent beat it? |
 | 16 | [CD01b docent word vectors](CD01b.md) | Do word vectors from the campus's own text give the docent meaning its hashed features lack? |
 | 17 | [RC01 recurrent block](RC01.md) | Does applying one block several times replace parameters? |
+| 18 | [RM01 recurrent mixture](RM01.md) | Does expert selection change over reasoning time, and do experts specialize by recurrence? |
 
 The machine-readable inventory is [`catalog/lessons.toml`](../../catalog/lessons.toml).
 Experiments planned for later sagas (RC01, RM01, EG01, RE01, KD01, RW01,

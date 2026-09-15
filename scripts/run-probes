@@ -58,6 +58,7 @@ expect_error f19_matmul_shape_panics_in_grad "compatible matmul shapes"
 expect_error f20_take_param_index_in_grad "undefined variable: e"
 expect_output f21_adam_in_user_function "^param moved 0 model moved 0"
 expect_output f22_adam_state_by_name "same 0$"
+expect_error f23_shape_derived_reshape_in_grad "does not depend on 'W'"
 "$mlpl" --source-dir "$repo_root" "$repo_root/probes/f18_shape_mismatch_panics_on_tape.mlpl" 2>&1 | grep -q panicked && { echo "probe f18: the tape panicked again" >&2; exit 1; }
 
 expect_error d1_silent_zero_grad "the loss does not depend on"

@@ -37,6 +37,7 @@ Gaps with reproducers are written up as upstream work orders in
 | Top-k gate on the tape | `argmax`/`one_hot`/`argtop_k` are stop-gradient constants inside `grad` (F5 resolved), so the mask can live inside the loss; the Switch-style gate `softmax(logits) * mask` gives the router a gradient (a renormalized top-1 gate is identically 1 and gives none) | probes "adam trains a list of expert models..." and "one_hot and argmax act as stop-gradient constants" |
 | Batched sequences | `embed` now accepts `[B, T]` (F9 resolved); lessons still train one example per step so attention never spans examples and positions stay per example | per-example loop |
 | `attention_weights` through `residual(chain(...))` | probe file `probes/f13_attention_weights_residual.mlpl` expects success (F13 resolved) | DN01 keeps the explicit residual by choice |
+| Includes and args over the `eval_stream` wire | `scripts/run-emit-frame-loops` resolves nested includes through the request map and reads args (F16 resolved) | demos keep the bundler: parent-relative includes are refused by the no-escape sandbox |
 | Nested user-function calls with index arithmetic inside `grad` | probe file `probes/f11_nested_param_binding_in_grad.mlpl` expects success (F11 resolved) | helpers may slice inside the loss; lessons keep eager slicing by choice |
 | Size arithmetic derived from `shape` inside `grad` | probe file `probes/f12_size_arithmetic_in_grad.mlpl` expects success (F12 resolved) | loss helpers may derive sizes from shapes; `u:masked_ce` keeps `vocab` explicit by choice |
 | Positional table on the tape | the labeled `sinusoidal_encoding` output trains inside `adam` (F10 resolved) | `u:positions` still strips labels; harmless |
@@ -59,12 +60,12 @@ Gaps with reproducers are written up as upstream work orders in
 |---|---|---|
 | F7 model as user-function argument | probe "a model value cannot be a user-function argument"; `probes/f7_model_argument.mlpl` | globals |
 | F8 `emit_frame` literal name | probe "emit_frame rejects a name held in a variable"; `probes/f8_emit_frame_name.mlpl` | literal names |
+| F23 shape-derived reshape count inside `grad` drops the gradient (silent routing collapse) | `probes/f23_shape_derived_reshape_in_grad.mlpl` | literal window length; pad prompts to it |
 | F22 `adam` state keyed by name survives model re-creation; no reset | `probes/f22_adam_state_by_name.mlpl` | one training run per process, or unique names |
 | F21 `adam` inside a user function updates local copies; globals unchanged | `probes/f21_adam_in_user_function.mlpl` | training loops at top level only |
 | F20 `take`'s index parameter unbound in an inlined function (falls through to a global; out-of-range panics) | `probes/f20_take_param_index_in_grad.mlpl` | inline the take with a literal index |
 | F19 matmul inner-dimension mismatch inside `grad` panics | `probes/f19_matmul_shape_panics_in_grad.mlpl` | check widths eagerly before tracing |
 | F17 record field access inside `grad` | `probes/f17_record_field_in_grad.mlpl` | bind fields to variables eagerly |
-| F16 no include/sandbox/args on `eval_stream` | `scripts/run-emit-frame-loops` | `scripts/bundle-program`, inline mixture twin, guarded writes |
 
 ## Still to be probed
 

@@ -1,6 +1,6 @@
 number = 3
 slug = "recurrent-moe"
-status = "pending"
+status = "in-progress"
 description = "RM01 recurrent MoE: routing over reasoning time. The MX01 mixture (four exper..."
 role = "production"
 context_files = []

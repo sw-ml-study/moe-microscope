@@ -1,0 +1,447 @@
+{
+  "schema": "sw-ml-study.ml-microscope-recording",
+  "version": 0,
+  "lesson": "recurrent-moe",
+  "budgets": {
+    "max_frames": 16,
+    "max_observations_per_frame": 16,
+    "max_values_per_observation": 64,
+    "max_total_values": 640
+  },
+  "frames": [
+    {
+      "step": 0,
+      "observations": [
+        {
+          "name": "rm/config",
+          "shape": [
+            9
+          ],
+          "values": [
+            16.0,
+            32.0,
+            4.0,
+            1.0,
+            28.0,
+            300.0,
+            90.0,
+            30.0,
+            3.0
+          ]
+        }
+      ]
+    },
+    {
+      "step": 25,
+      "observations": [
+        {
+          "name": "rm/loss/train",
+          "shape": [],
+          "values": [
+            1.1146784959552547
+          ]
+        },
+        {
+          "name": "rm/loss/val",
+          "shape": [],
+          "values": [
+            1.9341775748342456
+          ]
+        }
+      ]
+    },
+    {
+      "step": 50,
+      "observations": [
+        {
+          "name": "rm/loss/train",
+          "shape": [],
+          "values": [
+            0.9842392897953277
+          ]
+        },
+        {
+          "name": "rm/loss/val",
+          "shape": [],
+          "values": [
+            2.22131496610652
+          ]
+        }
+      ]
+    },
+    {
+      "step": 75,
+      "observations": [
+        {
+          "name": "rm/loss/train",
+          "shape": [],
+          "values": [
+            0.6442464252718824
+          ]
+        },
+        {
+          "name": "rm/loss/val",
+          "shape": [],
+          "values": [
+            2.303415639624274
+          ]
+        }
+      ]
+    },
+    {
+      "step": 100,
+      "observations": [
+        {
+          "name": "rm/loss/train",
+          "shape": [],
+          "values": [
+            0.5225740313528099
+          ]
+        },
+        {
+          "name": "rm/loss/val",
+          "shape": [],
+          "values": [
+            2.458111611747646
+          ]
+        }
+      ]
+    },
+    {
+      "step": 125,
+      "observations": [
+        {
+          "name": "rm/loss/train",
+          "shape": [],
+          "values": [
+            0.6166247038226784
+          ]
+        },
+        {
+          "name": "rm/loss/val",
+          "shape": [],
+          "values": [
+            2.556364096346185
+          ]
+        }
+      ]
+    },
+    {
+      "step": 150,
+      "observations": [
+        {
+          "name": "rm/loss/train",
+          "shape": [],
+          "values": [
+            0.6044074640659327
+          ]
+        },
+        {
+          "name": "rm/loss/val",
+          "shape": [],
+          "values": [
+            2.373625786907223
+          ]
+        }
+      ]
+    },
+    {
+      "step": 175,
+      "observations": [
+        {
+          "name": "rm/loss/train",
+          "shape": [],
+          "values": [
+            0.5776628572760322
+          ]
+        },
+        {
+          "name": "rm/loss/val",
+          "shape": [],
+          "values": [
+            2.9279724789131136
+          ]
+        }
+      ]
+    },
+    {
+      "step": 200,
+      "observations": [
+        {
+          "name": "rm/loss/train",
+          "shape": [],
+          "values": [
+            0.24619094887545154
+          ]
+        },
+        {
+          "name": "rm/loss/val",
+          "shape": [],
+          "values": [
+            3.2665434183341224
+          ]
+        }
+      ]
+    },
+    {
+      "step": 225,
+      "observations": [
+        {
+          "name": "rm/loss/train",
+          "shape": [],
+          "values": [
+            0.3215296398931814
+          ]
+        },
+        {
+          "name": "rm/loss/val",
+          "shape": [],
+          "values": [
+            2.8673698893328994
+          ]
+        }
+      ]
+    },
+    {
+      "step": 250,
+      "observations": [
+        {
+          "name": "rm/loss/train",
+          "shape": [],
+          "values": [
+            0.48609910220507385
+          ]
+        },
+        {
+          "name": "rm/loss/val",
+          "shape": [],
+          "values": [
+            3.3229844952451124
+          ]
+        }
+      ]
+    },
+    {
+      "step": 275,
+      "observations": [
+        {
+          "name": "rm/loss/train",
+          "shape": [],
+          "values": [
+            0.2509646190905488
+          ]
+        },
+        {
+          "name": "rm/loss/val",
+          "shape": [],
+          "values": [
+            3.4711509908411706
+          ]
+        }
+      ]
+    },
+    {
+      "step": 300,
+      "observations": [
+        {
+          "name": "rm/loss/train",
+          "shape": [],
+          "values": [
+            0.6142292242290864
+          ]
+        },
+        {
+          "name": "rm/loss/val",
+          "shape": [],
+          "values": [
+            3.4151818576970414
+          ]
+        },
+        {
+          "name": "rm/load",
+          "shape": [
+            3,
+            4
+          ],
+          "values": [
+            245.0,
+            23.0,
+            110.0,
+            28.0,
+            81.0,
+            121.0,
+            160.0,
+            44.0,
+            65.0,
+            111.0,
+            173.0,
+            57.0
+          ]
+        },
+        {
+          "name": "rm/entropy",
+          "shape": [],
+          "values": [
+            0.808152178449066
+          ]
+        },
+        {
+          "name": "rm/balance",
+          "shape": [],
+          "values": [
+            1.224967104863434
+          ]
+        },
+        {
+          "name": "rm/change-share",
+          "shape": [],
+          "values": [
+            0.38064814814814807
+          ]
+        },
+        {
+          "name": "rm/specialization-per-recurrence",
+          "shape": [
+            3
+          ],
+          "values": [
+            0.6528108565882687,
+            0.4538091211160406,
+            0.4893991816735702
+          ]
+        },
+        {
+          "name": "rm/family-by-expert/1",
+          "shape": [
+            4,
+            4
+          ],
+          "values": [
+            63.0,
+            0.0,
+            15.0,
+            9.0,
+            117.0,
+            23.0,
+            53.0,
+            19.0,
+            33.0,
+            0.0,
+            35.0,
+            0.0,
+            32.0,
+            0.0,
+            7.0,
+            0.0
+          ]
+        },
+        {
+          "name": "rm/family-by-expert/2",
+          "shape": [
+            4,
+            4
+          ],
+          "values": [
+            19.0,
+            9.0,
+            45.0,
+            14.0,
+            38.0,
+            83.0,
+            75.0,
+            16.0,
+            13.0,
+            12.0,
+            32.0,
+            11.0,
+            11.0,
+            17.0,
+            8.0,
+            3.0
+          ]
+        },
+        {
+          "name": "rm/family-by-expert/3",
+          "shape": [
+            4,
+            4
+          ],
+          "values": [
+            11.0,
+            16.0,
+            46.0,
+            14.0,
+            32.0,
+            72.0,
+            89.0,
+            19.0,
+            1.0,
+            13.0,
+            32.0,
+            22.0,
+            21.0,
+            10.0,
+            6.0,
+            2.0
+          ]
+        },
+        {
+          "name": "rm/route/example",
+          "shape": [
+            3,
+            7
+          ],
+          "values": [
+            3.0,
+            0.0,
+            2.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            3.0,
+            2.0,
+            2.0,
+            2.0,
+            3.0,
+            2.0,
+            0.0,
+            3.0,
+            1.0,
+            2.0,
+            2.0,
+            0.0,
+            2.0,
+            0.0
+          ]
+        },
+        {
+          "name": "rm/accuracy/val",
+          "shape": [
+            5
+          ],
+          "values": [
+            0.0,
+            0.0,
+            0.2857142857142857,
+            0.6666666666666666,
+            0.13333333333333333
+          ]
+        },
+        {
+          "name": "rm/accuracy/train",
+          "shape": [
+            5
+          ],
+          "values": [
+            0.6774193548387096,
+            0.2222222222222222,
+            0.30434782608695654,
+            0.5555555555555556,
+            0.43333333333333335
+          ]
+        }
+      ]
+    }
+  ]
+}

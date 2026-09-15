@@ -98,7 +98,11 @@ with a non-literal name), and D1 (a loud error for an untracked `wrt` leaf).
 Upstream has queued them as `moe-microscope-followups`; the recommended order
 is F5, F8, F7, F6, D1, because F5 and F8 change what the lessons and the
 observation facade can express. F1 to F4 were fixed upstream in
-`moe-microscope-findings` and are verified here.
+`moe-microscope-findings` and are verified here. The fourth batch
+(`followups-4`) holds F19 to F22; F23 (a reshape sized from `shape()`
+inside `grad` drops the gradient without an error, met in RM01 as a silent
+routing collapse) is filed after it and should lead the next batch,
+because a silent wrong gradient is worse than a panic.
 
 For the campus docent, one ask is shared with `../demo-abstract-algebra`
 (its blocker B7): a headless `--target web` build of `mlpl-wasm` alone, so a

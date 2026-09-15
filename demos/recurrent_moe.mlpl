@@ -1,0 +1,201 @@
+# RM01 recurrent mixture: the MX01 block (attention, four routed experts, balance term) applied R times with deep supervision; every recurrence re-routes, so a token can change expert over reasoning time. One R per process (third argument, default 3; finding F22); the R = 3 run is the pinned recording.
+include "../lib/recur.mlpl";
+include "../lib/observe.mlpl";
+include "../lib/svg.mlpl";
+include "../lib/results.mlpl";
+
+print("WHAT THIS SHOWS -- Routing over reasoning time: the same four experts consulted R times per token, the expert chosen at each recurrence, how often it changes, and whether experts specialize by recurrence as well as by task family.");
+print("SHAPES -- window [T=28]; router logits [T, 4] per recurrence; expert per token per recurrence [R, T]; family-by-expert [4, 4] per recurrence.");
+
+out_dir = if list_len(args()) {
+  unwrap(list_get(args(), 0))
+} else {
+  ""
+};
+binary = if gt(list_len(args()), 1) {
+  unwrap(list_get(args(), 1))
+} else {
+  "unknown"
+};
+R_text = if gt(list_len(args()), 2) {
+  unwrap(list_get(args(), 2))
+} else {
+  "3"
+};
+R_now = if str_eq(R_text, "2") {
+  2
+} else {
+  3
+};
+writing = str_len(out_dir);
+m = unwrap(u:domain_load_mixture(u:domain_mixture_path()));
+d = u:domain_build(m);
+w = unwrap(u:domain_windows(d.texts, m.window));
+s = u:domain_split(d.count, m.train_fraction, m.seed);
+V = u:domain_vocab_size();
+T = m.window;
+rm_T = T;
+dm = 16;
+hidden = 32;
+E = 4;
+epochs = 300;
+lr = 0.003;
+alpha = 0.01;
+every = 25;
+ntrain = reduce_mul(shape(s.train));
+nval = reduce_mul(shape(s.val));
+train_x = gather_rows(w.x, s.train);
+train_y = gather_rows(w.y, s.train);
+train_m = gather_rows(w.mask, s.train);
+val_x = gather_rows(w.x, s.val);
+val_y = gather_rows(w.y, s.val);
+val_m = gather_rows(w.mask, s.val);
+train_tags = reshape(gather_rows(reshape(d.tags, [d.count, 1]), s.train), [ntrain]);
+posT = u:positions(T, dm);
+config = emit_frame("rm/config", 0, [dm, hidden, E, 1, T, epochs, ntrain, nval, R_now]);
+
+emb = embed(V, dm, 0);
+recur_att = chain(rms_norm(dm), causal_attention(dm, 1, 1));
+recur_pre = rms_norm(dm);
+recur_router = linear(dm, E, 9);
+recur_ex0 = chain(linear(dm, hidden, 20), relu_layer(), linear(hidden, dm, 21));
+recur_ex1 = chain(linear(dm, hidden, 22), relu_layer(), linear(hidden, dm, 23));
+recur_ex2 = chain(linear(dm, hidden, 24), relu_layer(), linear(hidden, dm, 25));
+recur_ex3 = chain(linear(dm, hidden, 26), relu_layer(), linear(hidden, dm, 27));
+recur_norm = rms_norm(dm);
+recur_head = linear(dm, V, 4);
+p_emb = param_count(emb);
+p_att = param_count(recur_att);
+p_router = param_count(recur_router) + param_count(recur_pre);
+p_expert = param_count(recur_ex0);
+p_head = param_count(recur_norm) + param_count(recur_head);
+params = p_emb + p_att + p_router + E * p_expert + p_head;
+active = dm + R_now * (p_att + p_router + p_expert) + p_head;
+
+def u:forward(ids) {
+  "Logits of a T-length window after R_now recurrences of the mixture block (prompts are padded to T by the padded evaluator).";
+  u:recur_logits(u:rm_state(apply(emb, ids) + posT, R_now))
+}
+
+def u:routing_stats() {
+  "Over every masked training position and every recurrence: tokens per expert per recurrence [R, E], family-by-expert per recurrence [R, 4, E] flattened, mean entropy, mean balance, and the change-of-expert share.";
+  load = fill([R_now * E], 0);
+  fam = fill([R_now * 4 * E], 0);
+  ent = 0;
+  bal = 0;
+  change = 0;
+  i = 0;
+  while lt(i, ntrain) {
+    h = apply(emb, take(train_x, 0, i)) + posT;
+    mrow = take(train_m, 0, i);
+    tag = take(train_tags, 0, i);
+    change = change + u:rm_change_share(h, mrow, R_now);
+    r = 0;
+    while lt(r, R_now) {
+      h1 = h + apply(recur_att, h);
+      logits = apply(recur_router, apply(recur_pre, h1));
+      mask = u:top1_mask(logits, E) * reshape(mrow, [T, 1]);
+      counts = u:expert_load(mask);
+      e = 0;
+      while lt(e, E) {
+        at = r * E + e;
+        load = scatter(load, at, take(load, 0, at) + take(counts, 0, e));
+        fat = r * 4 * E + tag * E + e;
+        fam = scatter(fam, fat, take(fam, 0, fat) + take(counts, 0, e));
+        e = e + 1
+      };
+      probs = u:router_probs(logits);
+      ent = ent + u:router_entropy(probs);
+      bal = bal + u:balance_loss(probs, u:top1_mask(logits, E), E, T);
+      h = u:rm_step(h);
+      r = r + 1
+    };
+    i = i + 1
+  };
+  {load: reshape(load, [R_now, E]), family: fam, entropy: ent / (ntrain * R_now), balance: bal / (ntrain * R_now), change: change / ntrain}
+}
+
+curve_t = fill([0], 0);
+curve_v = fill([0], 0);
+train_ms = 0;
+e = 0;
+while lt(e, epochs) {
+  ts = clock_ms();
+  i = 0;
+  while lt(i, ntrain) {
+    x1 = take(train_x, 0, i);
+    y1 = take(train_y, 0, i);
+    m1 = take(train_m, 0, i);
+    adam(u:rm_loss(apply(emb, x1) + posT, y1, m1, V, R_now, alpha), [emb, recur_att, recur_pre, recur_router, recur_ex0, recur_ex1, recur_ex2, recur_ex3, recur_norm, recur_head], lr, 0.9, 0.999, 0.00000001);
+    i = i + 1
+  };
+  train_ms = train_ms + (clock_ms() - ts);
+  e = e + 1;
+  if eq(mod(e, every), 0) {
+    tl = u:set_loss(:u:forward, train_x, train_y, train_m, ntrain, V);
+    vl = u:set_loss(:u:forward, val_x, val_y, val_m, nval, V);
+    recorded = if eq(R_now, 3) {
+      emit_frame("rm/loss/train", e, tl) + emit_frame("rm/loss/val", e, vl)
+    } else {
+      0
+    };
+    curve_t = concat(curve_t, tl);
+    curve_v = concat(curve_v, vl);
+    print("R", R_now, "epoch", e, "train loss", u:svg_round(tl, 4), "val loss", u:svg_round(vl, 4))
+  } else {
+    0
+  }
+};
+
+stats = u:routing_stats();
+rv = u:evaluate_prompts_padded(:u:forward, d, s.val, 12, T);
+rt = u:evaluate_prompts_padded(:u:forward, d, s.train, 12, T);
+final_val = u:set_loss(:u:forward, val_x, val_y, val_m, nval, V);
+final_train = u:set_loss(:u:forward, train_x, train_y, train_m, ntrain, V);
+ms_per_token = train_ms / (epochs * ntrain * T);
+spec_per_r = fill([0], 0);
+r = 0;
+while lt(r, R_now) {
+  fam_r = reshape(u:domain_slice(stats.family, r * 4 * E, 4 * E), [4, E]);
+  spec_per_r = concat(spec_per_r, u:specialization_score(fam_r));
+  r = r + 1
+};
+example = "2+3=|5.";
+ex_ids = u:pad_to(unwrap(u:domain_encode(example)), T);
+h_ex = apply(emb, ex_ids) + posT;
+route1 = u:rm_route(h_ex);
+h_ex2 = u:rm_step(h_ex);
+route2 = u:rm_route(h_ex2);
+h_ex3 = u:rm_step(h_ex2);
+route3 = if eq(R_now, 3) {
+  u:rm_route(h_ex3)
+} else {
+  route2
+};
+o1 = emit_frame("rm/load", epochs, stats.load);
+o2 = emit_frame("rm/entropy", epochs, stats.entropy);
+o3 = emit_frame("rm/balance", epochs, stats.balance);
+o4 = emit_frame("rm/change-share", epochs, stats.change);
+o5 = emit_frame("rm/specialization-per-recurrence", epochs, spec_per_r);
+o6 = emit_frame("rm/family-by-expert/1", epochs, reshape(u:domain_slice(stats.family, 0, 4 * E), [4, E]));
+o7 = emit_frame("rm/family-by-expert/2", epochs, reshape(u:domain_slice(stats.family, 4 * E, 4 * E), [4, E]));
+o8 = emit_frame("rm/family-by-expert/3", epochs, reshape(u:domain_slice(stats.family, (R_now - 1) * 4 * E, 4 * E), [4, E]));
+o9 = emit_frame("rm/route/example", epochs, reshape(concat(concat(u:domain_slice(route1, 0, 7), u:domain_slice(route2, 0, 7)), u:domain_slice(route3, 0, 7)), [3, 7]));
+o10 = emit_frame("rm/accuracy/val", epochs, [rv.accuracy.arithmetic, rv.accuracy.sequence, rv.accuracy.mlpl, rv.accuracy.prose, rv.accuracy.overall]);
+o11 = emit_frame("rm/accuracy/train", epochs, [rt.accuracy.arithmetic, rt.accuracy.sequence, rt.accuracy.mlpl, rt.accuracy.prose, rt.accuracy.overall]);
+
+row = {lesson: str_concat("RM01@", to_string(R_now)), config: str_concat(str_concat("recurrent moe E4 top1 R=", to_string(R_now)), " deep supervision, d16 h32 1head T28 120ex 300ep lr0.003 alpha0.01"), binary: binary, params: params, active_params: active, expert_evals: R_now, bytes_per_token: active * 8, ms_per_token: u:svg_round(ms_per_token, 4), val_loss: u:svg_round(final_val, 4), ppl: u:svg_round(exp(final_val), 2), arith_acc: u:svg_round(rv.accuracy.arithmetic, 3), seq_acc: u:svg_round(rv.accuracy.sequence, 3), mlpl_acc: u:svg_round(rv.accuracy.mlpl, 3), prose_acc: u:svg_round(rv.accuracy.prose, 3), router_entropy: u:svg_round(stats.entropy, 3), balance: u:svg_round(stats.balance, 3), specialization: u:svg_round(reduce_add(spec_per_r) / R_now, 3)};
+metrics = {R: R_now, val_loss: final_val, overall: rv.accuracy.overall, mlpl: rv.accuracy.mlpl, prose: rv.accuracy.prose, change: stats.change, entropy: stats.entropy, balance: stats.balance, spec: spec_per_r, load: reshape(stats.load, [R_now * E]), family: stats.family, route: reshape(concat(concat(u:domain_slice(route1, 0, 7), u:domain_slice(route2, 0, 7)), u:domain_slice(route3, 0, 7)), [21])};
+w_row = if writing {
+  write_atomic(str_concat(out_dir, "/results-rows.md"), str_concat(u:results_row(row), "\n"))
+} else {
+  ok(0)
+};
+w_m = if writing {
+  write_atomic(str_concat(str_concat(out_dir, "/metrics-"), str_concat(to_string(R_now), ".json")), unwrap(to_json(metrics)))
+} else {
+  ok(0)
+};
+print("RESULT -- R", R_now, "params", params, "active/token", active, "val loss", u:svg_round(final_val, 4), "val acc [arith seq mlpl prose all]", rv.accuracy.arithmetic, rv.accuracy.sequence, rv.accuracy.mlpl, rv.accuracy.prose, rv.accuracy.overall, "train acc", rt.accuracy.overall);
+print("ROUTING -- change-of-expert share", u:svg_round(stats.change, 3), "entropy", u:svg_round(stats.entropy, 3), "balance", u:svg_round(stats.balance, 3), "specialization per recurrence", spec_per_r, "loads per recurrence", stats.load);
+print("SPEED -- ms/token", u:svg_round(ms_per_token, 4), "(", binary, ")");

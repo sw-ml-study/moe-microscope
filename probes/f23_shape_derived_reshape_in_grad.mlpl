@@ -1,0 +1,17 @@
+# F23 reproducer: a reshape whose row count is derived from shape() inside grad loses the gradient through the reshaped value (the literal-count form is differentiable, the derived form reports that the loss does not depend on the parameter; inside a mixture block the gate gradient vanishes silently and routing collapses onto one expert).
+W = param[3, 2];
+W = reshape(range(6), [3, 2]) * 0.1;
+x = reshape(range(12), [4, 3]) * 0.1;
+def u:lit(x) {
+  "literal rows";
+  g = softmax(matmul(x, W));
+  reshape(take(g, 1, 0), [4, 1]) * x
+}
+def u:der(x) {
+  "shape-derived rows";
+  g = softmax(matmul(x, W));
+  n = reduce_mul(shape(take(g, 1, 0)));
+  reshape(take(g, 1, 0), [n, 1]) * x
+}
+print("literal grad", grad(reduce_add(u:lit(x) * u:lit(x)), W));
+print("derived grad", grad(reduce_add(u:der(x) * u:der(x)), W));

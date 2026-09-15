@@ -1,5 +1,6 @@
 # Recurrence: one shared transformer block applied R times to the same token state, with deep supervision (the head scored after every recurrence), so that depth comes from reuse rather than from new parameters.
 include "dense.mlpl";
+include "moe.mlpl";
 
 def u:recur_step(h) {
   "One recurrence of the shared block: attention with a residual, then the feed-forward network with a residual (recur_att and recur_ffn are the caller's global models; reusing the same values shares the weights, finding F3).";
@@ -35,4 +36,68 @@ def u:recur_loss(h0, y, mask, V, R) {
 def u:recur_active_params(p_att, p_ffn, p_norm, p_head, dm, R) {
   "Parameters touched per token: one embedding row, the shared block R times, the final norm, and the head.";
   dm + R * (p_att + p_ffn) + p_norm + p_head
+}
+
+def u:rm_moe(h1) {
+  "Dense-masked mixture of four experts over the caller's global recur_pre, recur_router, and recur_ex0..3 (the MX01 block with literal gate columns, finding F20; the window length is the caller's global rm_T, so evaluation pads prompts to it).";
+  x = apply(recur_pre, h1);
+  gate = u:switch_gate(apply(recur_router, x), 4);
+  reshape(take(gate, 1, 0), [rm_T, 1]) * apply(recur_ex0, x) + reshape(take(gate, 1, 1), [rm_T, 1]) * apply(recur_ex1, x) + reshape(take(gate, 1, 2), [rm_T, 1]) * apply(recur_ex2, x) + reshape(take(gate, 1, 3), [rm_T, 1]) * apply(recur_ex3, x)
+}
+
+def u:rm_step(h) {
+  "One recurrence of the mixture block: attention with a residual, then the routed mixture with a residual; every recurrence re-routes.";
+  h1 = h + apply(recur_att, h);
+  h1 + u:rm_moe(h1)
+}
+
+def u:rm_state(h0, R) {
+  "The token state after R recurrences of the mixture block.";
+  h = h0;
+  repeat R {
+    h = u:rm_step(h)
+  };
+  h
+}
+
+def u:rm_balance(h) {
+  "The Switch balance term of the routing decision the next recurrence would make from state h.";
+  h1 = h + apply(recur_att, h);
+  logits = apply(recur_router, apply(recur_pre, h1));
+  u:balance_loss(u:router_probs(logits), u:top1_mask(logits, 4), 4, rm_T)
+}
+
+def u:rm_loss(h0, y, mask, V, R, alpha) {
+  "Deep supervision over the recurrent mixture: the mean over recurrences of the masked loss at each state plus alpha times the balance term of each recurrence's routing.";
+  h = h0;
+  total = 0;
+  bal = 0;
+  repeat R {
+    bal = bal + u:rm_balance(h);
+    h = u:rm_step(h);
+    total = total + u:masked_ce(u:recur_logits(h), y, mask, V)
+  };
+  total / R + alpha * bal / R
+}
+
+def u:rm_route(h) {
+  "Expert index per token [T] of the routing decision made from state h.";
+  h1 = h + apply(recur_att, h);
+  argmax(apply(recur_router, apply(recur_pre, h1)), 1)
+}
+
+def u:rm_change_share(h0, mask, R) {
+  "Share of masked tokens whose expert differs between consecutive recurrences (zero when R is 1).";
+  h = h0;
+  prev = u:rm_route(h);
+  changes = 0;
+  r = 1;
+  while lt(r, R) {
+    h = u:rm_step(h);
+    cur = u:rm_route(h);
+    changes = changes + reduce_add((1 - eq(cur, prev)) * mask);
+    prev = cur;
+    r = r + 1
+  };
+  changes / (reduce_add(mask) * (R - 1) + eq(R, 1))
 }
