@@ -2,7 +2,7 @@
 
 def u:results_columns() {
   "Record keys of the fixed results columns, in table order.";
-  ["lesson", "config", "binary", "params", "active_params", "bytes_per_expert", "packed_bytes", "expert_evals", "bytes_per_token", "cache_hit_rate", "ms_per_token", "val_loss", "ppl", "arith_acc", "seq_acc", "mlpl_acc", "prose_acc", "kl", "router_entropy", "balance", "specialization"]
+  ["lesson", "config", "binary", "params", "active_params", "bytes_per_expert", "packed_bytes", "expert_evals", "bytes_per_token", "cache_hit_rate", "ms_per_token", "val_loss", "ppl", "arith_acc", "seq_acc", "mlpl_acc", "prose_acc", "kl", "router_entropy", "balance", "specialization", "gate_mean"]
 }
 
 def u:results_cell(row, key) {
@@ -83,6 +83,6 @@ def u:results_lookup(path, lesson) {
     err(str_concat("results row not found: ", lesson))
   } else {
     c = str_split(found, "|");
-    ok({params: u:results_cell_number(c, 4), active_params: u:results_cell_number(c, 5), bytes_per_expert: u:results_cell_number(c, 6), expert_evals: u:results_cell_number(c, 8), bytes_per_token: u:results_cell_number(c, 9), val_loss: u:results_cell_number(c, 12), ppl: u:results_cell_number(c, 13), arith_acc: u:results_cell_number(c, 14), seq_acc: u:results_cell_number(c, 15), mlpl_acc: u:results_cell_number(c, 16), prose_acc: u:results_cell_number(c, 17), router_entropy: u:results_cell_number(c, 19), balance: u:results_cell_number(c, 20)})
+    ok({params: u:results_cell_number(c, 4), active_params: u:results_cell_number(c, 5), bytes_per_expert: u:results_cell_number(c, 6), expert_evals: u:results_cell_number(c, 8), bytes_per_token: u:results_cell_number(c, 9), val_loss: u:results_cell_number(c, 12), ppl: u:results_cell_number(c, 13), arith_acc: u:results_cell_number(c, 14), seq_acc: u:results_cell_number(c, 15), mlpl_acc: u:results_cell_number(c, 16), prose_acc: u:results_cell_number(c, 17), ms_per_token: u:results_cell_number(c, 11), router_entropy: u:results_cell_number(c, 19), balance: u:results_cell_number(c, 20), specialization: u:results_cell_number(c, 21), gate_mean: u:results_cell_number(c, 22)})
   }
 }

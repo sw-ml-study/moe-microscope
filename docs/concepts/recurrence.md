@@ -46,10 +46,13 @@ training exact match (0.43); R=2 is worse than the single application
 (4.09 against 3.76). Specialization is strongest at the first recurrence
 (0.65) and weaker after it (0.45, 0.49). One seed.
 
+With the Engram table in the loop (RE01) the recurrent mixture reaches
+training loss 0.006 and validation loss 4.76, the worst of the seven-row
+ablation: recurrence gives the table more compute to memorize with.
+
 ## Status
 
-RC01 and RM01 measured; the recurrent Engram lesson (RE01) adds the
-ablation table in the recurrence-and-Engram saga. sw-MLPL traces `repeat` with literal and
+RC01, RM01, and RE01 measured; the ablation matrix is in the RE01 report. sw-MLPL traces `repeat` with literal and
 parameter-bound counts (findings F6 and F15, resolved), so depth is a
 function argument.
 

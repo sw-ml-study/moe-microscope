@@ -64,8 +64,15 @@ work by the user's decision.
    slots, 737 at 16. Three diagrams, five rows, a recording replayed in
    the live demo. F23's second form and F24 pinned; F19 and F20 verified
    resolved upstream (probes flipped).
-5. `recurrent-moe-engram` - RE01: all three sparsities and the ablation
-   table.
+5. `recurrent-moe-engram` - done: RE01 and ME01, the RM01 block with the
+   Engram layer between attention and the router, R = 1 and R = 3, one
+   process each; the seven-row ablation matrix drawn from the results
+   table (a new Engram-gate column across every row). At 90 windows the
+   three sparsities compound memorization: ME01 4.60, RE01 4.76 with
+   training loss 0.006 and training exact match 0.99, against RM01's 3.42;
+   routing still re-decides per recurrence (change share 0.31) and the
+   gate stays open (0.72 to 0.76). Two diagrams, two rows, a recording
+   replayed in the live demo.
 6. `saga-close` - recordings, the live demo extended, handoffs, README,
    concepts, wiki.
 

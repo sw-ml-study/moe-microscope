@@ -56,6 +56,10 @@ serve-learn port="8765":
 recur mode="check":
     ./scripts/run-recur-demo {{mode}}
 
+# Run RE01 and ME01, the composed recurrent mixture plus Engram (two processes; minutes), and check the ablation and window diagrams and rows; `just re write` regenerates them.
+re mode="check":
+    ./scripts/run-re-demo {{mode}}
+
 # Run EG01, the Engram sweep (four table sizes from scratch plus the builtin form; minutes), and check its diagrams and rows; `just engram write` regenerates them.
 engram mode="check":
     ./scripts/run-engram-demo {{mode}}

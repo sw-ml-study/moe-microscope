@@ -4,10 +4,10 @@ include "lib/results.mlpl";
 @test {name: "a results row has every fixed column with dashes for missing values", tags: ["results"]}
 def u:test_results_row() {
   "Column order is frozen so the ablation matrix reads straight down.";
-  u:assert_eq(list_len(u:results_columns()), 21, "twenty-one columns")?;
+  u:assert_eq(list_len(u:results_columns()), 22, "twenty-two columns")?;
   row = u:results_row({lesson: "DN01", params: 1234, val_loss: 1.5});
   u:assert_text_eq(str_slice(row, 0, 25), "| DN01 | - | - | 1234 | -", "leading cells")?;
-  u:assert_eq(list_len(str_split(row, "|")), 23, "twenty-one cells between twenty-two bars")
+  u:assert_eq(list_len(str_split(row, "|")), 24, "twenty-two cells between twenty-three bars")
 }
 
 @test {name: "append writes one row per call", tags: ["results", "io"]}
@@ -19,7 +19,7 @@ def u:test_results_append() {
   u:results_append(path, {lesson: "B", ppl: 2})?;
   text = read_text(path)?;
   u:assert_eq(list_len(str_split(text, "\n")), 3, "two rows and a trailing newline")?;
-  u:assert_eq(str_find(text, "| B | - | - | - | - | - | - | - | - | - | - | - | 2 |"), 86, "second row keeps column positions")
+  u:assert_eq(str_find(text, "| B | - | - | - | - | - | - | - | - | - | - | - | 2 |"), 90, "second row keeps column positions")
 }
 
 @test {name: "results_lookup reads a lesson's numeric columns back from a table", tags: ["results", "io"]}
@@ -33,6 +33,7 @@ def u:test_results_lookup() {
   u:assert_eq(r.val_loss, 1.25, "val loss")?;
   u:assert_eq(r.prose_acc, 0.5, "prose")?;
   u:assert_eq(r.bytes_per_expert, 0 - 1, "dash reads as -1")?;
+  u:assert_eq(r.gate_mean, 0 - 1, "the Engram gate column reads as -1 when absent")?;
   u:assert_err(u:results_lookup(path, "QQ99"), "absent lesson")?;
   u:assert_text_eq(u:str_trim("  a b "), "a b", "trim")
 }

@@ -322,8 +322,10 @@ it with duplicated content or edit it independently.
   Diagrams are derived from the same recorded values the tests assert on.
 - One training run per process, and training loops at top level: `adam`
   keeps per-parameter state by name that outlives a re-created model
-  (finding F22), and `adam` inside a user function trains local copies
-  (F21). A lesson with several variants runs each through its own
+  (finding F22, still open after upstream's `reset_optimizer()`), and
+  until 2026-09-15 `adam` inside a user function trained local copies
+  (F21, resolved upstream; the top-level convention stays for
+  readability). A lesson with several variants runs each through its own
   interpreter process (the gate script loops) and composes any shared
   diagram from committed metrics.
 - Training uses the dense-masked MoE formulation; inference uses sparse

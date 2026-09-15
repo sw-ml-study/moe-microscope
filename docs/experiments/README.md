@@ -28,8 +28,9 @@ was not proved, and where the raw evidence lives. Numbers cite a row of the
 | 17 | [RC01 recurrent block](RC01.md) | Does applying one block several times replace parameters? |
 | 18 | [RM01 recurrent mixture](RM01.md) | Does expert selection change over reasoning time, and do experts specialize by recurrence? |
 | 19 | [EG01 Engram from scratch](EG01.md) | Does external memory improve loss and tasks, at what table size, and is the hand-written form the builtin's function? |
+| 20 | [RE01 recurrent mixture plus Engram](RE01.md) | Do memory sparsity and compute sparsity complement each other? |
 
 The machine-readable inventory is [`catalog/lessons.toml`](../../catalog/lessons.toml).
-Experiments planned for later sagas (RE01, KD01, RW01,
+Experiments planned for later sagas (KD01, RW01,
 AD01, DS02, QZ01, PK01, XC01, HY01, ...) are listed in the
 [delivery plan](../overview/plan.md).

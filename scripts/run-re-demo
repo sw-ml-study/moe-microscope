@@ -1,0 +1,47 @@
+#!/bin/sh
+# Run the composed lesson once per R (1 gives ME01, 3 gives RE01; one process each, finding F22), draw the ablation matrix from the results table and the window diagram from the metrics, and check (or write) the two diagrams and the two results rows.
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+mlpl=$("$repo_root/scripts/select-mlpl")
+mode=${1:-check}
+tmp_rel="tmp/re-demo"
+rm -rf "$repo_root/$tmp_rel"
+mkdir -p "$repo_root/$tmp_rel"
+binary=$("$mlpl" --version 2>/dev/null | head -1 | tr -d '\n')
+table="$repo_root/docs/reference/results.md"
+
+for r in 1 3; do
+    "$mlpl" --source-dir "$repo_root" "$repo_root/demos/recurrent_moe_engram.mlpl" -- "$tmp_rel" "$binary" "$r"
+    lesson=$([ "$r" = 1 ] && echo ME01 || echo RE01)
+    row=$(grep "^| $lesson |" "$repo_root/$tmp_rel/results-row-$lesson.md")
+    key=$(printf '%s\n' "$row" | awk -F'|' '{ $4=""; $12=""; print }')
+    if [ "$mode" = "write" ]; then
+        grep -q "^| $lesson |" "$table" && sed -i '' "/^| $lesson |/d" "$table"
+        printf '%s\n' "$row" >> "$table"
+    else
+        committed_key=$(grep "^| $lesson |" "$table" | awk -F'|' '{ $4=""; $12=""; print }')
+        [ "$key" = "$committed_key" ] || {
+            echo "$lesson results row differs from $table; run scripts/run-re-demo write" >&2
+            echo "generated: $key" >&2
+            echo "committed: $committed_key" >&2
+            exit 1
+        }
+    fi
+done
+
+"$mlpl" --source-dir "$repo_root" "$repo_root/demos/recurrent_moe_engram_diagrams.mlpl" -- "$tmp_rel"
+
+for name in re-ablation re-window; do
+    generated="$repo_root/$tmp_rel/$name.svg"
+    committed="$repo_root/assets/previews/$name.svg"
+    [ -s "$generated" ] || { echo "re demo did not write $name.svg" >&2; exit 1; }
+    if [ "$mode" = "write" ]; then
+        cp "$generated" "$committed"
+    elif ! cmp -s "$generated" "$committed"; then
+        echo "$name.svg preview is stale; run scripts/run-re-demo write" >&2
+        exit 1
+    fi
+done
+rm -rf "$repo_root/$tmp_rel"
+echo "PASS composed recurrent mixture plus Engram contract, previews, and results rows ($mode)"

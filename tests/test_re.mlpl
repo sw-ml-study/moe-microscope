@@ -1,0 +1,101 @@
+# Composed-block contract (RE01): a fresh Engram makes the composed step equal the recurrent mixture step, recurrences compose, the deep-supervised loss at R = 1 is the masked loss plus alpha times the balance term, the composed block trains, and the ablation table reads every planned row from the committed results table.
+include "lib/recur.mlpl";
+include "lib/results.mlpl";
+
+dm = 16;
+hidden = 32;
+V = u:domain_vocab_size();
+rm_T = 12;
+eg_T = 12;
+eg_width = 16;
+slots = 64;
+recur_att = chain(rms_norm(dm), causal_attention(dm, 1, 1));
+recur_pre = rms_norm(dm);
+recur_router = linear(dm, 4, 9);
+recur_ex0 = chain(linear(dm, hidden, 20), relu_layer(), linear(hidden, dm, 21));
+recur_ex1 = chain(linear(dm, hidden, 22), relu_layer(), linear(hidden, dm, 23));
+recur_ex2 = chain(linear(dm, hidden, 24), relu_layer(), linear(hidden, dm, 25));
+recur_ex3 = chain(linear(dm, hidden, 26), relu_layer(), linear(hidden, dm, 27));
+recur_norm = rms_norm(dm);
+recur_head = linear(dm, V, 4);
+emb = embed(V, dm, 0);
+init = u:engram_init(2, 1, slots, 8, dm, 7);
+eg_mem = param[128, 8];
+eg_mem = init.table;
+eg_Wv = param[16, 16];
+eg_Wv = init.Wv;
+eg_bv = param[1, 16];
+eg_bv = init.bv;
+eg_Wg = param[32, 16];
+eg_Wg = init.Wg;
+eg_bg = param[1, 16];
+eg_bg = init.bg;
+ids = u:pad_to(unwrap(u:domain_encode("2+3=|5.")), 12);
+rows = u:engram_rows(ids, [2, 3], 2, 1, slots, 7);
+
+@test {name: "with a fresh table the composed step is the recurrent mixture step, and recurrences compose", tags: ["re", "forward"]}
+def u:test_forward() {
+  "A zero table and zero value bias make the Engram layer an exact no-op, so u:re_step equals u:rm_step; a nonzero table changes the state.";
+  h0 = apply(emb, ids) + u:positions(12, dm);
+  u:assert_approx(reduce_add(abs(u:re_step(h0, rows) - u:rm_step(h0))), 0, 0.000000001, "fresh Engram is a no-op inside the block")?;
+  s3 = u:re_state(h0, 3, rows);
+  u:assert_shape(s3, [12, dm], "state shape")?;
+  u:assert_approx(reduce_add(abs(u:re_state(u:re_state(h0, 1, rows), 2, rows) - s3)), 0, 0.000000001, "recurrence composes")?;
+  eg_mem = init.table + 0.05;
+  u:assert_gt(reduce_add(abs(u:re_step(h0, rows) - u:rm_step(h0))), 0.001, "a written table moves the state")?;
+  g = u:re_gate(h0, rows);
+  u:assert_shape(g, [12, dm], "gate shape")?;
+  u:assert_lt(abs(reduce_add(g) / (12 * dm) - sigmoid(0 - 2)), 0.02, "the gate starts nearly closed")
+}
+
+@test {name: "the deep-supervised loss at R = 1 is the masked loss plus alpha times the balance term", tags: ["re", "loss"]}
+def u:test_loss() {
+  "Written out by hand for one recurrence.";
+  w = unwrap(u:domain_window("2+3=|5.", 12));
+  h0 = apply(emb, w.x) + u:positions(12, dm);
+  by_hand = u:masked_ce(u:recur_logits(u:re_state(h0, 1, rows)), w.y, w.mask, V) + 0.01 * u:re_balance(h0, rows);
+  u:assert_approx(u:re_loss(h0, w.y, w.mask, V, 1, 0.01, rows), by_hand, 0.000000001, "R = 1")?;
+  u:assert_eq(u:re_change_share(h0, w.mask, 1, rows), 0, "no change at R = 1")
+}
+
+@test {name: "a few deep-supervised steps reduce the composed loss and write the table", tags: ["re", "train"]}
+def u:test_train() {
+  "adam through repeat with the Engram table in the parameter list; only addressed rows move.";
+  w = unwrap(u:domain_window("17+25=|42.", 12));
+  wx = w.x;
+  wy = w.y;
+  wm = w.mask;
+  pos = u:positions(12, dm);
+  wrows = u:engram_rows(wx, [2, 3], 2, 1, slots, 7);
+  before = u:re_loss(apply(emb, wx) + pos, wy, wm, V, 2, 0.01, wrows);
+  k = 0;
+  while lt(k, 25) {
+    adam(u:re_loss(apply(emb, wx) + pos, wy, wm, V, 2, 0.01, wrows), [emb, recur_att, recur_pre, recur_router, recur_ex0, recur_ex1, recur_ex2, recur_ex3, recur_norm, recur_head, eg_mem, eg_Wv, eg_bv, eg_Wg, eg_bg], 0.01, 0.9, 0.999, 0.00000001);
+    k = k + 1
+  };
+  u:assert_lt(u:re_loss(apply(emb, wx) + pos, wy, wm, V, 2, 0.01, wrows), before * 0.7, "loss fell")?;
+  addressed = reduce_mul(shape(take(dedupe_rows(reshape(wrows, [24, 1])).rows, 1, 0)));
+  u:assert_eq(u:engram_nonzero_rows(eg_mem), addressed, "exactly the addressed rows were written")
+}
+
+@test {name: "the ablation table reads every planned row from the committed results table", tags: ["re", "ablation"]}
+def u:test_ablation() {
+  "Seven lessons, each with parameters, active parameters, and validation loss; the Engram gate column is present for the Engram rows and a dash elsewhere.";
+  path = "docs/reference/results.md";
+  dn = u:results_lookup(path, "DN01")?;
+  u:assert_eq(dn.params, 3812, "DN01 parameters")?;
+  u:assert_eq(dn.gate_mean, 0 - 1, "no gate for the dense row")?;
+  names = ["DN01", "RC01@3", "EG01@256", "MX01", "RM01@3"];
+  i = 0;
+  while lt(i, list_len(names)) {
+    r = u:results_lookup(path, unwrap(list_get(names, i)))?;
+    u:assert_gt(r.params, 0, "params present")?;
+    u:assert_gt(r.active_params, 0, "active params present")?;
+    u:assert_gt(r.val_loss, 0, "val loss present")?;
+    i = i + 1
+  };
+  eg = u:results_lookup(path, "EG01@256")?;
+  u:assert_gt(eg.gate_mean, 0, "the Engram row carries its gate mean")
+}
+
+u:run_registered_tests()

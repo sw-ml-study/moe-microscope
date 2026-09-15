@@ -1,6 +1,6 @@
 number = 5
 slug = "recurrent-moe-engram"
-status = "pending"
+status = "in-progress"
 description = "RE01 recurrent MoE plus Engram: all three sparsities together, and the ablati..."
 role = "production"
 context_files = []

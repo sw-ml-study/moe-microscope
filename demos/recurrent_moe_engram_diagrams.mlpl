@@ -1,0 +1,146 @@
+# RE01 diagram drawer: the seven-row ablation table read back from the committed results table (dense, recurrent, Engram, MoE, recurrent MoE, MoE plus Engram, recurrent MoE plus Engram) drawn against the quality and cost columns, and RE01's per-recurrence routing and Engram gate on one window from the run's metrics.
+include "../lib/svg.mlpl";
+include "../lib/results.mlpl";
+include "../lib/domain.mlpl";
+
+print("WHAT THIS SHOWS -- The ablation matrix from the research, one row per combination of the three sparsities, drawn from the results table, and one window through the composed block.");
+
+dir = unwrap(list_get(args(), 0));
+table = "docs/reference/results.md";
+lessons = ["DN01", "RC01@3", "EG01@256", "MX01", "RM01@3", "ME01", "RE01"];
+titles = ["dense (DN01)", "recurrent R=3 (RC01)", "Engram 256 (EG01)", "MoE top-1 of 4 (MX01)", "recurrent MoE R=3 (RM01)", "MoE + Engram (ME01)", "recurrent MoE + Engram (RE01)"];
+mre = unwrap(parse_json(unwrap(read_text(str_concat(dir, "/metrics-RE01.json")))));
+mme = unwrap(parse_json(unwrap(read_text(str_concat(dir, "/metrics-ME01.json")))));
+
+def u:cell(v, places) {
+  "A numeric cell: a dash for -1, else rounded.";
+  if lt(v, 0) {
+    "-"
+  } else {
+    u:svg_num(u:svg_round(v, places))
+  }
+}
+
+def u:expert_class(e) {
+  "The fill class of expert e.";
+  unwrap(list_get(["t0", "t1", "t2", "t3"], e))
+}
+
+def u:ablation_svg() {
+  "Diagram: the seven ablation rows against parameters, active parameters per token, bytes per token, validation loss, prose and MLPL held-out accuracy, router entropy, specialization, and the Engram gate.";
+  page = u:svg_head("RE01 ablation matrix", "Seven models from the research's ablation: dense, recurrent, Engram, mixture of experts, recurrent mixture, mixture plus Engram, and recurrent mixture plus Engram, each with stored and active parameters, bytes per token, validation loss, held-out accuracy by family, router entropy, specialization, and Engram gate mean, read from the committed results table.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "ABLATION -- the three sparsities alone and together"));
+  page = str_concat(page, u:svg_text(32, 60, "m", "WHAT: every cell is a committed results row (120 examples, 300 epochs, one seed); ms per token is in the table only."));
+  page = str_concat(page, u:svg_text(40, 92, "k", "model"));
+  page = str_concat(page, u:svg_text(300, 92, "k", "params"));
+  page = str_concat(page, u:svg_text(370, 92, "k", "active"));
+  page = str_concat(page, u:svg_text(440, 92, "k", "bytes/tok"));
+  page = str_concat(page, u:svg_text(520, 92, "k", "val loss"));
+  page = str_concat(page, u:svg_text(590, 92, "k", "prose"));
+  page = str_concat(page, u:svg_text(650, 92, "k", "mlpl"));
+  page = str_concat(page, u:svg_text(710, 92, "k", "entropy"));
+  page = str_concat(page, u:svg_text(780, 92, "k", "special."));
+  page = str_concat(page, u:svg_text(850, 92, "k", "gate"));
+  i = 0;
+  best = 99;
+  while lt(i, 7) {
+    r = unwrap(u:results_lookup(table, unwrap(list_get(lessons, i))));
+    best = if lt(r.val_loss, best) {
+      r.val_loss
+    } else {
+      best
+    };
+    i = i + 1
+  };
+  i = 0;
+  while lt(i, 7) {
+    r = unwrap(u:results_lookup(table, unwrap(list_get(lessons, i))));
+    y = 118 + i * 26;
+    cls = if eq(r.val_loss, best) {
+      "on"
+    } else {
+      "cell"
+    };
+    page = str_concat(page, u:svg_rect(32, y - 16, 900, 24, cls));
+    page = str_concat(page, u:svg_text(40, y, "", unwrap(list_get(titles, i))));
+    page = str_concat(page, u:svg_text(300, y, "", u:cell(r.params, 0)));
+    page = str_concat(page, u:svg_text(370, y, "", u:cell(r.active_params, 0)));
+    page = str_concat(page, u:svg_text(440, y, "", u:cell(r.bytes_per_token, 0)));
+    page = str_concat(page, u:svg_text(520, y, "", u:cell(r.val_loss, 2)));
+    page = str_concat(page, u:svg_text(590, y, "", u:cell(r.prose_acc, 3)));
+    page = str_concat(page, u:svg_text(650, y, "", u:cell(r.mlpl_acc, 3)));
+    page = str_concat(page, u:svg_text(710, y, "", u:cell(r.router_entropy, 3)));
+    page = str_concat(page, u:svg_text(780, y, "", u:cell(r.specialization, 3)));
+    page = str_concat(page, u:svg_text(850, y, "", u:cell(r.gate_mean, 3)));
+    i = i + 1
+  };
+  page = str_concat(page, u:svg_text(32, 318, "m", "highlighted row: lowest validation loss of the seven; arithmetic and sequence held-out accuracy are zero everywhere."));
+  page = str_concat(page, u:svg_rect(30, 340, 900, 186, "panel"));
+  page = str_concat(page, u:svg_text(50, 366, "", "WHY: the research asks whether memory sparsity (Engram) and compute sparsity (routing, recurrence) complement"));
+  page = str_concat(page, u:svg_text(50, 388, "", "     each other; this matrix is the answer at microscope scale, one row per combination, every number a committed run."));
+  page = str_concat(page, u:svg_text(50, 414, "", "HOW: u:results_lookup reads each lesson's row from docs/reference/results.md; ME01 and RE01 come from the composed demo"));
+  page = str_concat(page, u:svg_text(50, 436, "", "     at R=1 and R=3 (one process each, finding F22); the other rows are the earlier lessons' committed rows."));
+  page = str_concat(page, u:svg_text(50, 462, "m", "Active parameters count one embedding row, the shared block once per recurrence (attention, router, one expert, the"));
+  page = str_concat(page, u:svg_text(50, 484, "m", "Engram rows read plus its projection and gate), the final norm, and the head; bytes per token is active parameters at f64."));
+  page = str_concat(page, u:svg_text(50, 508, "m", "Limitation: one seed and 90 training windows (DS01: data moves these columns more than any mechanism)."));
+  str_concat(page, "</svg>")
+}
+
+def u:strip(x0, y0, route, gate) {
+  "Three rows of expert cells with the Engram gate percent written under each cell.";
+  page = "";
+  r = 0;
+  while lt(r, 3) {
+    c = 0;
+    while lt(c, 7) {
+      e = take(route, 0, r * 7 + c);
+      g = take(gate, 0, r * 7 + c);
+      page = str_concat(page, u:svg_rect(x0 + c * 40, y0 + r * 44, 36, 22, u:expert_class(e)));
+      page = str_concat(page, u:svg_text(x0 + c * 40 + 10, y0 + r * 44 + 16, "", str_concat("E", to_string(e))));
+      page = str_concat(page, u:svg_text(x0 + c * 40 + 6, y0 + r * 44 + 36, "s", str_concat(u:svg_num(round(g * 100)), "%")));
+      c = c + 1
+    };
+    page = str_concat(page, u:svg_text(x0 - 34, y0 + r * 44 + 16, "s", str_concat("r=", to_string(r + 1))));
+    r = r + 1
+  };
+  page
+}
+
+def u:window_svg() {
+  "Diagram: for the example window, the expert chosen and the Engram gate at each of the three recurrences of the trained RE01 model, with the run's routing and memory statistics beside it.";
+  page = u:svg_head("RE01 one window through the composed block", "For the example window 2+3=|5., the expert each token is routed to and the share of retrieved memory the Engram gate admits, at recurrence 1, 2, and 3 of the trained recurrent mixture plus Engram, with the change-of-expert share, loads, gate means, and nonzero rows of the run.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "ONE WINDOW -- expert and Engram gate at each recurrence"));
+  page = str_concat(page, u:svg_text(32, 60, "m", "WHAT: rows are recurrences; a cell is the expert chosen from that state, the percent is the mean Engram gate at that position."));
+  page = str_concat(page, u:svg_text(80, 90, "k", "input"));
+  page = str_concat(page, u:svg_chars("2+3=|5.", 120, 76, 40));
+  page = str_concat(page, u:strip(120, 116, mre.route, mre.gate_strip));
+  page = str_concat(page, u:svg_text(440, 90, "k", "RE01 run (R=3)"));
+  page = str_concat(page, u:svg_text(440, 114, "", str_concat("change-of-expert share ", u:svg_num(u:svg_round(mre.change, 3)))));
+  page = str_concat(page, u:svg_text(440, 136, "", str_concat("router entropy ", str_concat(u:svg_num(u:svg_round(mre.entropy, 3)), str_concat("   balance ", u:svg_num(u:svg_round(mre.balance, 3)))))));
+  page = str_concat(page, u:svg_text(440, 158, "", str_concat("gate mean per recurrence ", u:svg_vec(mre.gate_r, 3))));
+  page = str_concat(page, u:svg_text(440, 180, "", str_concat("specialization per recurrence ", u:svg_vec(mre.spec, 3))));
+  page = str_concat(page, u:svg_text(440, 202, "", str_concat("loads per recurrence ", u:svg_vec(mre.load, 0))));
+  page = str_concat(page, u:svg_text(440, 224, "", str_concat(str_concat("nonzero table rows ", u:svg_num(mre.nonzero)), str_concat("   val loss ", u:svg_num(u:svg_round(mre.val_loss, 3))))));
+  page = str_concat(page, u:svg_text(440, 256, "k", "ME01 run (R=1) for comparison"));
+  page = str_concat(page, u:svg_text(440, 278, "", str_concat(str_concat("val loss ", u:svg_num(u:svg_round(mme.val_loss, 3))), str_concat("   gate mean ", str_concat(u:svg_num(u:svg_round(mme.gate_mean, 3)), str_concat("   entropy ", u:svg_num(u:svg_round(mme.entropy, 3))))))));
+  page = str_concat(page, u:svg_text(80, 270, "k", "legend"));
+  page = str_concat(page, u:svg_rect(140, 256, 30, 18, "t0"));
+  page = str_concat(page, u:svg_rect(180, 256, 30, 18, "t1"));
+  page = str_concat(page, u:svg_rect(220, 256, 30, 18, "t2"));
+  page = str_concat(page, u:svg_rect(260, 256, 30, 18, "t3"));
+  page = str_concat(page, u:svg_text(300, 270, "", "experts 0..3"));
+  page = str_concat(page, u:svg_rect(30, 300, 900, 226, "panel"));
+  page = str_concat(page, u:svg_text(50, 326, "", "WHY: in the composed block the Engram layer sits between attention and the router at every recurrence, so the router"));
+  page = str_concat(page, u:svg_text(50, 348, "", "     decides on a state that already holds retrieved memory, and the gate can admit different amounts at each recurrence."));
+  page = str_concat(page, u:svg_text(50, 374, "", "HOW: u:re_step is attention residual, Engram (u:engram_apply on the window's rows), routed mixture residual; u:re_route"));
+  page = str_concat(page, u:svg_text(50, 396, "", "     and u:re_gate read the expert and gate from a state; training is deep-supervised with the balance term per"));
+  page = str_concat(page, u:svg_text(50, 418, "", "     recurrence (alpha 0.01) and the table in the Adam parameter list; one process per R (finding F22)."));
+  page = str_concat(page, u:svg_text(50, 448, "m", "The recording's re/route/example and re/gate/example hold these cells; rows ME01 and RE01 hold loss, accuracy, entropy,"));
+  page = str_concat(page, u:svg_text(50, 470, "m", "balance, specialization, and gate mean; ms per token is in the results table only."));
+  page = str_concat(page, u:svg_text(50, 500, "m", "Limitation: one window, one seed; the percentages are means over the sixteen hidden dimensions."));
+  str_concat(page, "</svg>")
+}
+
+r1 = write_atomic(str_concat(dir, "/re-ablation.svg"), u:ablation_svg());
+r2 = write_atomic(str_concat(dir, "/re-window.svg"), u:window_svg());
+print("WROTE -- re-ablation.svg, re-window.svg");

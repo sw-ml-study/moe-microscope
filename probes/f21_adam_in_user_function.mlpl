@@ -1,4 +1,4 @@
-# F21 reproducer: adam called inside a user function trains function-local copies; the global model and param are unchanged after the call; checked by scripts/run-probes.
+# F21 reproducer, resolved upstream (9d69cd04): adam called inside a user function now updates the global param and model (both move); checked by scripts/run-probes.
 W = param[2, 1];
 W = reshape([1, 1], [2, 1]);
 h = linear(1, 1, 3);

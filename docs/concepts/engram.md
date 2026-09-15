@@ -49,10 +49,14 @@ and prose held-out accuracy keeps DN01's 0.667 only at 1,024 slots.
 Collisions grow from 161 of 769 contexts at 1,024 slots to 737 at 16.
 The prediction that prose moves first did not hold at this data size.
 
+RE01 composes the table with the recurrent mixture (all three
+sparsities): validation loss 4.60 with routing and 4.76 with routing and
+recurrence, training loss 0.006; the mechanisms compound memorization at
+this data size rather than complement each other.
+
 ## Status
 
-EG01 measured; RE01 (all three sparsities) next in the
-recurrence-and-Engram saga. Engram at more data (480 and 960 examples)
+EG01 and RE01 measured; the saga closes next. Engram at more data (480 and 960 examples)
 and with a frozen dense block are the open candidates.
 
 ## Deeper reference

@@ -13,6 +13,11 @@ in the [results table](../reference/results.md).
 | LD01 shared + 16 deltas | 3.46 | 0 | 0 | 0 | 0 | 0.60 |
 | LD01r 16 deltas only | 3.37 | 0 | 0 | 0 | 0 | 0.64 |
 | TE01 teacher | 4.14 | 0 | 0 | 0 | 0 | 0.83 |
+| RC01 recurrent R=3 | 3.73 | 0 | 0 | 0.286 | 0.667 | 0.74 |
+| RM01 recurrent MoE R=3 | 3.42 | 0 | 0 | 0.286 | 0.667 | 0.43 |
+| EG01 Engram 256 slots | 4.67 | 0 | 0 | 0 | 0 | 0.80 |
+| ME01 MoE + Engram | 4.60 | 0 | 0 | 0 | 0.333 | 0.79 |
+| RE01 recurrent MoE + Engram | 4.76 | 0 | 0 | 0.286 | 0 | 0.99 |
 
 Data scale (DS01, 200 epochs):
 
@@ -26,4 +31,6 @@ Reading it: at 120 examples every model memorizes and only prose (a local
 animal-to-place pattern) generalizes; validation loss and exact match do
 not always move together (LD01 has the best loss and no held-out answers,
 MX02 the worst loss and the first MLPL answers); more data moves every
-column. Loss, perplexity, entropy, KL, and balance remain diagnostics.
+column. The recurrent mixture (RM01) has the best 120-example loss with
+the lowest training exact match; every Engram row has the worst losses
+with the highest training exact match, memorization by table. Loss, perplexity, entropy, KL, and balance remain diagnostics.

@@ -137,6 +137,14 @@ regularization.
 Limitation: one seed per point, 90 training windows, a non-monotonic curve
 over R.
 
+RE01 adds the composition: the recurrent mixture with the Engram table in
+the loop (all three sparsities) reaches training loss 0.006 and the
+highest validation loss of the seven ablation rows (4.76); the router
+still re-decides at every recurrence (31 percent of tokens change expert)
+but specialization falls (0.53, 0.38, 0.36). The claim that compute
+sparsity and memory sparsity complement each other is not supported at
+this data size.
+
 ## 10. External memory is memorization capacity at this data size
 
 Evidence: the DN01 block plus an Engram table (EG01) reaches training
@@ -155,6 +163,11 @@ are more data (DS01's 480 and 960 points) and a frozen dense block.
 Limitation: one seed, 90 training windows, one learning rate for the
 table and the block.
 
+With routing (ME01) the table takes validation loss from 3.76 to 4.60,
+and with routing and recurrence (RE01) to 4.76 at training loss 0.006:
+the table turns every extra mechanism's capacity into memorization. The
+ablation matrix is in the [RE01 report](../experiments/RE01.md).
+
 ## Supported now versus plausible but not demonstrated
 
 Supported: more stored than active capacity; measurable specialization; a
@@ -166,7 +179,8 @@ validation loss per parameter, with the router re-deciding at every
 recurrence.
 
 Plausible, not demonstrated: recurrence as a converging reasoning loop;
-Engram removing memorization pressure (at 90 windows it adds it); distillation improving this student;
+Engram removing memorization pressure (at 90 windows it adds it, alone
+and composed with routing and recurrence); distillation improving this student;
 quantization raising expert count at acceptable quality; routing locality
 giving useful cache hit rates; heterogeneous execution beating simpler
 placement; the whole design being useful within 256 MB and 0.5 TOPS. Each

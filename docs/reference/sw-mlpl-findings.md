@@ -36,9 +36,10 @@ upstream `moe-microscope-followups-2` saga (`mlpl-repl` 08:11, `mlpl-serve`
 | F16 `eval_stream` had no include, sandbox, or args | the eval request takes an `includes` map (in-memory provider, relative-only and no-escape), `--fs-root` gives a filesystem sandbox, and an `args` field feeds `args()` | `902f14e2`, `855fb551`, `f85cc657`, verified against the 16:35 rebuilt server | `scripts/run-emit-frame-loops` resolves nested includes through the map; residual: a parent-relative include (`../lib/x.mlpl`, how the demos are written) is refused by the no-escape rule, so `scripts/bundle-program` stays until a program path can be declared |
 | F19 matmul inner-dimension mismatch inside `grad` panicked the process | a structured "shape mismatch: 8 vs 16 elements" error, no panic | `bbcf59dc`, verified against the 2026-09-15 11:36 rebuilt binary | probe file expects the error and forbids a panic |
 | F20 `take`'s index parameter unbound inside an inlined function on the tape | the axis and index resolve in the traced scope; out-of-range is a clean error | `e6070964`, verified against the 2026-09-15 11:36 rebuilt binary | probe file expects success (`grad 1 7 1 1`) |
+| F21 `adam` inside a user function trained local copies | the optimizer step inside an inlined user function updates the global param and model | `9d69cd04`, verified against the 2026-09-15 13:14 rebuilt binary | probe file expects `param moved 1 model moved 1` |
 | S1 stale adjacent `mlpl-serve` | serve is rebuilt on evaluator changes | process | `scripts/select-mlpl-serve` prefers `MLPL_SERVE`, then a local build, then the adjacent binary |
 
-## Open, queued upstream as `moe-microscope-followups` (F7, F8, F17, F21, F22, F23, F24; upstream `followups-4` shipped F19 and F20 on 2026-09-15 and is working F21)
+## Open, queued upstream as `moe-microscope-followups` (F7, F8, F17, F22, F23, F24; upstream `followups-4` shipped F19, F20, and F21 on 2026-09-15 and closed; F22's reproducer still differs)
 
 ### F7: a model value cannot be a user-function argument
 
@@ -70,25 +71,6 @@ Affects: observation facade, any generated or parameterized observation name
 (per-expert, per-recurrence, per-cache-slot series). Proposed fix: accept any
 string value for the name, or document the literal rule and provide a
 `str`-valued form.
-
-### F21: `adam` inside a user function trains local copies; the global model and param are unchanged
-
-```
-def u:step() { "..."; adam(loss_over(W, h), [W, h], 0.1, 0.9, 0.999, 1e-8) }
-u:step(); u:step()
-# W and h are exactly as before; the same adam call at top level moves them
-```
-
-Reproducer: `probes/f21_adam_in_user_function.mlpl` (the probe passes
-while the defect is present: it asserts that nothing moved). Met in CD01b,
-where a training loop wrapped in a user function reported good in-loop
-accuracy and chance-level accuracy afterwards: the loop had trained
-function-local copies of `docent_table`, `docent_body`, and the heads.
-Every earlier lesson trains at top level, which is why it went unnoticed.
-Workaround: keep `adam` loops at top level (the two CD01b variants are
-inlined). Affects: any helper that wraps training. Proposed fix: resolve the
-optimizer's parameter list against the caller's bindings, or document the
-copy semantics loudly.
 
 ### F24: `apply_engram`'s ids bound to a function parameter are not seen inside `grad`
 

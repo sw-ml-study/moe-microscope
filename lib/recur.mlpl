@@ -1,6 +1,7 @@
 # Recurrence: one shared transformer block applied R times to the same token state, with deep supervision (the head scored after every recurrence), so that depth comes from reuse rather than from new parameters.
 include "dense.mlpl";
 include "moe.mlpl";
+include "engram.mlpl";
 
 def u:recur_step(h) {
   "One recurrence of the shared block: attention with a residual, then the feed-forward network with a residual (recur_att and recur_ffn are the caller's global models; reusing the same values shares the weights, finding F3).";
@@ -95,6 +96,74 @@ def u:rm_change_share(h0, mask, R) {
   while lt(r, R) {
     h = u:rm_step(h);
     cur = u:rm_route(h);
+    changes = changes + reduce_add((1 - eq(cur, prev)) * mask);
+    prev = cur;
+    r = r + 1
+  };
+  changes / (reduce_add(mask) * (R - 1) + eq(R, 1))
+}
+
+def u:re_step(h, rows) {
+  "One recurrence of the composed block: attention with a residual, the Engram layer (the caller's globals eg_mem, eg_Wv, eg_bv, eg_Wg, eg_bg; rows are the window's table rows), then the routed mixture with a residual; every recurrence re-routes and re-gates.";
+  h1 = h + apply(recur_att, h);
+  h1e = u:engram_apply(h1, rows, eg_mem, eg_Wv, eg_bv, eg_Wg, eg_bg);
+  h1e + u:rm_moe(h1e)
+}
+
+def u:re_state(h0, R, rows) {
+  "The token state after R recurrences of the composed block.";
+  h = h0;
+  repeat R {
+    h = u:re_step(h, rows)
+  };
+  h
+}
+
+def u:re_balance(h, rows) {
+  "The Switch balance term of the routing decision the next recurrence would make from state h (after attention and the Engram layer).";
+  h1 = h + apply(recur_att, h);
+  h1e = u:engram_apply(h1, rows, eg_mem, eg_Wv, eg_bv, eg_Wg, eg_bg);
+  logits = apply(recur_router, apply(recur_pre, h1e));
+  u:balance_loss(u:router_probs(logits), u:top1_mask(logits, 4), 4, rm_T)
+}
+
+def u:re_loss(h0, y, mask, V, R, alpha, rows) {
+  "Deep supervision over the composed block: the mean over recurrences of the masked loss at each state plus alpha times the balance term of each recurrence's routing.";
+  h = h0;
+  total = 0;
+  bal = 0;
+  repeat R {
+    bal = bal + u:re_balance(h, rows);
+    h = u:re_step(h, rows);
+    total = total + u:masked_ce(u:recur_logits(h), y, mask, V)
+  };
+  total / R + alpha * bal / R
+}
+
+def u:re_route(h, rows) {
+  "Expert index per token [T] of the routing decision made from state h through the Engram layer.";
+  h1 = h + apply(recur_att, h);
+  h1e = u:engram_apply(h1, rows, eg_mem, eg_Wv, eg_bv, eg_Wg, eg_bg);
+  argmax(apply(recur_router, apply(recur_pre, h1e)), 1)
+}
+
+def u:re_gate(h, rows) {
+  "The Engram gate matrix [T, dm] of the decision made from state h.";
+  h1 = h + apply(recur_att, h);
+  r = u:engram_retrieve(eg_mem, rows);
+  v = u:engram_value(r, eg_Wv, eg_bv);
+  u:engram_gate(h1, v, eg_Wg, eg_bg)
+}
+
+def u:re_change_share(h0, mask, R, rows) {
+  "Share of masked tokens whose expert differs between consecutive recurrences (zero when R is 1).";
+  h = h0;
+  prev = u:re_route(h, rows);
+  changes = 0;
+  r = 1;
+  while lt(r, R) {
+    h = u:re_step(h, rows);
+    cur = u:re_route(h, rows);
     changes = changes + reduce_add((1 - eq(cur, prev)) * mask);
     prev = cur;
     r = r + 1

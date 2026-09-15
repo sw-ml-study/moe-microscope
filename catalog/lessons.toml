@@ -297,3 +297,20 @@ memory = "the DN01 block (3,812 parameters) plus a table of 2 * slots rows by 8 
 speed = "five processes (1,024, 256, 64, and 16 slots from scratch, and the builtin at 256) of 300 epochs each, minutes in the interpreter; the 256-slot from-scratch run is the pinned recording"
 quality = "validation loss and per-family exact match per table size, nonzero rows, gate mean, collisions per order, and the parity residual between the two forms"
 status = "accepted"
+
+[[lesson]]
+id = "RE01"
+slug = "recurrent-moe-engram"
+title = "All three sparsities together: the recurrent mixture plus Engram, and the ablation matrix"
+source = "demos/recurrent_moe_engram.mlpl"
+library = ["lib/recur.mlpl", "lib/engram.mlpl", "lib/moe.mlpl", "lib/dense.mlpl", "lib/results.mlpl"]
+test = ["tests/test_re.mlpl"]
+previews = ["assets/previews/re-ablation.svg", "assets/previews/re-window.svg"]
+recording = "fixtures/recordings/recurrent-moe-engram-run-v0.json"
+fixture = "fixtures/domain/mixture-v0.json"
+implementation = "from-scratch"
+observations = ["re/config", "re/loss/train", "re/loss/val", "re/load", "re/entropy", "re/balance", "re/change-share", "re/specialization-per-recurrence", "re/gate/per-recurrence", "re/slots/nonzero", "re/route/example", "re/gate/example", "re/accuracy/val", "re/accuracy/train"]
+memory = "11,992 parameters (the MX01 mixture plus a 512-row Engram table of 8 and its projection and gate) at every R; active per token grows by one attention block, router, expert, and Engram read per recurrence (9,840 at R = 3)"
+speed = "two processes (R = 1 for ME01 and R = 3 for RE01) of 300 epochs each, minutes in the interpreter; the R = 3 run is the pinned recording"
+quality = "validation loss and per-family exact match for the two composed rows, entropy, balance, specialization and Engram gate per recurrence, and the seven-row ablation matrix read from the results table"
+status = "accepted"

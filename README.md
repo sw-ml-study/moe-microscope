@@ -27,14 +27,14 @@ results row or a measured document.
 The moving parts step by step, live on GitHub Pages:
 <https://sw-ml-study.github.io/moe-microscope/>. Pick a lesson (the dense
 baseline, the top-1 and top-2 mixtures, the recurrent block, the
-recurrent mixture, the Engram table, or one window through routing and
-dispatch) and step through its frames. It is a playback: no sw-MLPL code
+recurrent mixture, the Engram table, the three sparsities together, or
+one window through routing and dispatch) and step through its frames. It is a playback: no sw-MLPL code
 runs in the browser, and every number is read from a pinned fixture that a
 real training run or its export script wrote. To produce those fixtures
 yourself, run the training at the command line: `just dense write`,
 `just moe write`, `just moe2 write`, `just recur write`, `just rm write`,
-`just engram write`, `just recordings write`, and `just walkthrough write`
-(see Build and run below); `just serve-learn`
+`just engram write`, `just re write`, `just recordings write`, and
+`just walkthrough write` (see Build and run below); `just serve-learn`
 then serves the same page locally. The blog post about this work:
 <https://blog.softwarewrighter.com/2026/09/13/saw-building-a-tiny-mixture-of-experts/>.
 The [wiki](https://github.com/sw-ml-study/moe-microscope/wiki) mirrors the
@@ -134,8 +134,10 @@ Recurrence is measured (RC01: one block applied several times with deep
 supervision; RM01: routing over reasoning time, with the lowest
 120-example validation loss so far at R=3), and so is the Engram lookup
 table from scratch (EG01: exact parity with the sw-MLPL builtin; at 90
-training windows the table adds memorization, not generalization). Next
-all three sparsities together in one ablation table. The campus docent (a tiny model trained in
+training windows the table adds memorization, not generalization), and
+the three sparsities together (RE01: the seven-row ablation matrix, in
+which the composed model memorizes best and generalizes worst). The saga
+closes next with the wiki, the carousel, and the live demo updated. The campus docent (a tiny model trained in
 batch here to direct visitors of the research campus site) is paused after
 its first five steps: it does not yet beat a deterministic matcher, and it
 resumes after Engram. Then distillation, quantization, the expert cache,

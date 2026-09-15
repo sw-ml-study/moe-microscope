@@ -74,8 +74,8 @@ both, unsupported recall 0.8) is not met.
   724 templated rows and does so only partly.
 - Finding F21: a training loop wrapped in a user function reported good
   in-loop accuracy and chance-level accuracy afterwards; `adam` inside a
-  user function trains local copies. Training now runs at top level, as in
-  every earlier lesson.
+  user function trained local copies. Training now runs at top level, as
+  in every earlier lesson (resolved upstream on 2026-09-15).
 
 ## What we did not prove
 

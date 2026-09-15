@@ -29,3 +29,4 @@ Concise answers first; the evidence is one link deeper.
 | Are cheap experts worth it? | Sixteen rank-4 deltas cost half of four full experts and give the best validation losses so far | [finding 6](current-findings.md) |
 | Can compute replace parameters? | Partly: the mixture block applied three times reaches the lowest 120-example validation loss (3.42), and 38 to 46 percent of tokens change expert between recurrences; not a converging loop | [finding 9](current-findings.md) |
 | Does external memory help? | Not at 90 windows: every table size lowers training loss and raises validation loss (3.93 to 4.67 against 3.79); the from-scratch form equals the builtin exactly | [finding 10](current-findings.md) |
+| Do memory and compute sparsity complement each other? | Not at 90 windows: routing plus the table gives 4.60, routing plus recurrence plus the table 4.76 at training loss 0.006, the worst held-out row of the seven-row ablation | [RE01](../experiments/RE01.md) |

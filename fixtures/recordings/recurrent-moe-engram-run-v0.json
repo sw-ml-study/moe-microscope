@@ -1,0 +1,422 @@
+{
+  "schema": "sw-ml-study.ml-microscope-recording",
+  "version": 0,
+  "lesson": "recurrent-moe-engram",
+  "budgets": {
+    "max_frames": 16,
+    "max_observations_per_frame": 16,
+    "max_values_per_observation": 64,
+    "max_total_values": 640
+  },
+  "frames": [
+    {
+      "step": 0,
+      "observations": [
+        {
+          "name": "re/config",
+          "shape": [
+            11
+          ],
+          "values": [
+            16.0,
+            32.0,
+            4.0,
+            1.0,
+            28.0,
+            300.0,
+            90.0,
+            30.0,
+            3.0,
+            256.0,
+            8.0
+          ]
+        }
+      ]
+    },
+    {
+      "step": 25,
+      "observations": [
+        {
+          "name": "re/loss/train",
+          "shape": [],
+          "values": [
+            0.6740282547475913
+          ]
+        },
+        {
+          "name": "re/loss/val",
+          "shape": [],
+          "values": [
+            2.2046048915765994
+          ]
+        }
+      ]
+    },
+    {
+      "step": 50,
+      "observations": [
+        {
+          "name": "re/loss/train",
+          "shape": [],
+          "values": [
+            0.14525587982634985
+          ]
+        },
+        {
+          "name": "re/loss/val",
+          "shape": [],
+          "values": [
+            3.2462644541615058
+          ]
+        }
+      ]
+    },
+    {
+      "step": 75,
+      "observations": [
+        {
+          "name": "re/loss/train",
+          "shape": [],
+          "values": [
+            0.12161714486392872
+          ]
+        },
+        {
+          "name": "re/loss/val",
+          "shape": [],
+          "values": [
+            3.3207069538748932
+          ]
+        }
+      ]
+    },
+    {
+      "step": 100,
+      "observations": [
+        {
+          "name": "re/loss/train",
+          "shape": [],
+          "values": [
+            0.18269765684341308
+          ]
+        },
+        {
+          "name": "re/loss/val",
+          "shape": [],
+          "values": [
+            3.566954048302971
+          ]
+        }
+      ]
+    },
+    {
+      "step": 125,
+      "observations": [
+        {
+          "name": "re/loss/train",
+          "shape": [],
+          "values": [
+            0.06892984618396492
+          ]
+        },
+        {
+          "name": "re/loss/val",
+          "shape": [],
+          "values": [
+            3.4951797093109045
+          ]
+        }
+      ]
+    },
+    {
+      "step": 150,
+      "observations": [
+        {
+          "name": "re/loss/train",
+          "shape": [],
+          "values": [
+            0.01630643672565714
+          ]
+        },
+        {
+          "name": "re/loss/val",
+          "shape": [],
+          "values": [
+            4.1294589839104185
+          ]
+        }
+      ]
+    },
+    {
+      "step": 175,
+      "observations": [
+        {
+          "name": "re/loss/train",
+          "shape": [],
+          "values": [
+            0.03196260796502575
+          ]
+        },
+        {
+          "name": "re/loss/val",
+          "shape": [],
+          "values": [
+            4.331412476235191
+          ]
+        }
+      ]
+    },
+    {
+      "step": 200,
+      "observations": [
+        {
+          "name": "re/loss/train",
+          "shape": [],
+          "values": [
+            0.10670933748801315
+          ]
+        },
+        {
+          "name": "re/loss/val",
+          "shape": [],
+          "values": [
+            3.8945122833045502
+          ]
+        }
+      ]
+    },
+    {
+      "step": 225,
+      "observations": [
+        {
+          "name": "re/loss/train",
+          "shape": [],
+          "values": [
+            0.022688897537581215
+          ]
+        },
+        {
+          "name": "re/loss/val",
+          "shape": [],
+          "values": [
+            4.209173176670976
+          ]
+        }
+      ]
+    },
+    {
+      "step": 250,
+      "observations": [
+        {
+          "name": "re/loss/train",
+          "shape": [],
+          "values": [
+            0.01060574472588074
+          ]
+        },
+        {
+          "name": "re/loss/val",
+          "shape": [],
+          "values": [
+            4.3422794283426525
+          ]
+        }
+      ]
+    },
+    {
+      "step": 275,
+      "observations": [
+        {
+          "name": "re/loss/train",
+          "shape": [],
+          "values": [
+            0.016482963105704986
+          ]
+        },
+        {
+          "name": "re/loss/val",
+          "shape": [],
+          "values": [
+            4.298946347582067
+          ]
+        }
+      ]
+    },
+    {
+      "step": 300,
+      "observations": [
+        {
+          "name": "re/loss/train",
+          "shape": [],
+          "values": [
+            0.00604348472886453
+          ]
+        },
+        {
+          "name": "re/loss/val",
+          "shape": [],
+          "values": [
+            4.757061406626614
+          ]
+        },
+        {
+          "name": "re/load",
+          "shape": [
+            3,
+            4
+          ],
+          "values": [
+            211.0,
+            54.0,
+            92.0,
+            49.0,
+            128.0,
+            113.0,
+            120.0,
+            45.0,
+            122.0,
+            114.0,
+            137.0,
+            33.0
+          ]
+        },
+        {
+          "name": "re/entropy",
+          "shape": [],
+          "values": [
+            0.814520273844675
+          ]
+        },
+        {
+          "name": "re/balance",
+          "shape": [],
+          "values": [
+            1.0814132917227273
+          ]
+        },
+        {
+          "name": "re/change-share",
+          "shape": [],
+          "values": [
+            0.3104166666666667
+          ]
+        },
+        {
+          "name": "re/specialization-per-recurrence",
+          "shape": [
+            3
+          ],
+          "values": [
+            0.5295043158647774,
+            0.3833749292219766,
+            0.3553650477757791
+          ]
+        },
+        {
+          "name": "re/gate/per-recurrence",
+          "shape": [
+            3
+          ],
+          "values": [
+            0.7598181819169816,
+            0.7388158351530936,
+            0.7246368110237231
+          ]
+        },
+        {
+          "name": "re/slots/nonzero",
+          "shape": [],
+          "values": [
+            364.0
+          ]
+        },
+        {
+          "name": "re/route/example",
+          "shape": [
+            3,
+            7
+          ],
+          "values": [
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            1.0,
+            2.0,
+            0.0,
+            1.0,
+            2.0,
+            1.0,
+            1.0,
+            1.0,
+            0.0,
+            1.0,
+            1.0,
+            2.0,
+            1.0,
+            1.0,
+            1.0,
+            3.0,
+            1.0
+          ]
+        },
+        {
+          "name": "re/gate/example",
+          "shape": [
+            3,
+            7
+          ],
+          "values": [
+            0.5217858497263479,
+            0.846796870214606,
+            0.8127216998877536,
+            0.823469876900936,
+            0.5368142715978774,
+            0.6656701324798252,
+            0.7189264554803256,
+            0.6069086162523688,
+            0.6798859926776772,
+            0.5967110214270309,
+            0.512520610990868,
+            0.5594450407098658,
+            0.760688728084746,
+            0.4724667622789526,
+            0.6020131476777123,
+            0.7019724715332905,
+            0.5755305840651912,
+            0.3453503692739523,
+            0.5622307006361005,
+            0.7901052065548306,
+            0.2502624746710597
+          ]
+        },
+        {
+          "name": "re/accuracy/val",
+          "shape": [
+            5
+          ],
+          "values": [
+            0.0,
+            0.0,
+            0.2857142857142857,
+            0.0,
+            0.06666666666666667
+          ]
+        },
+        {
+          "name": "re/accuracy/train",
+          "shape": [
+            5
+          ],
+          "values": [
+            1.0,
+            1.0,
+            0.9565217391304348,
+            1.0,
+            0.9888888888888889
+          ]
+        }
+      ]
+    }
+  ]
+}
