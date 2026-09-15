@@ -1,0 +1,11 @@
+{
+  "task_type": "mlpl-lesson",
+  "state": {
+    "number": 5,
+    "step": "recurrent-moe-engram"
+  },
+  "action": "Composed the block from the existing recurrence, mixture, and Engram libraries; added the gate-mean results column with the lookup and tests; wrote the demo (rows passed as arguments, ids in globals), drawer over results_lookup, gate script, catalog and live-page wiring; ran the two trainings, the write script, and the recording capture in the background; rendered diagrams and the live page with headless Chrome; flipped F21 after the mid-gate rebuild; reran the full gate; committed named files; pushed.",
+  "result": "success",
+  "reward": 1,
+  "timestamp": "2026-09-15T14:09:30"
+}

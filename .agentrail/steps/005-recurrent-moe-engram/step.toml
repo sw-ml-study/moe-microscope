@@ -1,9 +1,10 @@
 number = 5
 slug = "recurrent-moe-engram"
-status = "in-progress"
+status = "completed"
 description = "RE01 recurrent MoE plus Engram: all three sparsities together, and the ablati..."
 role = "production"
 context_files = []
 created_at = "2026-09-14T08:44:00"
+completed_at = "2026-09-15T14:09:30"
 task_type = "mlpl-lesson"
-commits = []
+commits = ["ba12b87ea60220236968e8fc32e3f1ce05047862"]
