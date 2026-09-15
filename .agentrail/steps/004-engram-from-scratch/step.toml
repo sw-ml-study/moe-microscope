@@ -1,9 +1,10 @@
 number = 4
 slug = "engram-from-scratch"
-status = "in-progress"
+status = "completed"
 description = "EG01 Engram from scratch, with parity against the builtin. The Engram idea (D..."
 role = "production"
 context_files = []
 created_at = "2026-09-14T08:44:00"
+completed_at = "2026-09-15T12:29:45"
 task_type = "mlpl-lesson"
-commits = []
+commits = ["0c038657ec302b8239ebf092ff6e021388f71841"]

@@ -1,0 +1,11 @@
+{
+  "task_type": "mlpl-lesson",
+  "state": {
+    "number": 4,
+    "step": "engram-from-scratch"
+  },
+  "action": "Probed the builtin's parameter names, init, and forward math from the upstream source; wrote the library, tests, demo (one table size per process, parity by copying parameters by name), gate script, drawer; isolated two tape gaps with minimal probes (parameter-bound reshape dims, apply_engram ids parameter); ran the five trainings and the recording capture in the background; rendered diagrams and the live page with headless Chrome; flipped F19/F20 probes after the rebuilt binary; ran just check in the background; committed named files; pushed.",
+  "result": "success",
+  "reward": 1,
+  "timestamp": "2026-09-15T12:29:45"
+}
