@@ -1,0 +1,11 @@
+{
+  "task_type": "mlpl-lesson",
+  "state": {
+    "number": 3,
+    "step": "recurrent-moe"
+  },
+  "action": "Diagnosed routing collapse with a minimal grad probe (literal versus shape-derived reshape count), restored the literal window length and padded evaluation, added the F23 probe and run-probes line, ran run-rm-demo write and run-recording-parity write RM01 in the background, inspected the three SVGs and the live page via headless Chrome, wrote docs/experiments/RM01.md and the concept, findings, sagas, handoff, README and live-page updates, ran just check in the background, committed named files, pushed.",
+  "result": "success",
+  "reward": 1,
+  "timestamp": "2026-09-14T18:44:35"
+}

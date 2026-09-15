@@ -1,9 +1,10 @@
 number = 3
 slug = "recurrent-moe"
-status = "in-progress"
+status = "completed"
 description = "RM01 recurrent MoE: routing over reasoning time. The MX01 mixture (four exper..."
 role = "production"
 context_files = []
 created_at = "2026-09-14T08:44:00"
+completed_at = "2026-09-14T18:44:35"
 task_type = "mlpl-lesson"
-commits = []
+commits = ["28478d69bb49d34c5e6e028783bb792accd49cb6"]
