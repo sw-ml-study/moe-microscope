@@ -1,0 +1,167 @@
+# EG01 diagram drawer: reads the metrics of the four from-scratch table sizes and the builtin run (one process each, finding F22) and draws the Engram data structure on one window with bytes per component, the table-size sweep, and the parity panel.
+include "../lib/svg.mlpl";
+include "../lib/domain.mlpl";
+
+print("WHAT THIS SHOWS -- The Engram data structure, the table-size sweep, and the parity between the from-scratch and builtin forms, drawn from the recorded metrics of five separate runs.");
+
+dir = unwrap(list_get(args(), 0));
+chosen_text = if gt(list_len(args()), 1) {
+  unwrap(list_get(args(), 1))
+} else {
+  "256"
+};
+
+def u:load(name) {
+  "The metrics record of one run.";
+  unwrap(parse_json(unwrap(read_text(str_concat(str_concat(dir, "/metrics-"), str_concat(name, ".json"))))))
+}
+
+m1024 = u:load("1024");
+m256 = u:load("256");
+m64 = u:load("64");
+m16 = u:load("16");
+mc = u:load(chosen_text);
+mb = u:load(str_concat("b", chosen_text));
+example = "2+3=|5.";
+
+def u:n(v) {
+  "A number rounded to three places as text.";
+  u:svg_num(u:svg_round(v, 3))
+}
+
+def u:bytes_text(v) {
+  "Bytes as text with the unit.";
+  str_concat(u:svg_num(v), " B")
+}
+
+def u:structure_svg() {
+  "Diagram: one window's path through hashing, the table, retrieval, projection, gate, and the residual sum, with shapes and bytes per component.";
+  slots = mc.slots;
+  page = u:svg_head("EG01 Engram data structure", "The example 2+3=|5. is hashed into a 2-gram row and a 3-gram row per position, those rows are gathered from one table, projected into the hidden width, gated against the hidden state, and added to it; each stage shows its shape, parameters, and bytes.");
+  page = str_concat(page, u:svg_text(32, 36, "h", str_concat(str_concat("ENGRAM FROM SCRATCH -- one window through the table (", u:svg_num(slots)), " slots per order)")));
+  what = str_concat(str_concat("WHAT: ", u:svg_num(mc.table_params)), str_concat(" table parameters (", u:bytes_text(mc.table_bytes)));
+  what = str_concat(what, str_concat(str_concat(") plus ", u:svg_num(mc.other_params)), " projection and gate parameters next to the 3,812-parameter dense block."));
+  page = str_concat(page, u:svg_text(32, 60, "m", what));
+  page = str_concat(page, u:svg_text(32, 96, "k", "chars"));
+  page = str_concat(page, u:svg_chars(example, 120, 79, 30));
+  page = str_concat(page, u:svg_text(32, 130, "k", "ids"));
+  page = str_concat(page, u:svg_cells(mc.ex_ids, 120, 113, 30, fill([7], 0)));
+  rows = reshape(mc.ex_rows, [7, 2]);
+  page = str_concat(page, u:svg_text(32, 164, "k", "2-gram row"));
+  page = str_concat(page, u:svg_cells(take(rows, 1, 0), 120, 147, 31, fill([7], 0)));
+  page = str_concat(page, u:svg_text(32, 198, "k", "3-gram row"));
+  page = str_concat(page, u:svg_cells(take(rows, 1, 1), 120, 181, 31, fill([7], 0)));
+  page = str_concat(page, u:svg_text(340, 96, "m", "HOW: ngram_hash(ids, [2, 3], 1, slots, 7): the frozen rolling hash of the"));
+  page = str_concat(page, u:svg_text(340, 114, "m", "last two and three ids (pad 0 before the start); the 3-gram row adds the"));
+  page = str_concat(page, u:svg_text(340, 132, "m", str_concat(str_concat("region offset ", u:svg_num(slots)), " (head_offset). Indices are constants: no gradient.")));
+  page = str_concat(page, u:svg_box(340, 150, 190, 64, str_concat(str_concat("table [", u:svg_num(mc.table_rows)), ", 8]"), str_concat(u:svg_num(mc.table_params), " params, zero init"), u:bytes_text(mc.table_bytes)));
+  page = str_concat(page, u:svg_box(548, 150, 180, 64, "retrieved [T, 16]", "gather_rows, 2 rows x 8", str_concat(u:svg_num(2 * 8 * 8), " B read per token")));
+  page = str_concat(page, u:svg_box(746, 150, 184, 64, "value [T, 16]", "r @ Wv + bv, 16 -> 16", str_concat(u:svg_num(16 * 16 + 16), " params")));
+  page = str_concat(page, u:svg_box(548, 230, 180, 64, "gate [T, 16]", "sigmoid([h | v] @ Wg + bg)", str_concat(u:svg_num(32 * 16 + 16), " params, bg = -2")));
+  page = str_concat(page, u:svg_box(746, 230, 184, 64, "h + gate * value", "into the residual stream", "after att, before ffn"));
+  page = str_concat(page, u:svg_text(32, 250, "k", "retrieved values per position (2-gram | 3-gram), by magnitude"));
+  page = str_concat(page, u:svg_heat_plain(reshape(mc.ex_retrieved, [7, 16]), 32, 258, 18, 14));
+  page = str_concat(page, u:svg_text(340, 320, "k", "gate mean per position"));
+  page = str_concat(page, u:svg_cells(u:svg_round(mc.ex_gate * 100, 0), 340, 328, 30, fill([7], 0)));
+  page = str_concat(page, u:svg_text(560, 345, "m", "(percent of the value admitted)"));
+  page = str_concat(page, u:svg_text(340, 380, "k", "mean |value| per position"));
+  page = str_concat(page, u:svg_cells(u:svg_round(mc.ex_value, 2), 340, 388, 44, fill([7], 0)));
+  page = str_concat(page, u:svg_text(660, 405, "m", "(before the gate)"));
+  page = str_concat(page, u:svg_rect(30, 420, 900, 100, "panel"));
+  page = str_concat(page, u:svg_text(50, 444, "", "WHY: the table is memory the network need not reconstruct: a recurring context reads back what training wrote,"));
+  page = str_concat(page, u:svg_text(50, 464, "", "for a hash and two row reads per token. Rows never addressed stay zero: storage can far exceed what a token touches."));
+  page = str_concat(page, u:svg_text(50, 484, "", "HOW: u:engram_rows, u:engram_retrieve (gather_rows), u:engram_value, u:engram_gate, u:engram_apply in lib/engram.mlpl;"));
+  page = str_concat(page, u:svg_text(50, 504, "m", "the same shapes and initialization as the engram builtin, so the two forms agree exactly (parity panel)."));
+  str_concat(page, "</svg>")
+}
+
+def u:point(x0, y0, cls) {
+  "A small marker.";
+  u:svg_rect(x0 - 3, y0 - 3, 6, 6, cls)
+}
+
+def u:series(xs, vals, top, y0, ht, cls) {
+  "A polyline with markers, values scaled so that top maps to y0 and zero to y0 + ht.";
+  ys = y0 + ht - (vals / top) * ht;
+  out = u:svg_polyline(xs, ys, cls);
+  i = 0;
+  while lt(i, reduce_mul(shape(xs))) {
+    out = str_concat(out, u:point(take(xs, 0, i), take(ys, 0, i), cls));
+    i = i + 1
+  };
+  out
+}
+
+def u:sweep_svg() {
+  "Diagram: collisions, gate magnitude, nonzero rows, validation loss, and prose held-out accuracy against the table size, four separate runs.";
+  page = u:svg_head("EG01 table-size sweep", "Four from-scratch runs at 1,024, 256, 64, and 16 slots per order: collisions and rows addressed, the final gate mean, validation loss, and prose held-out accuracy, with the dense baseline for reference.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "TABLE-SIZE SWEEP -- what shrinking the table costs"));
+  page = str_concat(page, u:svg_text(32, 60, "m", "WHAT: one process per size (finding F22); x is the slot count per order, log spaced; DN01 (no table) dashed."));
+  xs = [80, 180, 280, 380];
+  coll = [m16.coll2 + m16.coll3, m64.coll2 + m64.coll3, m256.coll2 + m256.coll3, m1024.coll2 + m1024.coll3];
+  val = [m16.val_loss, m64.val_loss, m256.val_loss, m1024.val_loss];
+  prose = [m16.prose, m64.prose, m256.prose, m1024.prose];
+  gate = [m16.gate_mean, m64.gate_mean, m256.gate_mean, m1024.gate_mean];
+  nz = [m16.nonzero, m64.nonzero, m256.nonzero, m1024.nonzero];
+  ctx = m16.ctx2 + m16.ctx3;
+  page = str_concat(page, u:svg_text(60, 92, "k", "collisions (of the distinct contexts) and rows addressed"));
+  page = str_concat(page, u:series(xs, coll, ctx, 100, 120, "l2"));
+  page = str_concat(page, u:series(xs, nz, ctx, 100, 120, "l1"));
+  page = str_concat(page, u:svg_text(60, 240, "m", str_concat(str_concat("pink = collisions, gold = nonzero rows; top of axis = ", u:svg_num(ctx)), " distinct contexts")));
+  page = str_concat(page, u:svg_text(60, 258, "m", "slots per order:   16        64       256      1024"));
+  page = str_concat(page, u:svg_text(480, 92, "k", "validation loss (top 5.0), DN01 dashed at 3.789"));
+  page = str_concat(page, u:series(xs + 420, val, 5, 100, 120, "l2"));
+  dn = 220 - (3.7888 / 5) * 120;
+  page = str_concat(page, str_concat(str_concat("<line x1=\"500\" y1=\"", u:svg_num(u:svg_round(dn, 1))), str_concat(str_concat("\" x2=\"800\" y2=\"", u:svg_num(u:svg_round(dn, 1))), "\" class=\"axis\" stroke-dasharray=\"4 4\"/>")));
+  page = str_concat(page, u:svg_text(480, 258, "m", "slots per order:   16        64       256      1024"));
+  page = str_concat(page, u:svg_text(60, 292, "k", "final gate mean (top of axis 1.0)"));
+  page = str_concat(page, u:series(xs, gate, 1, 300, 80, "l1"));
+  page = str_concat(page, u:svg_text(480, 292, "k", "prose held-out exact match (top 1.0), DN01 dashed at 0.667"));
+  page = str_concat(page, u:series(xs + 420, prose, 1, 300, 80, "l1"));
+  pd = 380 - 0.667 * 80;
+  page = str_concat(page, str_concat(str_concat("<line x1=\"500\" y1=\"", u:svg_num(u:svg_round(pd, 1))), str_concat(str_concat("\" x2=\"800\" y2=\"", u:svg_num(u:svg_round(pd, 1))), "\" class=\"axis\" stroke-dasharray=\"4 4\"/>")));
+  page = str_concat(page, u:svg_text(60, 404, "", str_concat(str_concat(str_concat("slots 16: val ", u:n(m16.val_loss)), str_concat("  prose ", u:n(m16.prose))), str_concat(str_concat("  gate ", u:n(m16.gate_mean)), str_concat(str_concat("  collisions ", u:svg_num(m16.coll2 + m16.coll3)), str_concat("  rows ", u:svg_num(m16.nonzero)))))));
+  page = str_concat(page, u:svg_text(60, 422, "", str_concat(str_concat(str_concat("slots 64: val ", u:n(m64.val_loss)), str_concat("  prose ", u:n(m64.prose))), str_concat(str_concat("  gate ", u:n(m64.gate_mean)), str_concat(str_concat("  collisions ", u:svg_num(m64.coll2 + m64.coll3)), str_concat("  rows ", u:svg_num(m64.nonzero)))))));
+  page = str_concat(page, u:svg_text(60, 440, "", str_concat(str_concat(str_concat("slots 256: val ", u:n(m256.val_loss)), str_concat("  prose ", u:n(m256.prose))), str_concat(str_concat("  gate ", u:n(m256.gate_mean)), str_concat(str_concat("  collisions ", u:svg_num(m256.coll2 + m256.coll3)), str_concat("  rows ", u:svg_num(m256.nonzero)))))));
+  page = str_concat(page, u:svg_text(60, 458, "", str_concat(str_concat(str_concat("slots 1024: val ", u:n(m1024.val_loss)), str_concat("  prose ", u:n(m1024.prose))), str_concat(str_concat("  gate ", u:n(m1024.gate_mean)), str_concat(str_concat("  collisions ", u:svg_num(m1024.coll2 + m1024.coll3)), str_concat("  rows ", u:svg_num(m1024.nonzero)))))));
+  page = str_concat(page, u:svg_rect(30, 472, 900, 56, "panel"));
+  page = str_concat(page, u:svg_text(50, 494, "", "WHY: collisions rise as the table shrinks and contexts must share rows; the question is where quality follows."));
+  page = str_concat(page, u:svg_text(50, 514, "m", "HOW: collisions are distinct contexts minus distinct rows per order (u:engram_collisions, equal to engram_stats)."));
+  str_concat(page, "</svg>")
+}
+
+def u:parity_svg() {
+  "Diagram: the from-scratch and builtin forms side by side at the chosen size, their measured results, and the parity residuals from both processes.";
+  page = u:svg_head("EG01 parity panel", "The from-scratch Engram and the sw-MLPL engram builtin trained separately at the same table size with the same seed, their results side by side, and the forward and gradient differences measured in each process after copying the trained parameters into the other form.");
+  page = str_concat(page, u:svg_text(32, 36, "h", str_concat(str_concat("PARITY -- from scratch against the builtin at ", chosen_text), " slots")));
+  page = str_concat(page, u:svg_text(32, 60, "m", "WHAT: two processes, same seed and data; each ends by loading its trained parameters into the other form."));
+  page = str_concat(page, u:svg_box(32, 80, 420, 64, "from scratch: lib/engram.mlpl", "ngram_hash + gather_rows + matmul + sigmoid", str_concat(str_concat(u:svg_num(mc.params), " params, val loss "), u:n(mc.val_loss))));
+  page = str_concat(page, u:svg_box(510, 80, 420, 64, "builtin: engram / apply_engram", "one call, the same five parameters", str_concat(str_concat(u:svg_num(mb.params), " params, val loss "), u:n(mb.val_loss))));
+  page = str_concat(page, u:svg_text(32, 176, "k", "measured in the from-scratch process"));
+  page = str_concat(page, u:svg_text(32, 198, "", str_concat("output difference over 30 held-out windows: ", u:svg_num(mc.parity_fwd))));
+  page = str_concat(page, u:svg_text(32, 218, "", str_concat("table gradient difference: ", u:svg_num(mc.parity_grad))));
+  page = str_concat(page, u:svg_text(32, 238, "", str_concat("gate-weight gradient difference: ", u:svg_num(mc.parity_gate))));
+  page = str_concat(page, u:svg_text(510, 176, "k", "measured in the builtin process"));
+  page = str_concat(page, u:svg_text(510, 198, "", str_concat("output difference over 30 held-out windows: ", u:svg_num(mb.parity_fwd))));
+  page = str_concat(page, u:svg_text(510, 218, "", str_concat("table gradient difference: ", u:svg_num(mb.parity_grad))));
+  page = str_concat(page, u:svg_text(510, 238, "", str_concat("gate-weight gradient difference: ", u:svg_num(mb.parity_gate))));
+  page = str_concat(page, u:svg_text(32, 280, "k", "results of the two training runs"));
+  page = str_concat(page, u:svg_text(32, 302, "", str_concat(str_concat(str_concat("scratch: val loss ", u:n(mc.val_loss)), str_concat("  prose ", u:n(mc.prose))), str_concat(str_concat("  mlpl ", u:n(mc.mlpl)), str_concat(str_concat("  nonzero rows ", u:svg_num(mc.nonzero)), str_concat("  gate ", u:n(mc.gate_mean)))))));
+  page = str_concat(page, u:svg_text(32, 322, "", str_concat(str_concat(str_concat("builtin: val loss ", u:n(mb.val_loss)), str_concat("  prose ", u:n(mb.prose))), str_concat(str_concat("  mlpl ", u:n(mb.mlpl)), str_concat(str_concat("  nonzero rows ", u:svg_num(mb.nonzero)), str_concat("  gate ", u:n(mb.gate_mean)))))));
+  page = str_concat(page, u:svg_text(32, 356, "k", "gate mean per position of 2+3=|5. (percent), scratch then builtin"));
+  page = str_concat(page, u:svg_cells(u:svg_round(mc.ex_gate * 100, 0), 32, 364, 30, fill([7], 0)));
+  page = str_concat(page, u:svg_cells(u:svg_round(mb.ex_gate * 100, 0), 32, 392, 30, fill([7], 0)));
+  page = str_concat(page, u:svg_text(300, 381, "m", "identical rows mean the two processes trained the same function step for step;"));
+  page = str_concat(page, u:svg_text(300, 399, "m", "a difference here would be a training-path difference, not a forward-pass one."));
+  page = str_concat(page, u:svg_rect(30, 430, 900, 96, "panel"));
+  page = str_concat(page, u:svg_text(50, 454, "", "WHY: building the mechanism by hand is the lesson; the builtin is the pragmatic form. Both must be the same"));
+  page = str_concat(page, u:svg_text(50, 474, "", "function, or the lesson explains something the builtin does not do. HOW: the same seed gives the same initial"));
+  page = str_concat(page, u:svg_text(50, 494, "", "projections; the trained table is copied by name (__engram_mem_0) and grad is taken on both forms; tests assert 1e-9."));
+  page = str_concat(page, u:svg_text(50, 514, "m", "Limitation: parity is shown on this fixture and size; the hash contract itself is upstream's frozen fixture."));
+  str_concat(page, "</svg>")
+}
+
+r1 = write_atomic(str_concat(dir, "/engram-structure.svg"), u:structure_svg());
+r2 = write_atomic(str_concat(dir, "/engram-sweep.svg"), u:sweep_svg());
+r3 = write_atomic(str_concat(dir, "/engram-parity.svg"), u:parity_svg());
+print("WROTE -- engram-structure.svg, engram-sweep.svg, engram-parity.svg");

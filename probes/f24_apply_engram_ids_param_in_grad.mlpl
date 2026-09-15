@@ -1,0 +1,15 @@
+# F24 reproducer: apply_engram's ids argument bound to a user-function parameter is not seen inside grad (the loss no longer depends on the memory table); the same call with the ids in a global traces. Met in EG01 after F20 (take's index parameter) was fixed upstream; the lesson keeps the current window's ids in a global.
+e = engram(4, [2], 1, 8, 4, 7);
+__engram_mem_0 = randn(3, [8, 4]) * 0.1;
+h = reshape(range(12), [3, 4]) * 0.1;
+ids = [1, 2, 3];
+def u:with_global(h) {
+  "ids from a global";
+  reduce_add(apply_engram(e, h, ids) * apply_engram(e, h, ids))
+}
+def u:with_param(h, ids2) {
+  "ids from a parameter";
+  reduce_add(apply_engram(e, h, ids2) * apply_engram(e, h, ids2))
+}
+print("global grad", reduce_add(abs(grad(u:with_global(h), __engram_mem_0))));
+print("parameter grad", reduce_add(abs(grad(u:with_param(h, ids), __engram_mem_0))));

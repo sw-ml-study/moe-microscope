@@ -53,9 +53,17 @@ work by the user's decision.
    RM01@3, a recording replayed in the live demo. F23 found on the way: a
    reshape sized from `shape()` inside `grad` drops the gradient silently
    (the first R=2 run collapsed onto one expert); pinned by a probe.
-4. `engram-from-scratch` - EG01: ngram_hash addressing, gather_rows
-   retrieval, projection, gate; parity with the builtin; the table-size
-   sweep.
+4. `engram-from-scratch` - done: EG01, the DN01 block plus an Engram
+   layer written from ngram_hash, gather_rows, matmul, concat, and
+   sigmoid, with exact parity against the engram builtin (outputs and
+   gradients differ by zero on trained parameters, both directions).
+   Four table sizes and the builtin form, one process each. At 90
+   training windows the table is memorization capacity: validation loss
+   3.93 (1,024 slots) to 4.67 (256) against DN01's 3.79, prose held-out
+   0.667 only at 1,024 slots; collisions 161 of 769 contexts at 1,024
+   slots, 737 at 16. Three diagrams, five rows, a recording replayed in
+   the live demo. F23's second form and F24 pinned; F19 and F20 verified
+   resolved upstream (probes flipped).
 5. `recurrent-moe-engram` - RE01: all three sparsities and the ablation
    table.
 6. `saga-close` - recordings, the live demo extended, handoffs, README,
@@ -493,3 +501,8 @@ track in [`plan.md`](plan.md).
   GPU cache, CPU execution of missing experts, and a VRAM-budget report.
 - Saga 15 `findings-and-recommendations`: `docs/report.md` with findings,
   recommendations, and ranked future improvements, every claim cited.
+- Saga 16 `animated-data-flow-landscape`: a panning animation of tokens
+  moving through routing, hot and cached experts, Engram lookups,
+  recurrence, decode-cache compression, and multi-token prediction, one
+  scene per mechanism, each played back from a pinned recording with
+  parallel work called out; can start once Saga 5's recordings exist.

@@ -56,6 +56,10 @@ serve-learn port="8765":
 recur mode="check":
     ./scripts/run-recur-demo {{mode}}
 
+# Run EG01, the Engram sweep (four table sizes from scratch plus the builtin form; minutes), and check its diagrams and rows; `just engram write` regenerates them.
+engram mode="check":
+    ./scripts/run-engram-demo {{mode}}
+
 # Run RM01, the recurrent mixture at R = 2 and 3 (minutes), and check its diagrams and rows; `just rm write` regenerates them.
 rm mode="check":
     ./scripts/run-rm-demo {{mode}}

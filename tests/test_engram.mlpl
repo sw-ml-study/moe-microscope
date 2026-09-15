@@ -1,0 +1,112 @@
+# Engram contract: deterministic addressing with the builtin's row layout, collisions equal to engram_stats, retrieval gradients only at addressed rows, a gate that starts nearly closed on a fresh no-op layer, and exact forward and gradient parity with the sw-MLPL engram builtin.
+include "lib/engram.mlpl";
+
+dm = 16;
+slots = 64;
+eg_T = 12;
+eg_width = 16;
+ids = u:pad_to(unwrap(u:domain_encode("2+3=|5.")), 12);
+rows = u:engram_rows(ids, [2, 3], 2, 1, slots, 7);
+init = u:engram_init(2, 1, slots, 8, dm, 7);
+eg_mem = param[128, 8];
+eg_mem = init.table;
+eg_Wv = param[16, 16];
+eg_Wv = init.Wv;
+eg_bv = param[1, 16];
+eg_bv = init.bv;
+eg_Wg = param[32, 16];
+eg_Wg = init.Wg;
+eg_bg = param[1, 16];
+eg_bg = init.bg;
+e = engram(dm, [2, 3], 1, slots, 8, 7);
+h = reshape(range(192), [12, 16]) * 0.01;
+y = reshape(range(192), [12, 16]) * 0.02;
+
+def u:scratch(h) {
+  "The from-scratch forward over the test globals.";
+  u:engram_apply(h, rows, eg_mem, eg_Wv, eg_bv, eg_Wg, eg_bg)
+}
+
+def u:loss_scratch(h) {
+  "Squared error of the from-scratch forward against y.";
+  o = u:scratch(h);
+  reduce_add((o - y) * (o - y))
+}
+
+def u:loss_builtin(h) {
+  "Squared error of the builtin forward against y.";
+  o = apply_engram(e, h, ids);
+  reduce_add((o - y) * (o - y))
+}
+
+@test {name: "addressing is deterministic and uses the builtin's row layout", tags: ["engram", "hash"]}
+def u:test_hash() {
+  "Same ids give the same rows; the 3-gram region starts at slots; every row is inside the table.";
+  again = u:engram_rows(ids, [2, 3], 2, 1, slots, 7);
+  u:assert_eq(reduce_add(abs(rows - again)), 0, "deterministic")?;
+  u:assert_shape(rows, [12, 2], "one row per position per order")?;
+  u:assert_lt(reduce(:max, take(rows, 1, 0)), slots, "2-gram rows in the first region")?;
+  u:assert_gt(reduce(:min, take(rows, 1, 1)), slots - 1, "3-gram rows in the second region")?;
+  u:assert_lt(reduce(:max, rows), 2 * slots, "inside the table")?;
+  other = u:engram_rows(ids, [2, 3], 2, 1, slots, 8);
+  u:assert_gt(reduce_add(abs(rows - other)), 0, "the seed changes the addresses")
+}
+
+@test {name: "collisions and unique rows equal engram_stats", tags: ["engram", "hash"]}
+def u:test_collisions() {
+  "Distinct contexts minus distinct rows per region, over the same pad-0 windowing.";
+  st = engram_stats(e, ids);
+  c = u:engram_collisions(u:engram_contexts(ids, 2), take(rows, 1, 0)) + u:engram_collisions(u:engram_contexts(ids, 3), take(rows, 1, 1));
+  u:assert_eq(c, st.collisions, "collisions")?;
+  u:assert_eq(reduce_mul(shape(take(dedupe_rows(reshape(rows, [24, 1])).rows, 1, 0))), st.unique_rows, "unique rows")?;
+  ctx = u:engram_contexts([4, 7, 9], 3);
+  u:assert_eq(reduce_add(abs(take(ctx, 0, 0) - [4, 0, 0])), 0, "pad 0 before the start")?;
+  u:assert_eq(reduce_add(abs(take(ctx, 0, 2) - [9, 7, 4])), 0, "current id first, then k back")
+}
+
+@test {name: "a fresh layer is an exact no-op and its gate starts nearly closed", tags: ["engram", "gate"]}
+def u:test_fresh() {
+  "Zero table and zero value bias give v = 0, so h passes through; the gate is sigmoid(-2) everywhere.";
+  u:assert_eq(reduce_add(abs(u:scratch(h) - h)), 0, "no-op")?;
+  g0 = u:engram_gate(h * 0, h * 0, eg_Wg, eg_bg);
+  u:assert_approx(reduce_add(g0) / 192, sigmoid(0 - 2), 0.000000001, "gate on a zero state is sigmoid(-2)")?;
+  g = u:engram_gate(h, h * 0, eg_Wg, eg_bg);
+  u:assert_lt(abs(reduce_add(g) / 192 - sigmoid(0 - 2)), 0.01, "gate on a real state starts nearly closed")?;
+  p = u:engram_params(2, 1, slots, 8, dm);
+  u:assert_eq(p.total, param_count(e), "parameter count equals the builtin's")?;
+  u:assert_eq(p.table, 1024, "table 128 rows by 8")
+}
+
+@test {name: "the retrieval gradient reaches only the addressed rows", tags: ["engram", "grad"]}
+def u:test_retrieval_grad() {
+  "gather_rows scatter-adds the upstream gradient into addressed rows; every other row stays zero.";
+  eg_mem = init.table + 0.001;
+  g = grad(u:loss_scratch(h), eg_mem);
+  moved = gt(reduce_add(abs(g), 1), 0);
+  addressed = reduce_mul(shape(take(dedupe_rows(reshape(rows, [24, 1])).rows, 1, 0)));
+  u:assert_eq(reduce_add(moved), addressed, "exactly the addressed rows move")?;
+  u:assert_gt(reduce_add(abs(g)), 0, "a gradient exists")
+}
+
+@test {name: "forward and gradients equal the builtin to 1e-9 with a trained table", tags: ["engram", "parity"]}
+def u:test_parity() {
+  "Same seed gives the same initial values; three SGD steps on each form; then every output and every parameter gradient agrees.";
+  u:assert_eq(reduce_add(abs(eg_Wv - __engram_Wv_0)), 0, "value projection init")?;
+  u:assert_eq(reduce_add(abs(eg_Wg - __engram_Wg_0)), 0, "gate weight init")?;
+  k = 0;
+  while lt(k, 3) {
+    momentum_sgd(u:loss_scratch(h), [eg_mem, eg_Wv, eg_bv, eg_Wg, eg_bg], 0.1, 0);
+    momentum_sgd(u:loss_builtin(h), e, 0.1, 0);
+    k = k + 1
+  };
+  u:assert_gt(u:engram_nonzero_rows(eg_mem), 0, "the table moved")?;
+  u:assert_eq(u:engram_nonzero_rows(eg_mem), engram_stats(e, ids).nonzero_rows, "same rows nonzero")?;
+  u:assert_approx(reduce_add(abs(u:scratch(h) - apply_engram(e, h, ids))), 0, 0.000000001, "forward")?;
+  u:assert_approx(reduce_add(abs(grad(u:loss_scratch(h), eg_mem) - grad(u:loss_builtin(h), __engram_mem_0))), 0, 0.000000001, "table gradient")?;
+  u:assert_approx(reduce_add(abs(grad(u:loss_scratch(h), eg_Wv) - grad(u:loss_builtin(h), __engram_Wv_0))), 0, 0.000000001, "value weight gradient")?;
+  u:assert_approx(reduce_add(abs(grad(u:loss_scratch(h), eg_bv) - grad(u:loss_builtin(h), __engram_bv_0))), 0, 0.000000001, "value bias gradient")?;
+  u:assert_approx(reduce_add(abs(grad(u:loss_scratch(h), eg_Wg) - grad(u:loss_builtin(h), __engram_Wg_0))), 0, 0.000000001, "gate weight gradient")?;
+  u:assert_approx(reduce_add(abs(grad(u:loss_scratch(h), eg_bg) - grad(u:loss_builtin(h), __engram_bg_0))), 0, 0.000000001, "gate bias gradient")
+}
+
+u:run_registered_tests()

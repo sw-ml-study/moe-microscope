@@ -1,0 +1,15 @@
+# F23 reproducer, second form: a reshape whose dims are bound to user-function parameters (not literals or globals) loses the gradient through the reshaped value inside grad, silently; met in EG01 when the from-scratch Engram took its window length and width as arguments.
+W = param[8, 4];
+W = reshape(range(32), [8, 4]) * 0.01;
+rows = [1, 3, 3, 5];
+def u:lit(x) {
+  "literal dims";
+  reshape(gather_rows(W, rows), [4, 4]) * x
+}
+def u:par(x, n, w) {
+  "parameter-bound dims";
+  reshape(gather_rows(W, rows), [n, w]) * x
+}
+x = reshape(range(16), [4, 4]) * 0.1;
+print("literal grad", reduce_add(abs(grad(reduce_add(u:lit(x) * u:lit(x)), W))));
+print("parameter grad", reduce_add(abs(grad(reduce_add(u:par(x, 4, 4) * u:par(x, 4, 4)), W))));

@@ -34,9 +34,11 @@ upstream `moe-microscope-followups-2` saga (`mlpl-repl` 08:11, `mlpl-serve`
 | F11 nested traced call lost a parameter used in index arithmetic | gather index arithmetic resolves in the traced scope | `813526d6`, verified against the 13:29 rebuilt binary | probe file expects success ("grad rows 0 0 0" then the selected rows of ones); lessons keep eager slicing by choice |
 | F13 `attention_weights` could not find an attention layer inside `residual(chain(...))` | the walk now enters `residual` and nested `chain` blocks | `8282cd6a`, verified against the 14:37 rebuilt binary | probe file expects success ("weights 5 5"); DN01 keeps its explicit residual by choice, for readability |
 | F16 `eval_stream` had no include, sandbox, or args | the eval request takes an `includes` map (in-memory provider, relative-only and no-escape), `--fs-root` gives a filesystem sandbox, and an `args` field feeds `args()` | `902f14e2`, `855fb551`, `f85cc657`, verified against the 16:35 rebuilt server | `scripts/run-emit-frame-loops` resolves nested includes through the map; residual: a parent-relative include (`../lib/x.mlpl`, how the demos are written) is refused by the no-escape rule, so `scripts/bundle-program` stays until a program path can be declared |
+| F19 matmul inner-dimension mismatch inside `grad` panicked the process | a structured "shape mismatch: 8 vs 16 elements" error, no panic | `bbcf59dc`, verified against the 2026-09-15 11:36 rebuilt binary | probe file expects the error and forbids a panic |
+| F20 `take`'s index parameter unbound inside an inlined function on the tape | the axis and index resolve in the traced scope; out-of-range is a clean error | `e6070964`, verified against the 2026-09-15 11:36 rebuilt binary | probe file expects success (`grad 1 7 1 1`) |
 | S1 stale adjacent `mlpl-serve` | serve is rebuilt on evaluator changes | process | `scripts/select-mlpl-serve` prefers `MLPL_SERVE`, then a local build, then the adjacent binary |
 
-## Open, queued upstream as `moe-microscope-followups` (F7, F8, F17, F19, F20, F21, F22, F23; upstream `followups-4` is working F19 and F20 first)
+## Open, queued upstream as `moe-microscope-followups` (F7, F8, F17, F21, F22, F23, F24; upstream `followups-4` shipped F19 and F20 on 2026-09-15 and is working F21)
 
 ### F7: a model value cannot be a user-function argument
 
@@ -69,43 +71,6 @@ Affects: observation facade, any generated or parameterized observation name
 string value for the name, or document the literal rule and provide a
 `str`-valued form.
 
-### F19: a matmul inner-dimension mismatch inside `grad` panics the process
-
-```
-W = param[8, 8]
-h = linear(16, 5, 1)
-grad(reduce_add(apply(h, matmul(x, W))), W)
-# thread 'main' panicked at .../mlpl-autograd/src/tensor_shape.rs:62:22:
-# compatible matmul shapes: ShapeMismatch { source: 8, target: 16 }
-```
-
-Reproducer: `probes/f19_matmul_shape_panics_in_grad.mlpl`. Met while
-building the docent's pooled embedding (a head applied to the wrong width).
-F18 made elementwise shape mismatches a clean error ("shape mismatch: 16 vs
-8 elements"); the matmul path still panics. Workaround: check widths
-eagerly before tracing (`apply` the same expression outside `grad` first).
-Affects: every lesson that composes user-written layers. Proposed fix:
-route the matmul shape check through the same structured error as F18.
-
-### F20: `take`'s index parameter is not bound inside an inlined function on the tape
-
-```
-def u:col(g, e) { "..."; reshape(take(g, 1, e), [4, 1]) }
-grad(reduce_add(u:col(W, 1) * W), W)
-# error: undefined variable: e
-```
-
-Reproducer: `probes/f20_take_param_index_in_grad.mlpl`. Met while writing
-the walkthrough export's dense-masked mixture through `u:gate_column`: the
-loss also lives in a file whose training loop has a global `e`, so the
-unbound parameter silently resolved to the epoch counter and `take` then
-panicked out of range ("take compatible axis/idx: ShapeMismatch"). Two
-defects: the inliner binds `gather_rows` index arithmetic (F11, resolved)
-but not `take`'s index, and an out-of-range `take` on the tape panics the
-process rather than erroring (as F19 for matmul). Workaround: inline the
-`take` with a literal index. Affects: any helper that selects a column
-inside a loss; the silent fall-through to a global is the dangerous part.
-
 ### F21: `adam` inside a user function trains local copies; the global model and param are unchanged
 
 ```
@@ -125,6 +90,22 @@ inlined). Affects: any helper that wraps training. Proposed fix: resolve the
 optimizer's parameter list against the caller's bindings, or document the
 copy semantics loudly.
 
+### F24: `apply_engram`'s ids bound to a function parameter are not seen inside `grad`
+
+```
+def u:with_global(h) { reduce_add(apply_engram(e, h, ids) * apply_engram(e, h, ids)) }        # a gradient
+def u:with_param(h, ids2) { reduce_add(apply_engram(e, h, ids2) * apply_engram(e, h, ids2)) } # error: the loss does not depend on the table
+```
+
+Reproducer: `probes/f24_apply_engram_ids_param_in_grad.mlpl`. Met in
+EG01 (the lesson's loss took the window's ids as an argument). The F20
+fix (`take`'s index parameter resolving in the traced scope) does not
+cover the ids argument of `apply_engram`; the same call with the ids in
+a global traces. Workaround: the current window's ids in a global.
+Affects: any traced function that passes token ids to `apply_engram`.
+Proposed fix: resolve `apply_engram`'s ids argument in the traced scope
+as F20 did for `take`.
+
 ### F23: a reshape whose row count comes from `shape()` loses the gradient inside `grad`
 
 ```
@@ -143,10 +124,13 @@ the experts still trained. With a literal count the same run routes
 normally (loads 145, 101, 110, 50). In the small reproducer the loss
 depends on W only through the reshaped gate, so the tape reports "no
 gradient flows"; in the lesson the experts kept a path to the loss and
-the failure was silent. Workaround: literal shapes inside traced blocks
-(the window length is a global), and pad evaluation prompts to that
-length. Affects: any traced block that sizes a reshape from a value's
-shape. Proposed fix: treat `shape()` of a tracked value as a constant
+the failure was silent. Second form (EG01, `probes/f23b_param_bound_reshape_in_grad.mlpl`):
+dims bound to user-function parameters (`reshape(x, [n, w])` with `n`
+and `w` arguments) lose the gradient the same way, while literal dims and
+global-bound dims trace. Workaround: literal or global shapes inside
+traced blocks (the window length and the retrieved width are globals),
+and pad evaluation prompts to that length. Affects: any traced block that
+sizes a reshape from a value's shape or from an argument. Proposed fix: treat `shape()` of a tracked value as a constant
 whose consumer keeps the tracked operand differentiable, or reject
 shape-derived reshapes inside `grad` with an error instead of dropping
 the gradient.
@@ -171,6 +155,14 @@ two variants in one process under the same names (CD01bf was contaminated
 and re-measured; LD01r used distinct names and stands; DS01 runs one point
 per process). Proposed fix: clear optimizer state when a name is
 rebound to a new model, and add `reset_optimizer()`.
+
+Upstream shipped `reset_optimizer()` and moment clearing on rebind on
+2026-09-15 (`7d89e953`). Against that binary the reproducer still
+differs: with the rebind alone the first steps are -0.2298 (reused name)
+against -0.2325 (fresh name), unchanged; with `reset_optimizer()` before
+the rebind the reused name steps -0.4000 (a clean first step) while the
+fresh name `g = linear(2, 1, 3)` steps -0.2977, so the fresh model now
+inherits state instead. Still open; the one-run-per-process rule stays.
 
 ### F17: record field access is rejected inside `grad`
 

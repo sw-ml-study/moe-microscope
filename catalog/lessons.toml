@@ -280,3 +280,20 @@ memory = "7,096 parameters (the MX01 mixture) at every R; active per token grows
 speed = "two processes (R = 2 and 3) of 300 epochs each, minutes in the interpreter; the R = 3 run is also the pinned recording"
 quality = "validation loss and per-family exact match at R = 2 and 3, the change-of-expert share, loads and specialization per recurrence"
 status = "accepted"
+
+[[lesson]]
+id = "EG01"
+slug = "engram-from-scratch"
+title = "Engram from scratch: hashed rows, a gathered table, a gate, and parity with the builtin"
+source = "demos/engram_microscope.mlpl"
+library = ["lib/engram.mlpl", "lib/dense.mlpl"]
+test = ["tests/test_engram.mlpl"]
+previews = ["assets/previews/engram-structure.svg", "assets/previews/engram-sweep.svg", "assets/previews/engram-parity.svg"]
+recording = "fixtures/recordings/engram-run-v0.json"
+fixture = "fixtures/domain/mixture-v0.json"
+implementation = "both"
+observations = ["engram/config", "engram/collisions", "engram/loss/train", "engram/loss/val", "engram/slots/nonzero", "engram/gate/mean", "engram/accuracy/val", "engram/accuracy/train", "engram/parity", "engram/rows/example", "engram/gate/example", "engram/retrieved/example", "engram/value/example"]
+memory = "the DN01 block (3,812 parameters) plus a table of 2 * slots rows by 8 (16 * slots parameters, 128 * slots bytes at f64) and 800 projection and gate parameters; 816 more active parameters per token at every table size"
+speed = "five processes (1,024, 256, 64, and 16 slots from scratch, and the builtin at 256) of 300 epochs each, minutes in the interpreter; the 256-slot from-scratch run is the pinned recording"
+quality = "validation loss and per-family exact match per table size, nonzero rows, gate mean, collisions per order, and the parity residual between the two forms"
+status = "accepted"

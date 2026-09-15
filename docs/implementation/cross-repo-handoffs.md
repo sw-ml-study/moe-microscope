@@ -99,10 +99,15 @@ Upstream has queued them as `moe-microscope-followups`; the recommended order
 is F5, F8, F7, F6, D1, because F5 and F8 change what the lessons and the
 observation facade can express. F1 to F4 were fixed upstream in
 `moe-microscope-findings` and are verified here. The fourth batch
-(`followups-4`) holds F19 to F22; F23 (a reshape sized from `shape()`
-inside `grad` drops the gradient without an error, met in RM01 as a silent
-routing collapse) is filed after it and should lead the next batch,
-because a silent wrong gradient is worse than a panic.
+(`followups-4`) shipped F19 and F20 on 2026-09-15 (verified here, probes
+flipped) and is working F21; F22 shipped `reset_optimizer()` and rebind
+clearing but the reproducer still differs (see the findings entry).
+Filed after it, for the next batch: F23 (a reshape sized from `shape()`
+or from function parameters inside `grad` drops the gradient without an
+error, met in RM01 as a silent routing collapse and again in EG01) should
+lead, because a silent wrong gradient is worse than a panic; then F24
+(`apply_engram`'s ids bound to a function parameter are not seen inside
+`grad`, the same shape of bug as F20).
 
 For the campus docent, one ask is shared with `../demo-abstract-algebra`
 (its blocker B7): a headless `--target web` build of `mlpl-wasm` alone, so a

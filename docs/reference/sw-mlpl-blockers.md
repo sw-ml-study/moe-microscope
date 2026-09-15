@@ -60,11 +60,10 @@ Gaps with reproducers are written up as upstream work orders in
 |---|---|---|
 | F7 model as user-function argument | probe "a model value cannot be a user-function argument"; `probes/f7_model_argument.mlpl` | globals |
 | F8 `emit_frame` literal name | probe "emit_frame rejects a name held in a variable"; `probes/f8_emit_frame_name.mlpl` | literal names |
-| F23 shape-derived reshape count inside `grad` drops the gradient (silent routing collapse) | `probes/f23_shape_derived_reshape_in_grad.mlpl` | literal window length; pad prompts to it |
+| F23 shape-derived or parameter-bound reshape dims inside `grad` drop the gradient (silent routing collapse) | `probes/f23_shape_derived_reshape_in_grad.mlpl`, `probes/f23b_param_bound_reshape_in_grad.mlpl` | literal or global dims; pad prompts to the window |
 | F22 `adam` state keyed by name survives model re-creation; no reset | `probes/f22_adam_state_by_name.mlpl` | one training run per process, or unique names |
 | F21 `adam` inside a user function updates local copies; globals unchanged | `probes/f21_adam_in_user_function.mlpl` | training loops at top level only |
-| F20 `take`'s index parameter unbound in an inlined function (falls through to a global; out-of-range panics) | `probes/f20_take_param_index_in_grad.mlpl` | inline the take with a literal index |
-| F19 matmul inner-dimension mismatch inside `grad` panics | `probes/f19_matmul_shape_panics_in_grad.mlpl` | check widths eagerly before tracing |
+| F24 `apply_engram`'s ids bound to a function parameter are not seen inside `grad` | `probes/f24_apply_engram_ids_param_in_grad.mlpl` | the window's ids in a global |
 | F17 record field access inside `grad` | `probes/f17_record_field_in_grad.mlpl` | bind fields to variables eagerly |
 
 ## Still to be probed

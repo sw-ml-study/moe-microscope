@@ -1,0 +1,54 @@
+#!/bin/sh
+# Run EG01 once per table size (1024, 256, 64, 16 slots; one process each, finding F22) in the from-scratch form, then the builtin form at the chosen size; compose the three diagrams from the metrics; check (or write) the diagrams and the five results rows.
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+mlpl=$("$repo_root/scripts/select-mlpl")
+mode=${1:-check}
+tmp_rel="tmp/engram-demo"
+rm -rf "$repo_root/$tmp_rel"
+mkdir -p "$repo_root/$tmp_rel"
+binary=$("$mlpl" --version 2>/dev/null | head -1 | tr -d '\n')
+table="$repo_root/docs/reference/results.md"
+chosen=256
+
+check_row() {
+    lesson=$1
+    row=$(grep "^| $lesson |" "$repo_root/$tmp_rel/results-row-$lesson.md")
+    key=$(printf '%s\n' "$row" | awk -F'|' '{ $4=""; $12=""; print }')
+    if [ "$mode" = "write" ]; then
+        grep -q "^| $lesson |" "$table" && sed -i '' "/^| $lesson |/d" "$table"
+        printf '%s\n' "$row" >> "$table"
+    else
+        committed_key=$(grep "^| $lesson |" "$table" | awk -F'|' '{ $4=""; $12=""; print }')
+        [ "$key" = "$committed_key" ] || {
+            echo "$lesson results row differs from $table; run scripts/run-engram-demo write" >&2
+            echo "generated: $key" >&2
+            echo "committed: $committed_key" >&2
+            exit 1
+        }
+    fi
+}
+
+for slots in 1024 256 64 16; do
+    "$mlpl" --source-dir "$repo_root" "$repo_root/demos/engram_microscope.mlpl" -- "$tmp_rel" "$binary" "$slots" scratch
+    check_row "EG01@$slots"
+done
+"$mlpl" --source-dir "$repo_root" "$repo_root/demos/engram_microscope.mlpl" -- "$tmp_rel" "$binary" "$chosen" builtin
+check_row "EG01b@$chosen"
+
+"$mlpl" --source-dir "$repo_root" "$repo_root/demos/engram_diagrams.mlpl" -- "$tmp_rel" "$chosen"
+
+for name in engram-structure engram-sweep engram-parity; do
+    generated="$repo_root/$tmp_rel/$name.svg"
+    committed="$repo_root/assets/previews/$name.svg"
+    [ -s "$generated" ] || { echo "engram demo did not write $name.svg" >&2; exit 1; }
+    if [ "$mode" = "write" ]; then
+        cp "$generated" "$committed"
+    elif ! cmp -s "$generated" "$committed"; then
+        echo "$name.svg preview is stale; run scripts/run-engram-demo write" >&2
+        exit 1
+    fi
+done
+rm -rf "$repo_root/$tmp_rel"
+echo "PASS engram contract, previews, and results rows ($mode)"

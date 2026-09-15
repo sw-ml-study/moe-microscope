@@ -1,0 +1,88 @@
+# Engram from scratch: n-gram addressing through the frozen ngram_hash contract, gather_rows retrieval from one flattened table, a value projection, and a concat gate into the residual stream; the same shapes and initialization as the sw-MLPL engram builtin so the two forms can be compared exactly.
+include "dense.mlpl";
+
+def u:engram_offsets(orders, heads, slots) {
+  "Row offset of each (order, head) region in the one flattened table, as a [1, orders * heads] row: region index times slots (the builtin's head_offset rule).";
+  reshape(range(orders * heads) * slots, [1, orders * heads])
+}
+
+def u:engram_rows(ids, order_list, orders, heads, slots, seed) {
+  "Global table rows addressed by a window: the frozen rolling hash (local slot per position, order, and head) plus the region offset; shape [T, orders * heads]. Constants: no gradient flows through them.";
+  n = reduce_mul(shape(ids));
+  reshape(ngram_hash(ids, order_list, heads, slots, seed), [n, orders * heads]) + u:engram_offsets(orders, heads, slots)
+}
+
+def u:engram_retrieve(table, rows) {
+  "The addressed rows of the table gathered and flattened per position into [eg_T, eg_width] (the caller's globals: window length and orders * heads * head_dim; reshape dims bound to parameters lose the gradient inside grad, finding F23); differentiable with respect to the table (scatter-add backward, finding F4 resolved).";
+  reshape(gather_rows(table, rows), [eg_T, eg_width])
+}
+
+def u:engram_value(r, Wv, bv) {
+  "The value projection of the retrieved memory into the hidden width.";
+  matmul(r, Wv) + bv
+}
+
+def u:engram_gate(h, v, Wg, bg) {
+  "The concat gate: a sigmoid over [h | v] that decides per position and dimension how much retrieved memory joins the residual stream.";
+  sigmoid(matmul(concat(h, v, 1), Wg) + bg)
+}
+
+def u:engram_apply(h, rows, table, Wv, bv, Wg, bg) {
+  "The whole Engram forward: retrieve, project, gate, and add to the hidden state (exactly the builtin apply_engram; eg_T and eg_width are the caller's globals).";
+  r = u:engram_retrieve(table, rows);
+  v = u:engram_value(r, Wv, bv);
+  h + u:engram_gate(h, v, Wg, bg) * v
+}
+
+def u:engram_init(orders, heads, slots, head_dim, hidden, seed) {
+  "Initial values with the builtin's near-identity rule: a zero table [orders * heads * slots, head_dim], value projection randn(seed + 1) scaled by 0.01, zero value bias, gate weight randn(seed + 2) scaled by 0.01, and gate bias -2 (the gate starts about 0.12 open on a zero value path).";
+  width = orders * heads * head_dim;
+  {table: fill([orders * heads * slots, head_dim], 0), Wv: randn(seed + 1, [width, hidden]) * 0.01, bv: fill([1, hidden], 0), Wg: randn(seed + 2, [2 * hidden, hidden]) * 0.01, bg: fill([1, hidden], 0 - 2), width: width, rows: orders * heads * slots}
+}
+
+def u:engram_params(orders, heads, slots, head_dim, hidden) {
+  "Parameter counts: the table and the projection and gate parameters, as a record with table, other, and total.";
+  table = orders * heads * slots * head_dim;
+  other = orders * heads * head_dim * hidden + hidden + 2 * hidden * hidden + hidden;
+  {table: table, other: other, total: table + other}
+}
+
+def u:engram_shift(ids, k) {
+  "The ids shifted right by k positions with the builtin's pad id 0 filling the start.";
+  n = reduce_mul(shape(ids));
+  if k {
+    concat(fill([k], 0), u:domain_slice(ids, 0, n - k))
+  } else {
+    ids
+  }
+}
+
+def u:engram_contexts(ids, order) {
+  "The n-gram context of every position as a [T, order] matrix: column k is the id k positions back (pad 0 before the start), the same windowing the hash uses.";
+  n = reduce_mul(shape(ids));
+  out = reshape(ids, [n, 1]);
+  k = 1;
+  while lt(k, order) {
+    out = concat(out, reshape(u:engram_shift(ids, k), [n, 1]), 1);
+    k = k + 1
+  };
+  out
+}
+
+def u:engram_collisions(contexts, rows_col) {
+  "Collisions of one (order, head) region: distinct contexts minus distinct rows they were hashed to (a repeated context is repetition, not a collision), matching engram_stats.";
+  n = reduce_mul(shape(rows_col));
+  dc = reduce_mul(shape(take(dedupe_rows(contexts).rows, 1, 0)));
+  dr = reduce_mul(shape(take(dedupe_rows(reshape(rows_col, [n, 1])).rows, 1, 0)));
+  dc - dr
+}
+
+def u:engram_nonzero_rows(table) {
+  "How many table rows hold any nonzero value.";
+  reduce_add(gt(reduce_add(abs(table), 1), 0))
+}
+
+def u:engram_bytes(rows, head_dim, bytes_per_value) {
+  "Table bytes at a given value width.";
+  rows * head_dim * bytes_per_value
+}

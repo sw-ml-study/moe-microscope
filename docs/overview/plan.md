@@ -886,6 +886,40 @@ results row, a diagram, or a finding.
 Exit: the report is complete, linked from the README, and reviewed against
 the results table for every number it states.
 
+## Saga 16: animated data-flow landscape
+
+A very visual explanation of the combined techniques that eschews tables
+for movement of data: tokens flow through the embedding, the Engram
+lookup, the recurrent state, the router, hot and cached experts, the
+decode cache with its compression, and multi-token prediction, drawn on
+one landscape wider than the screen. The camera pans along it roughly
+chronologically, pausing at each mechanism to watch the data move, and
+calls out what happens in parallel (expert prefetch during attention,
+cache eviction during decode). Every moving quantity is read from a pinned
+recording, so the animation is a playback of a real run in the same sense
+as the live demo, never a cartoon of what should happen.
+
+1. **landscape-storyboard.** The scenes, their order, the recording each
+   scene reads, and the parallel call-outs, written before any drawing.
+2. **landscape-player.** A generic host page (the live demo's playback
+   layer extended with a panning stage and tweened data chips) that renders
+   any scene list; no mechanism semantics in the host.
+3. **landscape-scenes.** One scene per mechanism, each derived from a
+   lesson's recording: routing (MX01), hot and cached experts (XC01),
+   Engram lookups (EG01), recurrence (RM01), decode-cache compression
+   (KV01), multi-token prediction (when a lesson exists), and their
+   combination (RE01 and HY01).
+4. **landscape-acceptance.** Verified in a browser against the recordings it
+   claims to play; linked from the README, the live demo, and the campus.
+
+This saga can start once the recordings its first scenes need exist
+(routing, Engram, recurrence are available after Saga 5) and grows a scene
+whenever a later saga pins a new recording.
+
+Exit: the landscape plays end to end from pinned recordings, every scene
+names its source, and the parallel call-outs match the schedules the
+simulators recorded.
+
 ## Cross-cutting gates
 
 - Every executable behavior starts with native mlplunit coverage; `just check`

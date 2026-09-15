@@ -1,6 +1,6 @@
 number = 4
 slug = "engram-from-scratch"
-status = "pending"
+status = "in-progress"
 description = "EG01 Engram from scratch, with parity against the builtin. The Engram idea (D..."
 role = "production"
 context_files = []

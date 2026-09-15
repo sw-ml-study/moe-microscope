@@ -1,0 +1,344 @@
+# EG01 Engram microscope: the DN01 block plus an Engram layer after attention (2-gram and 3-gram rows hashed into one table, gathered, projected, and gated into the residual stream), trained on the language domain with the DN01 budget. One table size per process (third argument: 1024, 256, 64, or 16 slots; finding F22); the fourth argument "builtin" trains the sw-MLPL engram builtin instead of the from-scratch form. Every process ends with the parity check between the two forms on the trained parameters.
+include "../lib/engram.mlpl";
+include "../lib/observe.mlpl";
+include "../lib/svg.mlpl";
+include "../lib/results.mlpl";
+
+print("WHAT THIS SHOWS -- External memory next to a dense block: which table rows the last two and three tokens address, how many rows fill during training, how far the gate opens, how many contexts collide at each table size, and whether prose (a fixed local pattern) moves first.");
+print("SHAPES -- ids:[T=28]; hashed rows:[T,2] (2-gram and 3-gram); table:[2*slots,8]; retrieved:[T,16]; value:[T,16]; gate:[T,16]; hidden:[T,16].");
+
+out_dir = if list_len(args()) {
+  unwrap(list_get(args(), 0))
+} else {
+  ""
+};
+binary = if gt(list_len(args()), 1) {
+  unwrap(list_get(args(), 1))
+} else {
+  "unknown"
+};
+slots_text = if gt(list_len(args()), 2) {
+  unwrap(list_get(args(), 2))
+} else {
+  "256"
+};
+form_text = if gt(list_len(args()), 3) {
+  unwrap(list_get(args(), 3))
+} else {
+  "scratch"
+};
+slots = if str_eq(slots_text, "1024") {
+  1024
+} else {
+  if str_eq(slots_text, "64") {
+    64
+  } else {
+    if str_eq(slots_text, "16") {
+      16
+    } else {
+      256
+    }
+  }
+};
+builtin = str_eq(form_text, "builtin");
+form_name = if builtin {
+  "builtin"
+} else {
+  "scratch"
+};
+writing = str_len(out_dir);
+m = unwrap(u:domain_load_mixture(u:domain_mixture_path()));
+d = u:domain_build(m);
+w = unwrap(u:domain_windows(d.texts, m.window));
+s = u:domain_split(d.count, m.train_fraction, m.seed);
+V = u:domain_vocab_size();
+T = m.window;
+dm = 16;
+hidden = 32;
+epochs = 300;
+lr = 0.003;
+every = 25;
+orders = [2, 3];
+n_orders = 2;
+heads = 1;
+head_dim = 8;
+seed = 7;
+eg_T = T;
+eg_width = n_orders * heads * head_dim;
+table_rows = n_orders * heads * slots;
+ntrain = reduce_mul(shape(s.train));
+nval = reduce_mul(shape(s.val));
+train_x = gather_rows(w.x, s.train);
+train_y = gather_rows(w.y, s.train);
+train_m = gather_rows(w.mask, s.train);
+val_x = gather_rows(w.x, s.val);
+val_y = gather_rows(w.y, s.val);
+val_m = gather_rows(w.mask, s.val);
+posT = u:positions(T, dm);
+config = emit_frame("engram/config", 0, [dm, hidden, T, epochs, ntrain, nval, slots, head_dim, n_orders, builtin]);
+
+def u:rows_of(ids) {
+  "The table rows one window addresses, [T, 2].";
+  u:engram_rows(ids, orders, n_orders, heads, slots, seed)
+}
+
+train_rows = reshape(u:rows_of(take(train_x, 0, 0)), [1, T, 2]);
+ctx2 = u:engram_contexts(take(train_x, 0, 0), 2);
+ctx3 = u:engram_contexts(take(train_x, 0, 0), 3);
+i = 1;
+while lt(i, ntrain) {
+  xi = take(train_x, 0, i);
+  train_rows = concat(train_rows, reshape(u:rows_of(xi), [1, T, 2]), 0);
+  ctx2 = concat(ctx2, u:engram_contexts(xi, 2), 0);
+  ctx3 = concat(ctx3, u:engram_contexts(xi, 3), 0);
+  i = i + 1
+};
+all_rows = reshape(train_rows, [ntrain * T, 2]);
+coll2 = u:engram_collisions(ctx2, take(all_rows, 1, 0));
+coll3 = u:engram_collisions(ctx3, take(all_rows, 1, 1));
+n_ctx2 = reduce_mul(shape(take(dedupe_rows(ctx2).rows, 1, 0)));
+n_ctx3 = reduce_mul(shape(take(dedupe_rows(ctx3).rows, 1, 0)));
+unique_rows = reduce_mul(shape(take(dedupe_rows(reshape(all_rows, [ntrain * T * 2, 1])).rows, 1, 0)));
+collisions = emit_frame("engram/collisions", 0, [coll2, coll3, n_ctx2, n_ctx3, table_rows, unique_rows]);
+print("ADDRESSING --", n_ctx2, "distinct 2-gram contexts and", n_ctx3, "distinct 3-gram contexts over the training rows address", unique_rows, "of", table_rows, "table rows; collisions", coll2, "+", coll3);
+
+e = engram(dm, orders, heads, slots, head_dim, seed);
+emb = embed(V, dm, 0);
+att = chain(rms_norm(dm), causal_attention(dm, 1, 1));
+ffn = chain(rms_norm(dm), linear(dm, hidden, 2), relu_layer(), linear(hidden, dm, 3));
+norm = rms_norm(dm);
+head = linear(dm, V, 4);
+init = u:engram_init(n_orders, heads, slots, head_dim, dm, seed);
+eg_mem = param[table_rows, head_dim];
+eg_mem = init.table;
+eg_Wv = param[eg_width, dm];
+eg_Wv = init.Wv;
+eg_bv = param[1, dm];
+eg_bv = init.bv;
+eg_Wg = param[2 * dm, dm];
+eg_Wg = init.Wg;
+eg_bg = param[1, dm];
+eg_bg = init.bg;
+counts = u:engram_params(n_orders, heads, slots, head_dim, dm);
+p_dense = param_count(emb) + param_count(att) + param_count(ffn) + param_count(norm) + param_count(head);
+params = p_dense + counts.total;
+active_engram = n_orders * heads * head_dim + counts.other;
+active = p_dense - param_count(emb) + dm + active_engram;
+table_bytes = u:engram_bytes(table_rows, head_dim, 8);
+print("MODEL -- params", params, "of which dense", p_dense, "table", counts.table, "projection and gate", counts.other, "; active per token", active, "; table bytes (f64)", table_bytes, "; form", form_name);
+
+cur_ids = take(train_x, 0, 0);
+cur_rows = take(train_rows, 0, 0);
+cur_y = take(train_y, 0, 0);
+cur_m = take(train_m, 0, 0);
+
+def u:attended(ids) {
+  "The state after the embedding, positions, and the attention residual.";
+  h0 = apply(emb, ids) + posT;
+  h0 + apply(att, h0)
+}
+
+def u:after_engram(h1) {
+  "The state after the engram layer, then the feed-forward residual, norm, and head: vocabulary logits.";
+  h2 = h1 + apply(ffn, h1);
+  apply(head, apply(norm, h2))
+}
+
+def u:loss_scratch() {
+  "Masked loss of the current window through the from-scratch engram (globals cur_ids, cur_rows, cur_y, cur_m).";
+  h1 = u:attended(cur_ids);
+  u:masked_ce(u:after_engram(u:engram_apply(h1, cur_rows, eg_mem, eg_Wv, eg_bv, eg_Wg, eg_bg)), cur_y, cur_m, V)
+}
+
+def u:loss_builtin() {
+  "Masked loss of the current window through the builtin engram (ids must be a global inside grad, finding F24).";
+  h1 = u:attended(cur_ids);
+  u:masked_ce(u:after_engram(apply_engram(e, h1, cur_ids)), cur_y, cur_m, V)
+}
+
+def u:engram_here(h1, ids) {
+  "The engram layer of the form this process trains, evaluated eagerly.";
+  if builtin {
+    apply_engram(e, h1, ids)
+  } else {
+    u:engram_apply(h1, u:rows_of(ids), eg_mem, eg_Wv, eg_bv, eg_Wg, eg_bg)
+  }
+}
+
+def u:forward(ids) {
+  "Logits of a T-length window (prompts are padded by the padded evaluator).";
+  u:after_engram(u:engram_here(u:attended(ids), ids))
+}
+
+def u:gate_of(h1, ids) {
+  "The gate matrix [T, dm] of this process's form on one attended state.";
+  if builtin {
+    engram_stats(e, h1, ids).gate_mean
+  } else {
+    r = u:engram_retrieve(eg_mem, u:rows_of(ids));
+    v = u:engram_value(r, eg_Wv, eg_bv);
+    reduce_add(u:engram_gate(h1, v, eg_Wg, eg_bg)) / (T * dm)
+  }
+}
+
+def u:gate_mean_train() {
+  "Mean gate over every position and dimension of every training window.";
+  total = 0;
+  i = 0;
+  while lt(i, ntrain) {
+    xi = take(train_x, 0, i);
+    total = total + u:gate_of(u:attended(xi), xi);
+    i = i + 1
+  };
+  total / ntrain
+}
+
+def u:nonzero_now() {
+  "Nonzero table rows of this process's form.";
+  if builtin {
+    engram_stats(e, cur_ids).nonzero_rows
+  } else {
+    u:engram_nonzero_rows(eg_mem)
+  }
+}
+
+curve_t = fill([0], 0);
+curve_v = fill([0], 0);
+curve_nz = fill([0], 0);
+curve_g = fill([0], 0);
+train_ms = 0;
+ep = 0;
+while lt(ep, epochs) {
+  ts = clock_ms();
+  i = 0;
+  while lt(i, ntrain) {
+    cur_ids = take(train_x, 0, i);
+    cur_rows = take(train_rows, 0, i);
+    cur_y = take(train_y, 0, i);
+    cur_m = take(train_m, 0, i);
+    if builtin {
+      adam(u:loss_builtin(), [emb, att, ffn, norm, head, e], lr, 0.9, 0.999, 0.00000001)
+    } else {
+      adam(u:loss_scratch(), [emb, att, ffn, norm, head, eg_mem, eg_Wv, eg_bv, eg_Wg, eg_bg], lr, 0.9, 0.999, 0.00000001)
+    };
+    i = i + 1
+  };
+  train_ms = train_ms + (clock_ms() - ts);
+  ep = ep + 1;
+  if eq(mod(ep, every), 0) {
+    tl = emit_frame("engram/loss/train", ep, u:set_loss(:u:forward, train_x, train_y, train_m, ntrain, V));
+    vl = emit_frame("engram/loss/val", ep, u:set_loss(:u:forward, val_x, val_y, val_m, nval, V));
+    nz = emit_frame("engram/slots/nonzero", ep, u:nonzero_now());
+    gm = emit_frame("engram/gate/mean", ep, u:gate_mean_train());
+    curve_t = concat(curve_t, tl);
+    curve_v = concat(curve_v, vl);
+    curve_nz = concat(curve_nz, nz);
+    curve_g = concat(curve_g, gm);
+    print("slots", slots, form_name, "epoch", ep, "train loss", u:svg_round(tl, 4), "val loss", u:svg_round(vl, 4), "nonzero rows", nz, "gate mean", u:svg_round(gm, 4))
+  } else {
+    0
+  }
+};
+ms_per_token = train_ms / (epochs * ntrain * T);
+
+rv = u:evaluate_prompts_padded(:u:forward, d, s.val, 12, T);
+rt = u:evaluate_prompts_padded(:u:forward, d, s.train, 12, T);
+val_acc = emit_frame("engram/accuracy/val", epochs, [rv.accuracy.arithmetic, rv.accuracy.sequence, rv.accuracy.mlpl, rv.accuracy.prose, rv.accuracy.overall]);
+train_acc = emit_frame("engram/accuracy/train", epochs, [rt.accuracy.arithmetic, rt.accuracy.sequence, rt.accuracy.mlpl, rt.accuracy.prose, rt.accuracy.overall]);
+final_val = take(curve_v, 0, reduce_mul(shape(curve_v)) - 1);
+final_train = take(curve_t, 0, reduce_mul(shape(curve_t)) - 1);
+final_nz = take(curve_nz, 0, reduce_mul(shape(curve_nz)) - 1);
+final_g = take(curve_g, 0, reduce_mul(shape(curve_g)) - 1);
+
+# Parity on the trained parameters: both forms hold the same five arrays, then every validation window and one gradient are compared. The builtin's parameters are the globals __engram_*_0: the engram is the first model created in this process, and model ids count every model built.
+tbl = if builtin {
+  __engram_mem_0
+} else {
+  eg_mem
+};
+wv = if builtin {
+  __engram_Wv_0
+} else {
+  eg_Wv
+};
+bv = if builtin {
+  __engram_bv_0
+} else {
+  eg_bv
+};
+wg = if builtin {
+  __engram_Wg_0
+} else {
+  eg_Wg
+};
+bg = if builtin {
+  __engram_bg_0
+} else {
+  eg_bg
+};
+eg_mem = tbl;
+__engram_mem_0 = tbl;
+eg_Wv = wv;
+__engram_Wv_0 = wv;
+eg_bv = bv;
+__engram_bv_0 = bv;
+eg_Wg = wg;
+__engram_Wg_0 = wg;
+eg_bg = bg;
+__engram_bg_0 = bg;
+parity_fwd = 0;
+i = 0;
+while lt(i, nval) {
+  xi = take(val_x, 0, i);
+  h1 = u:attended(xi);
+  parity_fwd = parity_fwd + reduce_add(abs(u:engram_apply(h1, u:rows_of(xi), eg_mem, eg_Wv, eg_bv, eg_Wg, eg_bg) - apply_engram(e, h1, xi)));
+  i = i + 1
+};
+cur_ids = take(val_x, 0, 0);
+cur_rows = u:rows_of(cur_ids);
+cur_y = take(val_y, 0, 0);
+cur_m = take(val_m, 0, 0);
+parity_grad = reduce_add(abs(grad(u:loss_scratch(), eg_mem) - grad(u:loss_builtin(), __engram_mem_0)));
+parity_gate = reduce_add(abs(grad(u:loss_scratch(), eg_Wg) - grad(u:loss_builtin(), __engram_Wg_0)));
+parity = emit_frame("engram/parity", epochs, [parity_fwd, parity_grad, parity_gate]);
+print("PARITY --", form_name, "form trained; from-scratch and builtin outputs differ by", parity_fwd, "over", nval, "validation windows; table gradients differ by", parity_grad, "; gate-weight gradients by", parity_gate);
+
+example = "2+3=|5.";
+ex7 = unwrap(u:domain_encode(example));
+ex_ids = u:pad_to(ex7, T);
+ex_rows = u:rows_of(ex_ids);
+ex_h1 = u:attended(ex_ids);
+ex_r = u:engram_retrieve(eg_mem, ex_rows);
+ex_v = u:engram_value(ex_r, eg_Wv, eg_bv);
+ex_g = u:engram_gate(ex_h1, ex_v, eg_Wg, eg_bg);
+o_rows = emit_frame("engram/rows/example", epochs, u:rows(ex_rows, 0, 7));
+o_gate = emit_frame("engram/gate/example", epochs, reduce_add(u:rows(ex_g, 0, 7), 1) / dm);
+o_ret = emit_frame("engram/retrieved/example", epochs, u:rows(ex_r, 0, 7));
+o_val = emit_frame("engram/value/example", epochs, reduce_add(abs(u:rows(ex_v, 0, 7)), 1) / dm);
+
+lesson = if builtin {
+  str_concat("EG01b@", to_string(slots))
+} else {
+  str_concat("EG01@", to_string(slots))
+};
+config_text = str_concat(str_concat(str_concat("dense + engram 2,3-gram ", to_string(slots)), str_concat(" slots x8 ", form_name)), str_concat(str_concat(" (table ", to_string(counts.table)), str_concat(str_concat(" params ", to_string(table_bytes)), " B) d16 h32 1head T28 120ex 300ep lr0.003")));
+row = {lesson: lesson, config: config_text, binary: binary, params: params, active_params: active, expert_evals: 1, bytes_per_token: active * 8, ms_per_token: u:svg_round(ms_per_token, 4), val_loss: u:svg_round(final_val, 4), ppl: u:svg_round(exp(final_val), 2), arith_acc: u:svg_round(rv.accuracy.arithmetic, 3), seq_acc: u:svg_round(rv.accuracy.sequence, 3), mlpl_acc: u:svg_round(rv.accuracy.mlpl, 3), prose_acc: u:svg_round(rv.accuracy.prose, 3)};
+metrics = {slots: slots, builtin: builtin, params: params, dense_params: p_dense, table_params: counts.table, other_params: counts.other, table_bytes: table_bytes, table_rows: table_rows, active: active, val_loss: final_val, train_loss: final_train, arith: rv.accuracy.arithmetic, seq: rv.accuracy.sequence, mlpl: rv.accuracy.mlpl, prose: rv.accuracy.prose, overall: rv.accuracy.overall, train_overall: rt.accuracy.overall, nonzero: final_nz, gate_mean: final_g, coll2: coll2, coll3: coll3, ctx2: n_ctx2, ctx3: n_ctx3, unique_rows: unique_rows, parity_fwd: parity_fwd, parity_grad: parity_grad, parity_gate: parity_gate, curve_t: curve_t, curve_v: curve_v, curve_nz: curve_nz, curve_g: curve_g, ex_rows: reshape(u:rows(ex_rows, 0, 7), [14]), ex_gate: reduce_add(u:rows(ex_g, 0, 7), 1) / dm, ex_value: reduce_add(abs(u:rows(ex_v, 0, 7)), 1) / dm, ex_retrieved: reshape(u:rows(ex_r, 0, 7), [7 * eg_width]), ex_ids: ex7};
+w_row = if writing {
+  write_atomic(str_concat(str_concat(out_dir, "/results-row-"), str_concat(lesson, ".md")), str_concat(u:results_row(row), "\n"))
+} else {
+  ok(0)
+};
+metrics_name = if builtin {
+  str_concat("/metrics-b", to_string(slots))
+} else {
+  str_concat("/metrics-", to_string(slots))
+};
+w_m = if writing {
+  write_atomic(str_concat(out_dir, str_concat(metrics_name, ".json")), unwrap(to_json(metrics)))
+} else {
+  ok(0)
+};
+print("RESULT --", lesson, "params", params, "active/token", active, "val loss", u:svg_round(final_val, 4), "val acc [arith seq mlpl prose all]", val_acc, "train acc", rt.accuracy.overall);
+print("MEMORY -- nonzero rows", final_nz, "of", table_rows, "gate mean", u:svg_round(final_g, 4), "collisions", coll2 + coll3);
+print("SPEED -- ms/token", u:svg_round(ms_per_token, 4), "(", binary, ")");

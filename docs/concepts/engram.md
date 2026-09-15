@@ -36,10 +36,24 @@ parity between a from-scratch MLPL Engram and the sw-MLPL builtin.
 Same neural parameters, better recall of local patterns: prose held out
 should be the first family to move.
 
+## What the evidence says
+
+EG01 (the DN01 block plus a 2-gram and 3-gram table, 8 values per row,
+four table sizes and the builtin form, one process each): the
+hand-written form and the `engram` builtin are the same function (zero
+difference in outputs and gradients on trained parameters). At 90
+training windows the table is memorization capacity: training loss falls
+below DN01's and validation loss rises above it at every size (3.93 at
+1,024 slots to 4.67 at 256, against 3.79), the gate opens to 0.5 to 0.74,
+and prose held-out accuracy keeps DN01's 0.667 only at 1,024 slots.
+Collisions grow from 161 of 769 contexts at 1,024 slots to 737 at 16.
+The prediction that prose moves first did not hold at this data size.
+
 ## Status
 
-Planned: EG01 and RE01 in the recurrence-and-Engram saga. sw-MLPL already
-ships `ngram_hash`, `engram`, `apply_engram`, and `engram_stats`.
+EG01 measured; RE01 (all three sparsities) next in the
+recurrence-and-Engram saga. Engram at more data (480 and 960 examples)
+and with a frozen dense block are the open candidates.
 
 ## Deeper reference
 

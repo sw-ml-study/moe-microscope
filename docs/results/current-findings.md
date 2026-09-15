@@ -137,6 +137,24 @@ regularization.
 Limitation: one seed per point, 90 training windows, a non-monotonic curve
 over R.
 
+## 10. External memory is memorization capacity at this data size
+
+Evidence: the DN01 block plus an Engram table (EG01) reaches training
+loss 0.08 to 0.12 against DN01's 0.19 and validation loss 3.93 to 4.67
+against 3.79, at every table size from 16 to 1,024 slots per order; prose
+held-out accuracy keeps DN01's 0.667 only with the largest table. The
+hand-written form and the sw-MLPL builtin agree to zero in outputs and
+gradients.
+
+Interpretation: a table addressed by the last two and three tokens gives
+the model rows to write the training answers into, and 90 windows are
+too few for the held-out contexts to read anything useful back. The
+mechanism is verified; its value is not shown here, and the candidates
+are more data (DS01's 480 and 960 points) and a frozen dense block.
+
+Limitation: one seed, 90 training windows, one learning rate for the
+table and the block.
+
 ## Supported now versus plausible but not demonstrated
 
 Supported: more stored than active capacity; measurable specialization; a
@@ -148,7 +166,7 @@ validation loss per parameter, with the router re-deciding at every
 recurrence.
 
 Plausible, not demonstrated: recurrence as a converging reasoning loop;
-Engram removing memorization pressure; distillation improving this student;
+Engram removing memorization pressure (at 90 windows it adds it); distillation improving this student;
 quantization raising expert count at acceptable quality; routing locality
 giving useful cache hit rates; heterogeneous execution beating simpler
 placement; the whole design being useful within 256 MB and 0.5 TOPS. Each

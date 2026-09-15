@@ -1,4 +1,4 @@
-# F20 reproducer: take's index parameter is not bound inside an inlined user function on the tape (undefined variable: e); with a same-named global the index silently resolves to it and can panic out of range; checked by scripts/run-probes.
+# F20 reproducer, resolved upstream (e6070964): take's index parameter resolves in the traced scope inside an inlined user function; the gradient below equals the eager column factor.
 W = param[4, 4];
 W = reshape(range(16), [4, 4]);
 def u:col(g, e) {

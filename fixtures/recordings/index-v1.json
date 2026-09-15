@@ -3,7 +3,7 @@
   "version": 1,
   "recording_schema": "fixtures/recordings/recording-schema-v0.json",
   "source_repository": "https://github.com/sw-ml-study/moe-microscope.git",
-  "source_revision": "67d6e39f04db1d4aa1c7f33a4e65c4962a51bfe3",
+  "source_revision": "d87ab77a88d55d32d009c7fb56d3a7394423dace",
   "bundler": "scripts/bundle-program",
   "fixtures": [
     {
@@ -135,6 +135,35 @@
       "frame_count": 13,
       "observation_count": 66,
       "value_count": 159,
+      "steps": [
+        0,
+        25,
+        50,
+        75,
+        100,
+        125,
+        150,
+        175,
+        200,
+        225,
+        250,
+        275,
+        300
+      ]
+    },
+    {
+      "id": "EG01",
+      "lesson": "engram-from-scratch",
+      "source": "demos/engram_microscope.mlpl",
+      "recording": "fixtures/recordings/engram-run-v0.json",
+      "preview": "assets/previews/engram-structure.svg",
+      "guide": "docs/implementation/host-handoff.md",
+      "recording_sha256": "e857cdb34ef08331b8dc5dc250bea3f135c3d0635c9c63eaddcbca2f1bb4d4fb",
+      "source_sha256": "dd997fce061a0d9e237b4d52f65ddb98defa996dd4805bf3eabc8083e2011620",
+      "bundle_sha256": "0f84418f47e3b9cf5708d5b10b06e1d4e3a118d0c9afcb776ccca63fc1c0c8ea",
+      "frame_count": 13,
+      "observation_count": 57,
+      "value_count": 217,
       "steps": [
         0,
         25,
