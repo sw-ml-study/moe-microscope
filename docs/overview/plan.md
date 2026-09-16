@@ -587,7 +587,7 @@ with its margin over the matcher is met.
 Exit (as paused on 2026-09-14, by decision, so that Engram runs first): steps
 1 to 5 done, the replay page live, the matcher yardstick and the word-vector
 result recorded; the routed docent and everything after it continue in
-Saga 6. The original exit (the usefulness bar met; a batch-trained tiny
+Saga 7. The original exit (the usefulness bar met; a batch-trained tiny
 MoE loaded in the page navigating the three destinations with explainable
 routing and catalog-backed responses, telling the right canned story once
 and another on request; the live-training budget measured;
@@ -615,7 +615,43 @@ implementation-ready easel handoff.
 
 Exit: the ablation matrix rows through RE01 exist with diagrams and triples;
 the live demo has a written, implementation-ready handoff.
-## Saga 6: campus docent, routed and in the browser
+## Saga 6: animated data-flow landscape
+
+A very visual explanation of the combined techniques that eschews tables
+for movement of data: tokens flow through the embedding, the Engram
+lookup, the recurrent state, the router, hot and cached experts, the
+decode cache with its compression, and multi-token prediction, drawn on
+one landscape wider than the screen. The camera pans along it roughly
+chronologically, pausing at each mechanism to watch the data move, and
+calls out what happens in parallel (expert prefetch during attention,
+cache eviction during decode). Every moving quantity is read from a pinned
+recording, so the animation is a playback of a real run in the same sense
+as the live demo, never a cartoon of what should happen.
+
+1. **landscape-storyboard.** The scenes, their order, the recording each
+   scene reads, and the parallel call-outs, written before any drawing.
+2. **landscape-player.** A generic host page (the live demo's playback
+   layer extended with a panning stage and tweened data chips) that renders
+   any scene list; no mechanism semantics in the host.
+3. **landscape-scenes.** One scene per mechanism, each derived from a
+   lesson's recording: routing (MX01), hot and cached experts (XC01),
+   Engram lookups (EG01), recurrence (RM01), decode-cache compression
+   (KV01), multi-token prediction (when a lesson exists), and their
+   combination (RE01 and HY01).
+4. **landscape-acceptance.** Verified in a browser against the recordings it
+   claims to play; linked from the README, the live demo, and the campus.
+
+This saga runs right after Saga 5 by the user's decision (2026-09-15):
+its first scenes need only the recordings Saga 5 pinned (routing, Engram,
+recurrence, the composition); it grows a scene whenever a later saga pins
+a new recording (the expert cache, decode-cache compression, multi-token
+prediction).
+
+Exit: the landscape plays end to end from pinned recordings, every scene
+names its source, and the parallel call-outs match the schedules the
+simulators recorded.
+
+## Saga 7: campus docent, routed and in the browser
 
 The docent saga continued after Engram: the same design decisions and the
 same usefulness bar as Saga 4. Steps, renumbered from Saga 4's 6 to 9:
@@ -680,7 +716,7 @@ implementation-ready easel handoff. If the bar is not met, the saga still
 closes with the measured result and no campus integration.
 
 
-## Saga 7: campus docent live in the campus UI
+## Saga 8: campus docent live in the campus UI
 
 The trained docent replaces the mockup's keyword matcher in the campus
 site, and that replacement is verified on the live page, not assumed. The
@@ -723,7 +759,7 @@ live site answers from weights.
 Exit: the live campus site answers from the trained weights, proven by the
 step 4 record; the keyword matcher remains only as the documented fallback.
 
-## Saga 8: campus docent v1
+## Saga 9: campus docent v1
 
 Starts when the campus adds the IBM 1442 card read punch and its radio demo
 (snapshot B). If that content is not yet published, the step authors
@@ -747,7 +783,7 @@ Exit: the before/after study is a recorded lesson with rows and diagrams,
 and the campus easel can show which revision its docent knows.
 
 
-## Saga 9: distillation
+## Saga 10: distillation
 
 1. **token-kd (KD01 part 1).** `beta L_KD` against the in-repo teacher
    fixture; KL and accuracy deltas versus the same student without KD.
@@ -761,7 +797,7 @@ and the campus easel can show which revision its docent knows.
 
 Exit: each distillation term has a measured, diagrammed, and tabled effect.
 
-## Saga 10: quantization, packed format, and expert cache
+## Saga 11: quantization, packed format, and expert cache
 
 1. **int8-experts (QZ01).** Symmetric INT8 experts and shared weights as
    integer-valued arrays plus scales; quality delta; bytes per expert.
@@ -790,7 +826,7 @@ Exit: each distillation term has a measured, diagrammed, and tabled effect.
 Exit: the same model runs from a packed file through a capacity-limited cache
 with a checked curve of hit rate and bytes per token versus capacity.
 
-## Saga 11: hybrid execution and the embedded budget
+## Saga 12: hybrid execution and the embedded budget
 
 1. **bandwidth-calibration.** A tiny `bench bw` analogue measuring the
    simulated transfer and host-compute bandwidths (from counted bytes and
@@ -807,7 +843,7 @@ with a checked curve of hit rate and bytes per token versus capacity.
 Exit: HY01 and PK01 rows exist; the embedded gap is a written handoff, not a
 claim.
 
-## Saga 12: interactive microscope host, complete
+## Saga 13: interactive microscope host, complete
 
 1. **systems-recordings.** Pinned recordings for QZ01, XC01, HY01, and PK01;
    cache traces and q-star splits proven in the generic host.
@@ -822,7 +858,7 @@ claim.
 Exit: every recorded lesson renders in the generic host without lesson-
 specific Rust, and the pocket helper runs end to end.
 
-## Saga 13: configuration frontier
+## Saga 14: configuration frontier
 
 After the mechanisms exist, compare configurations on the dimensions the
 results table already records and produce a size, speed, quality frontier.
@@ -844,7 +880,7 @@ results table already records and produce a size, speed, quality frontier.
 Exit: a frontier diagram whose every point is a results row and a
 recording.
 
-## Saga 14: CUDA system and CPU-resident expert weights
+## Saga 15: CUDA system and CPU-resident expert weights
 
 Today every lesson runs in the f64 CPU interpreter; `device("mlx")` and the
 CUDA backend in sw-MLPL are unused here. This saga moves the lab-scale runs
@@ -867,13 +903,13 @@ cache or executed on the CPU.
    real); measured tokens per second against the transfer-only policy and
    against all-GPU, with VRAM held below a chosen ceiling.
 5. **vram-budget-report.** The smallest VRAM that serves each frontier pick
-   from Saga 11 at a stated tokens-per-second, with the CPU/GPU split that
+   from Saga 12 at a stated tokens-per-second, with the CPU/GPU split that
    achieves it.
 
 Exit: a lab-scale MoE runs on CUDA with expert weights in host RAM at a
 documented VRAM ceiling, and the sw-MLPL backend findings are filed.
 
-## Saga 15: findings, recommendations, and future work
+## Saga 16: findings, recommendations, and future work
 
 The closing document, `docs/report.md`, written from the results table,
 the recordings, the findings ledger, and the frontier: what was built, what
@@ -885,40 +921,6 @@ results row, a diagram, or a finding.
 
 Exit: the report is complete, linked from the README, and reviewed against
 the results table for every number it states.
-
-## Saga 16: animated data-flow landscape
-
-A very visual explanation of the combined techniques that eschews tables
-for movement of data: tokens flow through the embedding, the Engram
-lookup, the recurrent state, the router, hot and cached experts, the
-decode cache with its compression, and multi-token prediction, drawn on
-one landscape wider than the screen. The camera pans along it roughly
-chronologically, pausing at each mechanism to watch the data move, and
-calls out what happens in parallel (expert prefetch during attention,
-cache eviction during decode). Every moving quantity is read from a pinned
-recording, so the animation is a playback of a real run in the same sense
-as the live demo, never a cartoon of what should happen.
-
-1. **landscape-storyboard.** The scenes, their order, the recording each
-   scene reads, and the parallel call-outs, written before any drawing.
-2. **landscape-player.** A generic host page (the live demo's playback
-   layer extended with a panning stage and tweened data chips) that renders
-   any scene list; no mechanism semantics in the host.
-3. **landscape-scenes.** One scene per mechanism, each derived from a
-   lesson's recording: routing (MX01), hot and cached experts (XC01),
-   Engram lookups (EG01), recurrence (RM01), decode-cache compression
-   (KV01), multi-token prediction (when a lesson exists), and their
-   combination (RE01 and HY01).
-4. **landscape-acceptance.** Verified in a browser against the recordings it
-   claims to play; linked from the README, the live demo, and the campus.
-
-This saga can start once the recordings its first scenes need exist
-(routing, Engram, recurrence are available after Saga 5) and grows a scene
-whenever a later saga pins a new recording.
-
-Exit: the landscape plays end to end from pinned recordings, every scene
-names its source, and the parallel call-outs match the schedules the
-simulators recorded.
 
 ## Cross-cutting gates
 

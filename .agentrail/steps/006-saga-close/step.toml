@@ -1,6 +1,6 @@
 number = 6
 slug = "saga-close"
-status = "pending"
+status = "in-progress"
 description = "Saga close: recordings, live demo, and handoffs for recurrence and Engram. Pi..."
 role = "production"
 context_files = []

@@ -10,7 +10,7 @@ The mandatory checklist in `AGENTS.md` applies to every step: focused tests,
 tracked-file audit, named-file staging, a detailed commit on `main`,
 Agentrail completion metadata, and a verified `git push origin main`.
 
-## Active: `recurrence-and-engram` (Saga 5)
+## Completed: `recurrence-and-engram` (Saga 5)
 
 Purpose: parameter sparsity and memory-lookup sparsity, measured: one block
 applied R times with deep supervision (RC01), routing over reasoning time
@@ -18,7 +18,15 @@ applied R times with deep supervision (RC01), routing over reasoning time
 builtin and a slot-count sweep (EG01), all three sparsities together with
 the seven-row ablation table (RE01), and the recordings, live demo, and
 handoffs (saga close). Started 2026-09-14 ahead of the remaining docent
-work by the user's decision.
+work by the user's decision; completed 2026-09-15.
+
+Outcome: recurrence buys quality per parameter (RM01 at R=3 has the
+lowest 120-example validation loss in the table, 3.42) and the router
+re-decides at every recurrence; the Engram table is the builtin's function
+to the bit and, at 90 training windows, memorization capacity alone and in
+composition (RE01 4.76 at training loss 0.006). Seven recordings replay in
+the live demo; findings F19, F20, and F21 were fixed upstream during the
+saga and verified; F22, F23, and F24 stay open with probes.
 
 1. `recurrent-block` - RC01: one shared block applied R times, deep
    supervision, accuracy against R at fixed parameters.
@@ -73,8 +81,15 @@ work by the user's decision.
    routing still re-decides per recurrence (change share 0.31) and the
    gate stays open (0.72 to 0.76). Two diagrams, two rows, a recording
    replayed in the live demo.
-6. `saga-close` - recordings, the live demo extended, handoffs, README,
-   concepts, wiki.
+6. `saga-close` - done: the RC01, RM01, EG01, and RE01 recordings were
+   pinned and added to the live demo in their own steps; the deploy of
+   commit 3eaa4ec verified with `?verify=1` (eight lessons, no errors) and
+   recorded in `docs/results/live-demo.md`; the host handoff extended with
+   the new observation shapes; README status, learned claims (six to
+   nine), size table, and next section updated; wiki Home, Start Here,
+   Learn, Results, Experiments, Internals, and Reference updated and
+   verified after the push; the carousel's results and conclusions slides
+   regenerated (docs/20260913-LinkedIn.pdf).
 
 ## Paused: `campus-docent-v0` (Saga 4)
 
@@ -474,42 +489,43 @@ track in [`plan.md`](plan.md).
   the `just docent` batch export with manifest, the inference-first docent
   page CD05 on the proven `mlpl-wasm` bridge with a budgeted live-training
   probe, and the inference-only easel handoff to sw-campus.
-- Saga 5 `recurrence-and-engram` (active, above): RC01, RM01, EG01 (both
+- Saga 5 `recurrence-and-engram` (completed, above): RC01, RM01, EG01 (both
   forms: from scratch and builtin, with parity), RE01, the seven-row
   ablation table, and the live-demo and host handoffs.
-- Saga 6 `campus-docent-routed`: the docent saga continued: CD02 to CD04
+- Saga 6 `animated-data-flow-landscape`: a panning animation of tokens
+  moving through routing, hot and cached experts, Engram lookups,
+  recurrence, decode-cache compression, and multi-token prediction, one
+  scene per mechanism, each played back from a pinned recording with
+  parallel work called out; next by the user's decision, its first
+  scenes played from the recordings Saga 5 pinned.
+- Saga 7 `campus-docent-routed`: the docent saga continued: CD02 to CD04
   routed experts and specialization, the batch export, browser inference
   with the budgeted live-training probe, and the easel handoff; ships to
   the campus only if the usefulness bar is met.
-- Saga 7 `campus-docent-live`: the trained docent replaces the mockup's
+- Saga 8 `campus-docent-live`: the trained docent replaces the mockup's
   keyword matcher in the campus site: the frozen export contract and
   validator, the browser bridge module with `predict(query)` and a parity
   page, the campus model-bridge work order, and live acceptance against
   the deployed page (edition line, thirty scripted queries matching the
   export, fallback, stale badge, latency) recorded as CD09.
-- Saga 8 `campus-docent-v1`: when the campus adds the 1442 card reader and
+- Saga 9 `campus-docent-v1`: when the campus adds the 1442 card reader and
   its radio demo, the stale-model, retraining-versus-forgetting, and
   quantization study (CD06 to CD08) and the revision comparison page.
-- Saga 9 `distillation`: token KD against the in-repo teacher, router warm
+- Saga 10 `distillation`: token KD against the in-repo teacher, router warm
   start, expert-delta distillation, and the gated external-teacher export.
-- Saga 10 `quantization-packing-and-cache`: INT8 and INT4 experts, the packed
+- Saga 11 `quantization-packing-and-cache`: INT8 and INT4 experts, the packed
   TinyMoE file, the LRU expert-cache simulator with capacity curves, and
   prefill double buffering, and KV01, decode-cache
   compression measured on the generation benchmark.
-- Saga 11 `hybrid-execution-and-embedded-budget`: bandwidth calibration, the
+- Saga 12 `hybrid-execution-and-embedded-budget`: bandwidth calibration, the
   q-star transfer/compute split, expert banks, and the 256 MB budget report.
-- Saga 12 `interactive-microscope-host`: systems recordings, live-demo
+- Saga 13 `interactive-microscope-host`: systems recordings, live-demo
   acceptance (the only `sw-checklist` scope), and the pocket-helper demo.
-- Saga 13 `configuration-frontier`: one harness over configuration records;
+- Saga 14 `configuration-frontier`: one harness over configuration records;
   sweeps of expert count, top-k, shared always-on experts, Engram slots, and
   recurrence depth; a Pareto frontier with smallest, fastest, and best picks.
-- Saga 14 `cuda-and-host-resident-experts`: backend probes for CUDA and MLX,
+- Saga 15 `cuda-and-host-resident-experts`: backend probes for CUDA and MLX,
   lab-scale training on the GPU, expert weights in host RAM with a bounded
   GPU cache, CPU execution of missing experts, and a VRAM-budget report.
-- Saga 15 `findings-and-recommendations`: `docs/report.md` with findings,
+- Saga 16 `findings-and-recommendations`: `docs/report.md` with findings,
   recommendations, and ranked future improvements, every claim cited.
-- Saga 16 `animated-data-flow-landscape`: a panning animation of tokens
-  moving through routing, hot and cached experts, Engram lookups,
-  recurrence, decode-cache compression, and multi-token prediction, one
-  scene per mechanism, each played back from a pinned recording with
-  parallel work called out; can start once Saga 5's recordings exist.

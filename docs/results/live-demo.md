@@ -22,6 +22,21 @@ for it.
 | Routing and dispatch walkthrough | 10 frames stepped, 20 observations rendered, last step 9 |
 | Console errors during verify | none reported by the page (any load or render error is listed in the report as ERROR) |
 
+## 2026-09-15, recurrence and Engram lessons
+
+| Check | Result |
+|---|---|
+| Deploy | Pages workflow run for commit `3eaa4ec` completed successfully (32 s) |
+| Build info | `runnervmlun5p / 3eaa4ec / 2026-09-15T21:10:06Z` from `build-info.json` on the live site |
+| `?verify=1` on the live page (headless Chrome, 2026-09-15) | every lesson stepped to its last frame, no errors |
+| DN01, MX01, MX02 | 13 frames each; 29, 65, and 66 observations rendered, last step 300 |
+| RC01 recurrent block | 13 frames stepped, 36 observations rendered, last step 300 |
+| RM01 recurrent mixture | 13 frames stepped, 36 observations rendered, last step 300 |
+| EG01 Engram from scratch | 13 frames stepped, 57 observations rendered, last step 300 |
+| RE01 recurrent mixture plus Engram | 13 frames stepped, 36 observations rendered, last step 300 |
+| Routing and dispatch walkthrough | 10 frames stepped, 20 observations rendered, last step 9 |
+| New lesson captions and labels | recurrence strip (`rm/route/example`, `re/route/example`), the Engram rows, gate, and retrieved values of one window (`engram/rows/example`, `engram/gate/example`, `engram/retrieved/example`), the per-recurrence Engram gate (`re/gate/example`), all drawn from recorded values only |
+
 What the page does and does not do: it is a playback. No sw-MLPL code runs
 in the browser and no model runs in the page. Every number it draws is read
 from a fixture in the repository: the seven training recordings were

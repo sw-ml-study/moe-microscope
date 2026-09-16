@@ -68,6 +68,36 @@ vector series the generic renderer should present as one line per index
 without knowing that an index is an expert; the `[4, 4]` map is a heatmap
 whose rows and columns are numbered, never named.
 
+## What the recurrence and Engram recordings add
+
+RC01 (`recur/*`), RM01 (`rm/*`), EG01 (`engram/*`), and RE01 (`re/*`) are
+recorded the same way (13 frames: step 0 plus every 25-epoch checkpoint,
+the last frame carrying the end-of-run observations). New shapes for the
+generic host, all producer-owned meaning:
+
+| Name | Shape | Meaning (producer-owned) |
+|---|---|---|
+| `recur/config`, `rm/config`, `engram/config`, `re/config` | `[6]` to `[11]` | widths, window, epochs, rows, and the lesson's knobs (R, slots, head_dim, form) |
+| `recur/state/1..4`, `recur/argmax/1..4` | `[7, 16]`, `[7]` | the state and the head's argmax after each recurrence of one window |
+| `recur/loss/per-recurrence` | `[4]` | the trained R=4 model's held-out loss when stopped after 1..4 recurrences |
+| `rm/load`, `re/load` | `[R, 4]` | tokens per expert per recurrence (a matrix, rows numbered) |
+| `rm/family-by-expert/1..3` | `[4, 4]` | family-by-expert counts at one recurrence |
+| `rm/route/example`, `re/route/example` | `[3, 7]` | the expert chosen per position per recurrence of `2+3=\|5.` (a strip: the host draws a numbered matrix; the lesson's caption names the rows) |
+| `re/gate/example` | `[3, 7]` | the mean Engram gate per position per recurrence |
+| `rm/specialization-per-recurrence`, `re/gate/per-recurrence` | `[R]` | one value per recurrence |
+| `engram/collisions` | `[6]` | collisions and distinct contexts per order, table rows, rows addressed |
+| `engram/rows/example` | `[7, 2]` | the 2-gram and 3-gram table row per position |
+| `engram/retrieved/example` | `[7, 16]` | the sixteen values read per position |
+| `engram/gate/example`, `engram/value/example` | `[7]` | the mean gate and mean absolute value per position |
+| `engram/parity` | `[3]` | output and gradient differences between the from-scratch and builtin forms |
+| `engram/slots/nonzero`, `engram/gate/mean`, `re/slots/nonzero` | `[]` | scalar series per checkpoint |
+
+Budgets declared per lesson in `scripts/recordings.conf` (16 frames, 16
+observations per frame, 64 or 128 values per observation, 640 in total).
+The `[3, 7]` strips and the `[7, 16]` retrieval are ordinary matrices to
+the host; the recurrence and Engram meaning stays in the lesson captions
+(`learn/app.js` holds them for the playback page).
+
 ## What the generic host must show
 
 Using only shape-directed plans that already exist for the peer lessons:
@@ -94,8 +124,8 @@ tolerance-based "close enough" comparison of values: the recording is exact.
 
 1. The pinned recording parses, validates in the documented order, and
    matches the indexed hashes and counts.
-2. The existing selector lists DN01 beside MM01, LR01, and KM01 without a
-   new code path.
+2. The existing selector lists DN01, MX01, MX02, RC01, RM01, EG01, and RE01
+   beside MM01, LR01, and KM01 without a new code path.
 3. Native model tests cover the nonconsecutive-step navigation and the
    six-observation frame.
 4. `sw-checklist` passes on the affected Rust crates. This is the only

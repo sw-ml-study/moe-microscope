@@ -46,13 +46,17 @@ Demonstrated, with measurements: a dense baseline (DN01); top-1 and top-2
 mixtures (MX01, MX02); measurable expert specialization; exact sparse
 dispatch (SD01); the data-versus-epochs effect (DS01); low-rank delta
 experts with a shared expert (LD01); an in-repo teacher fixture (TE01); the
-resource budget (RB01) and a measured generation benchmark (GB01); three
-recordings handed to the generic Rust/Yew host.
+resource budget (RB01) and a measured generation benchmark (GB01);
+recurrence (RC01, RM01); the Engram table from scratch with exact parity
+against the sw-MLPL builtin (EG01); all three sparsities together and the
+seven-row ablation matrix (RE01); seven recordings replayed in the live
+demo and handed to the generic Rust/Yew host; the campus docent's first
+five steps (paused: it does not yet beat a deterministic matcher).
 
-Still to come: recurrence, Engram, distillation, quantization, the packed
+Still to come: the routed docent, distillation, quantization, the packed
 file, the expert cache, CPU/NPU scheduling, the 256 MB target, the
-configuration frontier, and the CUDA move with host-resident experts. See
-the [saga queue](docs/overview/sagas.md).
+configuration frontier, the CUDA move with host-resident experts, and an
+animated data-flow landscape. See the [saga queue](docs/overview/sagas.md).
 
 ## What we have learned
 
@@ -83,10 +87,28 @@ the [saga queue](docs/overview/sagas.md).
    matmuls skipped. Evidence: [SD01](docs/experiments/SD01.md) and the
    [generation benchmark](docs/reference/generation-benchmark.md).
 
-One more, from the last lesson: sixteen rank-4 delta experts cost 2,048
-parameters against 4,288 for four full experts and give the best validation
-losses in the table so far (3.46 with a shared expert, 3.37 without).
-Evidence: [LD01](docs/experiments/LD01.md).
+6. **Cheap experts are worth trying.** Sixteen rank-4 delta experts cost
+   2,048 parameters against 4,288 for four full experts and give
+   validation losses of 3.46 with a shared expert and 3.37 without.
+   Evidence: [LD01](docs/experiments/LD01.md).
+7. **Reusing a block buys quality per parameter, and the router
+   re-decides.** The mixture block applied three times with deep
+   supervision reaches validation loss 3.42 at the same 7,096 parameters
+   (MX01 3.76), and 38 to 46 percent of tokens change expert between
+   recurrences. It is not a converging reasoning loop: the models score
+   best when stopped early, and R=2 is worse than R=1. Evidence:
+   [RC01](docs/experiments/RC01.md), [RM01](docs/experiments/RM01.md).
+8. **External memory is memorization capacity at this data size.** The
+   Engram table, written from scratch and equal to the sw-MLPL builtin to
+   the bit in outputs and gradients, lowers training loss and raises
+   validation loss at every table size (3.93 to 4.67 against 3.79);
+   composed with routing and recurrence it reaches training loss 0.006
+   and the worst held-out row of the ablation (4.76). Evidence:
+   [EG01](docs/experiments/EG01.md), [RE01](docs/experiments/RE01.md).
+9. **A trained docent does not yet beat keyword matching.** On held-out
+   paraphrases the deterministic matcher scores 0.685 and the best docent
+   0.407, so the docent stays out of the campus site until it earns its
+   place. Evidence: [CD01b](docs/experiments/CD01b.md).
 
 ![MX02 specialization map: family-by-expert share heatmaps for top-1 and top-2 routing with their specialization scores](assets/previews/moe2-specialization.svg)
 
@@ -102,6 +124,9 @@ behind it is pinned to the lessons' measured parameter counts.
 | MX01 top-1 of 4 | 7,096 | 3,064 | 55.4 KiB | 23.9 KiB |
 | MX02 top-2 of 4 | 7,096 | 4,136 | 55.4 KiB | 32.3 KiB |
 | LD01 shared + 16 deltas | 6,132 | 3,396 | 47.9 KiB | 26.5 KiB |
+| RM01 recurrent MoE R=3 | 7,096 | 7,392 | 55.4 KiB | 57.8 KiB |
+| EG01 dense + Engram 256 | 8,708 | 3,812 | 68.0 KiB | 29.8 KiB |
+| RE01 recurrent MoE + Engram | 11,992 | 9,840 | 93.7 KiB | 76.9 KiB |
 
 One full expert is 1,072 parameters: 8,576 bytes at f64 and 536 bytes of
 INT4 payload; a rank-4 delta expert is 128 parameters. Generation runs at
@@ -136,12 +161,15 @@ supervision; RM01: routing over reasoning time, with the lowest
 table from scratch (EG01: exact parity with the sw-MLPL builtin; at 90
 training windows the table adds memorization, not generalization), and
 the three sparsities together (RE01: the seven-row ablation matrix, in
-which the composed model memorizes best and generalizes worst). The saga
-closes next with the wiki, the carousel, and the live demo updated. The campus docent (a tiny model trained in
-batch here to direct visitors of the research campus site) is paused after
-its first five steps: it does not yet beat a deterministic matcher, and it
-resumes after Engram. Then distillation, quantization, the expert cache,
-and heterogeneous execution. Plan: [docs/overview/plan.md](docs/overview/plan.md).
+which the composed model memorizes best and generalizes worst). The
+recurrence-and-Engram saga is closed. The campus docent (a tiny model
+trained in batch here to direct visitors of the research campus site) is
+paused after its first five steps: it does not yet beat a deterministic
+matcher. Next is an animated data-flow landscape (every mechanism's data
+movement played back from the pinned recordings, panning along one wide
+scene), then the routed docent, distillation, quantization, the expert
+cache, and heterogeneous execution. Plan:
+[docs/overview/plan.md](docs/overview/plan.md).
 
 ## What is here
 

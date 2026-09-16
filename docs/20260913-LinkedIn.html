@@ -94,6 +94,8 @@ li { margin-bottom: 10px; }
     <tr><td>MX01 top-1 of 4</td><td class="n">7,096</td><td class="n">3,064</td><td class="n hi">3.76</td><td>specialization 0.61</td></tr>
     <tr><td>MX02 top-2 of 4</td><td class="n">7,096</td><td class="n">4,136</td><td class="n">3.92</td><td>fits better, generalizes differently</td></tr>
     <tr><td>LD01 16 rank-4 deltas</td><td class="n">5,060</td><td class="n">2,324</td><td class="n hi">3.37</td><td>half the bytes of 4 full experts</td></tr>
+    <tr><td>RM01 recurrent MoE, R=3</td><td class="n">7,096</td><td class="n">7,392</td><td class="n hi">3.42</td><td>same block reused; 38% of tokens change expert</td></tr>
+    <tr><td>EG01 dense + Engram 256</td><td class="n">8,708</td><td class="n">3,812</td><td class="n">4.67</td><td>equals the builtin exactly; memorizes at 90 rows</td></tr>
   </table>
   <div class="foot"><span>moe-microscope, docs/results/current-findings.md</span><span class="r">04 / 08 &nbsp; Swipe for the data lesson &rarr;</span></div>
 </section>
@@ -143,13 +145,15 @@ li { margin-bottom: 10px; }
     <li>Top-1 routing nearly doubles stored capacity at the same active cost; experts specialize on their own when the tasks have structure.</li>
     <li>Sparse dispatch is exact and saves work, but not time, until experts are big enough for the kernels to matter.</li>
     <li>Data quantity decides whether architectural differences show at all.</li>
+    <li>Reusing one block three times buys quality per parameter (3.42 at the mixture's 7,096), and the router re-decides at every pass.</li>
+    <li>An Engram table written from scratch matches the sw-MLPL builtin to the bit; at 90 training rows it memorizes instead of generalizing, alone and composed.</li>
     <li>A measured yardstick beats a claim: the docent has to earn its place against a matcher.</li>
   </ul>
-  <p><b>Next:</b> word vectors and routed experts for the docent, then recurrence (HRM/TRM style), the Engram table, distillation, quantization, an expert cache, and CPU/GPU heterogeneous execution.</p>
+  <p><b>Next:</b> routed experts for the docent, an animated data-flow landscape of every mechanism, then distillation, quantization, an expert cache, and CPU/GPU heterogeneous execution.</p>
   <p style="margin-top:22px"><b>Live demo</b> sw-ml-study.github.io/moe-microscope</p>
   <p><b>Code and results</b> github.com/sw-ml-study/moe-microscope &nbsp; <b>Wiki</b> github.com/sw-ml-study/moe-microscope/wiki</p>
   <p><b>Language</b> github.com/sw-ml-study/sw-mlpl &nbsp; <b>Blog</b> blog.softwarewrighter.com</p>
-  <div class="foot"><span>Michael A Wright, September 2026. MIT License.</span><span class="r">08 / 08</span></div>
+  <div class="foot"><span>Michael A Wright, September 2026 (updated 15 Sep). MIT License.</span><span class="r">08 / 08</span></div>
 </section>
 
 </body>
