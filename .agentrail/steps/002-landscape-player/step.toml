@@ -1,9 +1,10 @@
 number = 2
 slug = "landscape-player"
-status = "in-progress"
+status = "completed"
 description = "Landscape player. Extend the live demo under learn/ with a generic panning st..."
 role = "production"
 context_files = []
 created_at = "2026-09-15T18:04:11"
+completed_at = "2026-09-15T21:41:33"
 task_type = "live-demo"
-commits = []
+commits = ["420291b65278ada39ba9e071d13d3093a8ff0664"]
