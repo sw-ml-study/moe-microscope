@@ -1,9 +1,10 @@
 number = 1
 slug = "landscape-storyboard"
-status = "in-progress"
+status = "completed"
 description = "Landscape storyboard. Write docs/overview/landscape-storyboard.md before any ..."
 role = "production"
 context_files = []
 created_at = "2026-09-15T18:04:11"
+completed_at = "2026-09-15T18:44:46"
 task_type = "documentation"
-commits = []
+commits = ["98e0d57dd38ee1a865f7f124aa5d5bb06e79d730"]
