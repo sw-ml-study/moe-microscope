@@ -1,0 +1,9 @@
+number = 4
+slug = "landscape-acceptance"
+status = "pending"
+description = "Landscape acceptance and saga close. Verify every scene in a browser against ..."
+role = "production"
+context_files = []
+created_at = "2026-09-15T18:04:11"
+task_type = "documentation"
+commits = []

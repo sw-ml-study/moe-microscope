@@ -1,0 +1,9 @@
+number = 3
+slug = "landscape-scenes"
+status = "pending"
+description = "Landscape scenes. Write fixtures/landscape/scenes-v0.json from the storyboard..."
+role = "production"
+context_files = []
+created_at = "2026-09-15T18:04:11"
+task_type = "live-demo"
+commits = []

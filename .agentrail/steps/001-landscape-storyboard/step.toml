@@ -1,0 +1,9 @@
+number = 1
+slug = "landscape-storyboard"
+status = "pending"
+description = "Landscape storyboard. Write docs/overview/landscape-storyboard.md before any ..."
+role = "production"
+context_files = []
+created_at = "2026-09-15T18:04:11"
+task_type = "documentation"
+commits = []
