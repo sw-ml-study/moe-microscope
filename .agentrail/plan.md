@@ -271,6 +271,9 @@ research (dense, +recurrence, +MoE, +Engram, combinations, +quantization,
 | 0 | DN01 | dense tiny transformer | baseline for everything else |
 | 1 | RC01 | one shared block applied `R` times | does repeated compute replace parameters? |
 | 2 | EG01 | dense + Engram | does external memory improve loss and tasks? |
+| 2a | NG01 | count-based n-gram predictor at orders 1 to 5 (no network) | how much of the held-out set can pure context recall answer, and at which order? (the memory yardstick) |
+| 2b | EG02 | dense + Engram at 480 and 960 examples, with a frozen base, and with orders 2 to 5 alone and paired | does the table pay off once contexts recur, when it cannot co-adapt with the block, and which order pays? |
+| 2c | MT01 | dense + a second head predicting t+2 (multi-token prediction) | does the denser signal help the main head, and how many drafted tokens does the main head accept? |
 | 3 | MX01 | top-1 MoE | can experts specialize? |
 | 4 | MX02 | top-2 MoE | is quality worth doubled active compute? |
 | 5 | RM01 | recurrent MoE | does expert selection change over reasoning time? |
@@ -629,7 +632,8 @@ recording, so the animation is a playback of a real run in the same sense
 as the live demo, never a cartoon of what should happen.
 
 1. **landscape-storyboard.** The scenes, their order, the recording each
-   scene reads, and the parallel call-outs, written before any drawing.
+   scene reads, and the parallel call-outs, written before any drawing:
+   [`landscape-storyboard.md`](landscape-storyboard.md).
 2. **landscape-player.** A generic host page (the live demo's playback
    layer extended with a panning stage and tweened data chips) that renders
    any scene list; no mechanism semantics in the host.
@@ -871,7 +875,14 @@ results table already records and produce a size, speed, quality frontier.
    and 0, 1, 2 shared experts; quality against active parameters and
    expert evaluations per token.
 3. **memory-and-depth sweep.** Engram slots and recurrence depth against
-   quality and bytes.
+   quality and bytes, preceded by the two Engram follow-ups the concept
+   page names: NG01, a count-based 2-gram and 3-gram predictor as the
+   memory yardstick (how much of the held-out set pure context recall can
+   answer), and EG02, the table at 480 and 960 examples and with a frozen
+   base block, both sweeping the n-gram order 1 to 5; and MT01, a second
+   head predicting t+2 (multi-token prediction) measured as an auxiliary
+   loss and as a built-in draft for speculative decoding. These three can
+   be pulled forward into their own short saga on request.
 4. **frontier report.** Pareto front of the sweep on (bytes per token,
    expert evaluations per token, validation loss, per-family accuracy),
    drawn with `pareto_front`, with three named picks: smallest, fastest,

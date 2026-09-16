@@ -14,6 +14,9 @@ the same hierarchy as a navigation layer. Three reader journeys:
   four sparsities, ownership and layering
 - [Delivery plan](overview/plan.md): the sagas, the two scales, the visual
   and measurement contract, the answers on distillation and domain
+- [Landscape storyboard](overview/landscape-storyboard.md): the scenes of
+  the animated data-flow landscape, the recording each reads, and the
+  acceptance rule for each
 - [How experts specialize, how routing decides, how Engram is sized](research/moe-engram-discussion.md)
 - [Concepts](concepts/README.md): the learning path, one mechanism per
   page with a schematic and the four-sparsities table

@@ -21,7 +21,7 @@ Gaps with reproducers are written up as upstream work orders in
 | `train N { }` with `last_losses`, `experiment "name" { }`, `loss_curve` | reference; tiny LM demos | training loops and loss evidence |
 | LM helpers (`train_bpe`, `tokenize_bytes`, `shift_pairs_x/y`, `cross_entropy`, `perplexity`, `softmax`, `top_k`, `sample`, `attention_weights`) | Saga 13 milestone in `../sw-mlpl` | tokenization, windows, loss, sampling |
 | KV-cached generation (`gen_state`, `gen_logits`, `gen_append`, `gen_clone`, `gen_reset`, `gen_stats`) | reference; kv-cache design | decode-phase cache lessons |
-| Engram builtins (`ngram_hash`, `engram`, `apply_engram`, `engram_stats`, `engram_train_step`) | reference; `demos/tiny_lm_engram_mlx.mlpl` | parity target for the from-scratch Engram; addressing primitive |
+| Engram builtins (`ngram_hash`, `engram`, `apply_engram`, `engram_stats`, `engram_train_step`) | reference; `demos/tiny_lm_engram_mlx.mlpl` | parity target for the from-scratch Engram (EG01: outputs and gradients equal to the bit); `ngram_hash` is the addressing primitive the from-scratch form uses |
 | Routing primitives (`argtop_k`, `argmax`, `gather_rows`, `compress`, `one_hot`, `eq`/`gt`/`lt`, `scatter`, `concat` with axis, `take`) | reference | router masks, dispatch tables, specialization maps |
 | Bounded byte I/O (`read_bytes` with offset/length, `read_bytes_packed`, `write_bytes`, `write_atomic`, `append_bytes`, `file_size`, `to_native`/`parse_native`, `to_json`) | reference; `../demo-ml-utils` demos | packed TinyMoE file, per-expert reads |
 | Monotonic `clock_ms()` | reference | wall-clock secondary speed metric |

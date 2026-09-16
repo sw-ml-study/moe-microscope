@@ -1,6 +1,6 @@
 number = 1
 slug = "landscape-storyboard"
-status = "pending"
+status = "in-progress"
 description = "Landscape storyboard. Write docs/overview/landscape-storyboard.md before any ..."
 role = "production"
 context_files = []

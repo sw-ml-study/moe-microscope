@@ -10,6 +10,32 @@ The mandatory checklist in `AGENTS.md` applies to every step: focused tests,
 tracked-file audit, named-file staging, a detailed commit on `main`,
 Agentrail completion metadata, and a verified `git push origin main`.
 
+## Active: `animated-data-flow-landscape` (Saga 6)
+
+Purpose: a very visual explanation of the combined techniques that
+eschews tables for movement of data: tokens flow through the embedding,
+attention, the Engram lookup, the router, the experts, the recurrence
+loop, and the head on one landscape wider than the screen, the camera
+panning along it roughly chronologically with parallel work called out;
+every moving value read from a pinned recording. Started 2026-09-15 by
+the user's decision, ahead of the routed docent.
+
+1. `landscape-storyboard` - done: [`landscape-storyboard.md`](landscape-storyboard.md):
+   eight scenes in forward-pass order over two example windows (the
+   walkthrough's `17+25=|42.` and the lessons' `2+3=|5.`, with a labeled
+   seam), the recording and observation names each reads, the chip
+   vocabulary and camera path, five call-outs each tied to a recorded
+   value or a cited mechanism property, honest placeholders for the
+   cache, decode-cache compression, and multi-token prediction, and a
+   per-scene acceptance rule the verifier reads back from the fixture.
+2. `landscape-player` - a generic panning stage under `learn/` that
+   renders a scene list from a scenes file over the pinned recordings,
+   with `?verify=1`.
+3. `landscape-scenes` - the scenes file from the storyboard, deployed and
+   verified.
+4. `landscape-acceptance` - browser verification of every scene against
+   its recording, README, docs, wiki, campus handoff, saga close.
+
 ## Completed: `recurrence-and-engram` (Saga 5)
 
 Purpose: parameter sparsity and memory-lookup sparsity, measured: one block
@@ -523,7 +549,11 @@ track in [`plan.md`](plan.md).
   acceptance (the only `sw-checklist` scope), and the pocket-helper demo.
 - Saga 14 `configuration-frontier`: one harness over configuration records;
   sweeps of expert count, top-k, shared always-on experts, Engram slots, and
-  recurrence depth; a Pareto frontier with smallest, fastest, and best picks.
+  recurrence depth; a Pareto frontier with smallest, fastest, and best picks;
+  first the Engram follow-ups NG01 (a count-based n-gram yardstick over
+  orders 1 to 5), EG02 (the table at 480 and 960 examples, with a frozen
+  base, and over orders 2 to 5), and MT01 (a second head predicting t+2,
+  as an auxiliary loss and as a draft), which can move earlier on request.
 - Saga 15 `cuda-and-host-resident-experts`: backend probes for CUDA and MLX,
   lab-scale training on the GPU, expert weights in host RAM with a bounded
   GPU cache, CPU execution of missing experts, and a VRAM-budget report.
