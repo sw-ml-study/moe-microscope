@@ -1,0 +1,28 @@
+# Capability probe C1: a Mamba-style selective scan (a diagonal linear recurrence whose decay and input gates depend on the token) written as a literal-count repeat traces through grad and trains with adam; the state-space block of the planned state-space-and-hybrid saga needs nothing more from the language at microscope scale (a sequential scan over the window; no parallel scan).
+Wa = param[4, 4];
+Wa = randn(1, [4, 4]) * 0.3;
+Wb = param[4, 4];
+Wb = randn(2, [4, 4]) * 0.3;
+x = randn(3, [8, 4]);
+def u:scan(x) {
+  "Selective scan: h_t = a_t * h_{t-1} + b_t * x_t with a_t = sigmoid(x_t Wa) and b_t = x_t Wb; the stacked states [T, dm].";
+  a = sigmoid(matmul(x, Wa));
+  b = matmul(x, Wb);
+  h = take(b, 0, 0) * take(x, 0, 0);
+  out = reshape(h, [1, 4]);
+  t = 1;
+  repeat 7 {
+    h = take(a, 0, t) * h + take(b, 0, t) * take(x, 0, t);
+    out = concat(out, reshape(h, [1, 4]), 0);
+    t = t + 1
+  };
+  out
+}
+before = reduce_add(u:scan(x) * u:scan(x));
+g = grad(reduce_add(u:scan(x) * u:scan(x)), Wa);
+k = 0;
+while lt(k, 20) {
+  adam(reduce_add(u:scan(x) * u:scan(x)), [Wa, Wb], 0.01, 0.9, 0.999, 0.00000001);
+  k = k + 1
+};
+print("scan shape", shape(u:scan(x)), "grad nonzero", gt(reduce_add(abs(g)), 0), "loss fell", lt(reduce_add(u:scan(x) * u:scan(x)), before));

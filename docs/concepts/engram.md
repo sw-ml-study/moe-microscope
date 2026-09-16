@@ -96,14 +96,17 @@ block, on 90 windows whose held-out prompts share few exact 2-gram and
 those conditions the cheapest way to lower the training loss is to write
 each training answer into the rows its context addresses, which the
 gate then admits (it opens from 0.12 to about 0.7), and nothing forces
-the rows to hold anything a held-out context can use. DeepSeek's setting
+the rows to hold anything a held-out context can use. The context length is not the limit: a 2-gram or 3-gram context is two
+or three tokens, and every window holds them; nor does distillation add
+data, since the in-repo teacher (TE01) saw the same 90 rows and is
+itself worse held out (4.14). DeepSeek's setting
 differs on every count: billions of tokens, a vocabulary of thousands,
 tables of hundreds of thousands of rows, and a base model whose local
 recall the table offloads.
 
 How it could pay off, in the order we can test:
 
-1. More data (EG02, planned): the DS01 harness already trains at 480 and
+1. More data (EG02, queued in the frontier saga, and SE01 in Saga 9 at 480 examples): the DS01 harness already trains at 480 and
    960 examples, where prose becomes a solved family and arithmetic
    starts to move; adding the table there asks whether recall of
    recurring contexts helps once contexts recur.
@@ -163,8 +166,7 @@ model to accept or reject; Engram produces no tokens and sits on the
 input side of the block. A model can have both: the MTP module reads the
 same Engram-enriched state.
 
-Plan: MT01 (queued in the configuration-frontier saga, movable on
-request) adds a second head that predicts position t+2 with the deep
+Plan: MT01 to MT03 (Saga 10) add a second head that predicts position t+2 with the deep
 supervision machinery of RC01, measures the main head's validation loss
 with and without the auxiliary loss, then uses the second head as a
 draft and measures the acceptance rate and tokens per forward pass on

@@ -21,8 +21,6 @@ Docent runs have their own table, [docent-results.md](docent-results.md).
 | MX01@120 | moe 120ex 400ep lr0.003 (DS01) | mlpl-repl 0.22.0 | 7096 | 3064 | - | - | 1 | - | - | 0.0532 | 4.1719 | 64.84 | 0 | 0 | 0 | 0.667 | - | - | - | - | - |
 | MX01@480 | moe 480ex 200ep lr0.003 (DS01) | mlpl-repl 0.22.0 | 7096 | 3064 | - | - | 1 | - | - | 0.0465 | 1.4174 | 4.13 | 0.088 | 0.061 | 0.077 | 1 | - | - | - | - | - |
 | MX01@960 | moe 960ex 200ep lr0.003 (DS01) | mlpl-repl 0.22.0 | 7096 | 3064 | - | - | 1 | - | - | 0.047 | 1.2226 | 3.4 | 0.091 | 0.025 | 0.081 | 0.75 | - | - | - | - | - |
-| LD01 | shared ffn + 16 rank4 deltas top1 d16 T28 120ex 300ep lr0.003 alpha0.01 routerMACs272 | mlpl-repl 0.22.0 | 6132 | 3396 | 1024 | - | 1 | 27168 | - | 0.0496 | 3.456 | 31.69 | 0 | 0 | 0 | 0 | - | 1.682 | 1.528 | 0.241 | - |
-| LD01r | 16 rank4 deltas only top1 d16 T28 120ex 300ep lr0.003 alpha0.01 routerMACs272 | mlpl-repl 0.22.0 | 5060 | 2324 | 1024 | - | 1 | 18592 | - | 0.0443 | 3.3652 | 28.94 | 0 | 0 | 0 | 0 | - | - | - | - | - |
 | CD00 | campus snapshot A: 12 places, 28 stories, 965 rows (724 train, 241 val), hash 1356782549, no model | mlpl-repl 0.22.0 | - | - | - | - | - | - | - | 0.2993 | - | - | - | - | - | - | - | - | - | - | - |
 | RC01@1 | recurrent block R=1 deep supervision, d16 h32 1head T28 120ex 300ep lr0.003 | mlpl-repl 0.22.0 | 3812 | 2996 | - | - | 1 | 23968 | - | 0.0201 | 3.7888 | 44.2 | 0 | 0 | 0 | 0.667 | - | - | - | - | - |
 | RC01@2 | recurrent block R=2 deep supervision, d16 h32 1head T28 120ex 300ep lr0.003 | mlpl-repl 0.22.0 | 3812 | 5092 | - | - | 1 | 40736 | - | 0.037 | 3.4545 | 31.64 | 0 | 0 | 0 | 0.667 | - | - | - | - | - |
@@ -37,3 +35,5 @@ Docent runs have their own table, [docent-results.md](docent-results.md).
 | EG01b@256 | dense + engram 2,3-gram 256 slots x8 builtin (table 4096 params 32768 B) d16 h32 1head T28 120ex 300ep lr0.003 | mlpl-repl 0.22.0 | 8708 | 3812 | - | - | 1 | 30496 | - | 0.0497 | 4.6653 | 106.2 | 0 | 0 | 0 | 0 | - | - | - | - | 0.697 |
 | ME01 | moe E4 top1 + engram 2,3-gram 256 slots x8, d16 h32 1head T28 120ex 300ep lr0.003 alpha0.01 | mlpl-repl 0.22.0 | 11992 | 3880 | - | - | 1 | 31040 | - | 0.1112 | 4.6012 | 99.61 | 0 | 0 | 0 | 0.333 | - | 0.687 | 1.071 | 0.615 | 0.671 |
 | RE01 | recurrent moe E4 top1 R=3 deep supervision + engram 2,3-gram 256 slots x8, d16 h32 1head T28 120ex 300ep lr0.003 alpha0.01 | mlpl-repl 0.22.0 | 11992 | 9840 | - | - | 3 | 78720 | - | 0.3249 | 4.7571 | 116.4 | 0 | 0 | 0.286 | 0 | - | 0.815 | 1.081 | 0.423 | 0.741 |
+| LD01 | shared ffn + 16 rank4 deltas top1 d16 T28 120ex 300ep lr0.003 alpha0.01 routerMACs272 | mlpl-repl 0.22.0 | 6132 | 3396 | 1024 | - | 1 | 27168 | - | 0.0486 | 3.456 | 31.69 | 0 | 0 | 0 | 0 | - | 1.682 | 1.528 | 0.241 | - |
+| LD01r | 16 rank4 deltas only top1 d16 T28 120ex 300ep lr0.003 alpha0.01 routerMACs272 | mlpl-repl 0.22.0 | 5060 | 2324 | 1024 | - | 1 | 18592 | - | 0.0428 | 3.7896 | 44.24 | 0 | 0 | 0.286 | 0 | - | - | - | - | - |

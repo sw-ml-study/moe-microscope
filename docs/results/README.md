@@ -6,6 +6,9 @@ Concise answers first; the evidence is one link deeper.
   as evidence, interpretation, and limitation per claim
 - [Resource economics](resource-economics.md): sizes, expert cost, stored
   versus active, projections, residency, transfer estimates (M/D/E)
+- [Report card](report-card.md): every experiment graded and ranked, with
+  what was expected, what happened, and what would make the weak ones
+  effective
 - [Quality](quality.md): exact match by task family and validation loss,
   including the data-scale sweep
 - [Generation benchmark](../reference/generation-benchmark.md): measured
@@ -26,7 +29,7 @@ Concise answers first; the evidence is one link deeper.
 | Does more data help? | Yes: eightfold data cuts validation loss by two thirds | [finding 4](current-findings.md) |
 | Does sparse dispatch save work? | Yes: 13,440 to 3,360 expert row evaluations, outputs exactly equal | [finding 5](current-findings.md) |
 | Is sparse dispatch faster yet? | No: dispatch bookkeeping outweighs the tiny matmuls skipped | [finding 5](current-findings.md) |
-| Are cheap experts worth it? | Sixteen rank-4 deltas cost half of four full experts and give the best validation losses so far | [finding 6](current-findings.md) |
+| Are cheap experts worth it? | With a shared expert: sixteen rank-4 deltas cost half of four full experts and give the best non-recurrent validation loss (3.46); deltas alone match the dense baseline (3.79) | [finding 6](current-findings.md) |
 | Can compute replace parameters? | Partly: the mixture block applied three times reaches the lowest 120-example validation loss (3.42), and 38 to 46 percent of tokens change expert between recurrences; not a converging loop | [finding 9](current-findings.md) |
 | Does external memory help? | Not at 90 windows: every table size lowers training loss and raises validation loss (3.93 to 4.67 against 3.79); the from-scratch form equals the builtin exactly | [finding 10](current-findings.md) |
 | Do memory and compute sparsity complement each other? | Not at 90 windows: routing plus the table gives 4.60, routing plus recurrence plus the table 4.76 at training loss 0.006, the worst held-out row of the seven-row ablation | [RE01](../experiments/RE01.md) |

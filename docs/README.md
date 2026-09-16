@@ -25,6 +25,8 @@ the same hierarchy as a navigation layer. Three reader journeys:
 
 - [Results](results/README.md): the current findings as evidence,
   interpretation, and limitation; resource economics; the quality table
+- [Report card](results/report-card.md): every experiment graded and
+  ranked against its expectation, with the next step for each
 - [Full results table](reference/results.md): one row per lesson run
 - [Generation benchmark](reference/generation-benchmark.md): measured
   latency and throughput

@@ -320,14 +320,15 @@ it with duplicated content or edit it independently.
   and transformation, a step strip for the run, and recorded memory, speed,
   and quality measurements written to the catalog and `docs/reference/results.md`.
   Diagrams are derived from the same recorded values the tests assert on.
-- One training run per process, and training loops at top level: `adam`
-  keeps per-parameter state by name that outlives a re-created model
-  (finding F22, still open after upstream's `reset_optimizer()`), and
-  until 2026-09-15 `adam` inside a user function trained local copies
-  (F21, resolved upstream; the top-level convention stays for
-  readability). A lesson with several variants runs each through its own
-  interpreter process (the gate script loops) and composes any shared
-  diagram from committed metrics.
+- One training run per process, and training loops at top level. Until
+  2026-09-15 `adam` kept per-parameter state by name that outlived a
+  re-created model and a global step counter that leaked into every later
+  model in the process (finding F22, resolved upstream in two fixes), and
+  `adam` inside a user function trained local copies (F21, resolved). Both
+  are verified fixed, and the convention stays: a lesson with several
+  variants runs each through its own interpreter process (the gate script
+  loops) and composes any shared diagram from committed metrics, so a
+  future regression cannot contaminate a row silently.
 - Training uses the dense-masked MoE formulation; inference uses sparse
   dispatch. Every lesson that introduces a sparse path asserts parity with
   the dense-masked path on the same fixture.

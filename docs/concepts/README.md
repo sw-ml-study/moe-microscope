@@ -29,15 +29,24 @@ flowchart LR
 | 7 | How many experts fit in the same storage? | [Quantization](quantization.md) | projected (RB01) |
 | 8 | Does the whole model need to be resident? | [Expert cache](expert-cache.md) | estimated (RB01) |
 | 9 | Should every expert run on the same device? | [Heterogeneous execution](heterogeneous-execution.md) | planned |
+| 10 | Can a state-space block replace attention, and does a hybrid keep the best of each? | [State-space block](state-space.md) | planned (SS01, SS02); the scan is probed |
 
-## Four kinds of sparsity
+## Resource allocation axes
 
-| Sparsity | We avoid paying for | Mechanism | Where it is measured |
+The four sparsities the project started with, extended by
+[`research4.txt`](../research/research4.txt) to the axes a tiny model on a
+small CPU has to allocate; each has, or will have, a lesson that turns it
+on alone against the dense baseline.
+
+| Axis | The question it answers | Mechanism | Where it is measured |
 |---|---|---|---|
-| Parameter | many unique layers | recurrence | RC01, RM01, RE01 (measured) |
-| Compute | every expert on every token | top-k routing and sparse dispatch | MX01, MX02, SD01 |
-| Memory lookup | reconstructing common patterns with neural weights | Engram | EG01, RE01 (measured) |
-| Residency | the whole expert bank in fast memory | expert cache | XC01 (planned); RB01 gives the estimates |
+| Compute | which computation executes? | top-k routing and sparse dispatch | MX01, MX02, SD01 |
+| Parameters | how many transformations share weights? | recurrence | RC01, RM01, RE01 (measured) |
+| Memory | what can be retrieved instead of recomputed? | Engram | EG01, RE01 (measured; not yet valuable at 90 windows) |
+| State | how much sequence history stays resident? | state-space block | SS01, SS02, HA01 (planned, Saga 7) |
+| Residency | what must be in fast memory right now? | expert cache | XC01 (planned); RB01 gives the estimates |
+| Precision | how many bits represent each parameter? | quantization | QZ01 (planned); RB01 projects |
+| Time | how many future tokens can one state predict? | multi-token prediction | MT01 to MT03 (planned, Saga 10) |
 
 ## The parts and why they exist
 
@@ -49,6 +58,7 @@ flowchart LR
 | Load balancing | prevents expert collapse | keeps capacity usable |
 | Sparse dispatch | runs only selected experts | turns sparsity into less work |
 | Recurrence | reuses one block several times | more computation without more parameters |
+| State-space block | carries the context in a fixed-size state that decays per token | constant memory per token during decode; attention kept only where recall needs it |
 | Engram | retrieves memorized n-gram information | moves lookup-like knowledge out of weights |
 | Distillation | transfers behavior from a larger model | improves tiny-model quality |
 | Quantization | shrinks expert representation | lets more experts fit in memory |

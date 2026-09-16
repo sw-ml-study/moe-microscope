@@ -1,4 +1,4 @@
-# F22 reproducer: adam keeps per-parameter state by name, so a model re-created under the same name inherits the previous model's moments (the first-step update differs from a fresh name); there is no reset builtin; checked by scripts/run-probes.
+# F22 reproducer, resolved upstream (3ffd7266, per-parameter Adam step counter, after 7d89e953's reset_optimizer and rebind clearing): a model re-created under the same name now takes the same first step as a fresh name; checked by scripts/run-probes.
 x = reshape([1, 2], [1, 2]);
 h = linear(2, 1, 3);
 k = 0;

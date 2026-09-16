@@ -15,6 +15,7 @@ Gaps with reproducers are written up as upstream work orders in
 | Reverse-mode autograd and `adam` over a mixed list of models and params, with the loss written as user functions | probe "adam trains a list of expert models plus a router param through a user function" | training every variant as reusable source |
 | One shared block applied `R` times by nested `apply` | probe "one shared block applied R times trains through nested apply"; `chain` copies rather than shares (F3, documented) | recurrence lessons |
 | `gather_rows` on the tape (scatter-add backward) | probe "gather_rows scatter-adds gradient into addressed rows only" (F4) | from-scratch Engram addressing that trains |
+| Selective scan (a Mamba-style diagonal recurrence whose decay and input gates depend on the token) as a literal-count `repeat` inside `grad`, trained with `adam` | probe "scan shape 8 4 grad nonzero 1 loss fell 1"; `probes/c1_selective_scan_in_grad.mlpl` | from-scratch state-space block (SS01) and the attention, state-space, and MoE hybrid (SS02); a sequential scan over the window is enough at microscope scale, no parallel scan needed |
 | KL divergence as `reduce_add(P * (log(P) - log(Q)))`, eager and on the tape | probe "KL divergence is a composition of shipped builtins" | token-level distillation |
 | `softmax(x)` with one argument, eager and on the tape | probe "softmax takes one argument in eager and tape evaluation" (F1) | one loss expression for evaluation and training |
 | Packed INT8 bytes with bounded `read_bytes(path, offset, length)` | probe "packed INT8 expert bytes round-trip through a bounded range read" | packed TinyMoE file, per-expert reads |
@@ -61,7 +62,6 @@ Gaps with reproducers are written up as upstream work orders in
 | F7 model as user-function argument | probe "a model value cannot be a user-function argument"; `probes/f7_model_argument.mlpl` | globals |
 | F8 `emit_frame` literal name | probe "emit_frame rejects a name held in a variable"; `probes/f8_emit_frame_name.mlpl` | literal names |
 | F23 shape-derived or parameter-bound reshape dims inside `grad` drop the gradient (silent routing collapse) | `probes/f23_shape_derived_reshape_in_grad.mlpl`, `probes/f23b_param_bound_reshape_in_grad.mlpl` | literal or global dims; pad prompts to the window |
-| F22 `adam` state keyed by name survives model re-creation; no reset | `probes/f22_adam_state_by_name.mlpl` | one training run per process, or unique names |
 | F24 `apply_engram`'s ids bound to a function parameter are not seen inside `grad` | `probes/f24_apply_engram_ids_param_in_grad.mlpl` | the window's ids in a global |
 | F17 record field access inside `grad` | `probes/f17_record_field_in_grad.mlpl` | bind fields to variables eagerly |
 

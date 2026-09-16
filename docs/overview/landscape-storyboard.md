@@ -218,10 +218,11 @@ must find on screen).
 
 | Station | Where on the track | Planned lesson |
 |---|---|---|
-| Hot and cached experts | beside the expert lanes of scene 5 | XC01 (Saga 11): the cache trace would move chips between a "resident" and a "fetched" shelf |
-| Decode-cache compression | after the head, on the return path of a generation loop | KV01 (Saga 11) |
-| Multi-token prediction | after the head | MT01 (queued in the frontier saga): a second head drafting position t+2 for the main head to verify; the station is labeled "not yet measured" until it is |
+| Hot and cached experts | beside the expert lanes of scene 5 | XC01 (Saga 14): the cache trace would move chips between a "resident" and a "fetched" shelf |
+| Decode-cache compression | after the head, on the return path of a generation loop | KC01 (Saga 14), applied only to the attention blocks the hybrid keeps |
+| Multi-token prediction | after the head | MT01 to MT03 (Saga 10): a second head drafting position t+2 for the main head to verify; the station is labeled "not yet measured" until it is |
 | Prefetch during attention | a dashed lane above scene 2 | XC01: drawn only when a recorded schedule exists |
+| Sequence state | a station beside attention in scene 2 | SS01 (Saga 7): the fixed-size state chip carried along the window, decaying |
 
 ## Camera and pacing
 

@@ -590,7 +590,7 @@ with its margin over the matcher is met.
 Exit (as paused on 2026-09-14, by decision, so that Engram runs first): steps
 1 to 5 done, the replay page live, the matcher yardstick and the word-vector
 result recorded; the routed docent and everything after it continue in
-Saga 7. The original exit (the usefulness bar met; a batch-trained tiny
+Saga 11. The original exit (the usefulness bar met; a batch-trained tiny
 MoE loaded in the page navigating the three destinations with explainable
 routing and catalog-backed responses, telling the right canned story once
 and another on request; the live-training budget measured;
@@ -655,7 +655,127 @@ Exit: the landscape plays end to end from pinned recordings, every scene
 names its source, and the parallel call-outs match the schedules the
 simulators recorded.
 
-## Saga 7: campus docent, routed and in the browser
+## Saga 7: state-space blocks and the tiny hybrid
+
+Prompted by NVIDIA's Nemotron 3 family (Mamba-2 layers, a few attention
+layers, MoE layers, latent experts, multi-token prediction) and the
+analysis in [`research4.txt`](../research/research4.txt): a fifth axis,
+sequence state. Attention's working memory grows with the history (a key
+and a value per token per layer); a state-space block carries the history
+in a fixed-size state updated once per token and decaying selectively.
+For a CPU with limited RAM that difference may matter more than any FLOP
+count. The block is introduced as one more independently measured
+mechanism, from simple to selective, before it meets the mixture; nothing
+is a port of a production kernel (a sequential scan over the window is
+enough at this length; `probes/c1_selective_scan_in_grad.mlpl` shows it
+traces and trains today).
+
+1. **simple-ssm (SS01).** `s_t = A * s_(t-1) + B x_t`, `y_t = C s_t` with
+   diagonal learned `A` (in 0 to 1) and tiny projections, in place of
+   DN01's attention: validation loss and family accuracy against DN01 at
+   matched parameters; the state vector drawn evolving along one window
+   (the microscope view of a fixed-size memory); and the first
+   memory-first result: persistent state bytes against prompt length 16,
+   64, 256, and 1,024 for attention (grows) and the state block (fixed),
+   measured on the generation benchmark, with microseconds per token
+   beside it, honest if the interpreter's scan is slower.
+2. **selective-ssm (SS02).** `A(x_t)`, `B(x_t)`, `C(x_t)` as functions of
+   the token (a gated, Mamba-like block): does input-dependent gating
+   help on this domain, and what does the decay per position look like on
+   arithmetic against prose.
+3. **ssm-plus-attention (HA01).** How little attention is necessary: the
+   state block with one attention block among several (the Nemotron
+   pattern, `M M M A`), depth from the recurrence machinery; the row that
+   keeps attention's held-out MLPL answers at the least attention state.
+4. **ssm-plus-moe (SM01).** The state block for sequence mixing, the
+   routed experts for the channel transformation (interpretation A of the
+   research note, MoE-Mamba's precedent): are state and conditional
+   compute complementary; specialization and loads as in MX02.
+5. **latent-moe (LM01).** Experts in a projected-down latent space
+   (`d -> r`, experts `r -> r`, `r -> d`), Nemotron 3 Super's latent MoE,
+   beside LD01's rank-4 deltas and MX01's full experts (LM01 full, LM02
+   deltas, LM03 latent): expert parameters, active parameters, bytes
+   moved, and quality per expert.
+6. **hybrid-close.** Recordings, live-demo lessons, landscape scenes (the
+   state chip carried along the window, decaying; the KV shelf growing
+   beside it), the ablation matrix extended with the state column
+   (dense, SSM, hybrid, SSM-MoE, hybrid-MoE), concept pages, wiki.
+
+Exit: SS01, SS02, HA01, SM01, and LM01 rows in the results table with
+state bytes per token history as a first-class column; the state-against-
+prompt-length diagram from measured values; the concept page states
+whether a fixed-size state learned anything here and how little attention
+the hybrid needed.
+
+## Saga 8: distillation
+
+Moved ahead of memory and prediction lessons on the research note's
+argument: models this small, asked to discover sequence modeling, routing,
+specialization, external memory, and recurrence from tiny data at once,
+may simply exceed their learning capacity; a teacher's signal is the
+cheapest capacity we can add, and TE01 already exists.
+
+1. **student-matrix (KD01).** The same student trained four ways: A ground
+   truth only, B token-level KD (`beta L_KD` against the in-repo teacher
+   fixture), C hidden-state distillation against the teacher's
+   activations, D both; validation loss and family accuracy for each, on
+   the dense student and on the tiny hybrid from Saga 7.
+2. **router-warm-start.** `gamma L_router` from task tags for the first
+   fraction of training; specialization with and without warm start.
+3. **expert-delta-distillation.** Low-rank expert deltas fitted to the dense
+   teacher's activations on routed subsets; compare with random-init deltas.
+4. **external-teacher-gate.** Opt-in fixture export from a local quantized
+   teacher through the gated path; identical fixture schema; documented exit
+   status when unavailable.
+
+Exit: each distillation term has a measured, diagrammed, and tabled effect;
+the student matrix says which signal a tiny hybrid can use.
+
+## Saga 9: where information lives: state, memory, and experts
+
+Three visibly different ways of spending scarce resources, on one model:
+the state block's dynamic sequential memory, Engram's static hashed
+memory, and the experts' learned conditional computation.
+
+1. **ssm-plus-engram (SE01).** Dynamic against static memory: the state
+   block with the Engram table, at 120 and at 480 examples (the EG02
+   points), with the gate and the state decay drawn side by side on one
+   window.
+2. **ssm-engram-moe (SEM01).** All three allocation mechanisms in one
+   block: for one token, the Engram row and gate, the state update
+   magnitude, the router's probabilities, and the active expert, the
+   microscope view the research note sketches; the ablation matrix
+   extended (SSM, attention, MoE, Engram columns; dense, SSM, hybrid,
+   SSM-MoE, SSM-Engram, hybrid-MoE, full rows).
+3. **four-memories.** The concept page that names the four kinds of memory
+   (SSM state: dynamic, sequential; KV cache: dynamic, content-addressed;
+   Engram: static, hashed; experts: static, learned routing) with the
+   bytes each holds at inference, from measured rows.
+
+Exit: the seven-row matrix with the state column filled; the four-memories
+page with measured bytes; every claim a results row.
+
+## Saga 10: multi-token prediction
+
+Nemotron 3 Super uses multi-token prediction for native speculative
+generation; small models find it hard to exploit, and a curriculum helps,
+so the horizon grows one token at a time and the collapse is measured.
+
+1. **mtp-one (MT01).** A second head predicting position t+2 as an
+   auxiliary loss on the dense student and the hybrid: the main head's
+   validation loss with and without it.
+2. **mtp-draft (MT02).** The second head as a draft for the main head to
+   verify on the generation benchmark: proposal length, accepted and
+   rejected tokens, effective tokens per main step.
+3. **mtp-horizon (MT03).** Heads for t+2 and t+3 with a curriculum
+   (each horizon added after the previous one trains), watching the
+   acceptance rate fall as the horizon grows; a landscape scene for the
+   drafted tokens and their verification.
+
+Exit: MT01 to MT03 rows with an acceptance column; the concept page
+states what horizon a tiny model can draft.
+
+## Saga 11: campus docent, routed and in the browser
 
 The docent saga continued after Engram: the same design decisions and the
 same usefulness bar as Saga 4. Steps, renumbered from Saga 4's 6 to 9:
@@ -720,7 +840,7 @@ implementation-ready easel handoff. If the bar is not met, the saga still
 closes with the measured result and no campus integration.
 
 
-## Saga 8: campus docent live in the campus UI
+## Saga 12: campus docent live in the campus UI
 
 The trained docent replaces the mockup's keyword matcher in the campus
 site, and that replacement is verified on the live page, not assumed. The
@@ -763,7 +883,7 @@ live site answers from weights.
 Exit: the live campus site answers from the trained weights, proven by the
 step 4 record; the keyword matcher remains only as the documented fallback.
 
-## Saga 9: campus docent v1
+## Saga 13: campus docent v1
 
 Starts when the campus adds the IBM 1442 card read punch and its radio demo
 (snapshot B). If that content is not yet published, the step authors
@@ -787,21 +907,14 @@ Exit: the before/after study is a recorded lesson with rows and diagrams,
 and the campus easel can show which revision its docent knows.
 
 
-## Saga 10: distillation
+## Saga 14: quantization, packed format, expert cache, and partial KV compression
 
-1. **token-kd (KD01 part 1).** `beta L_KD` against the in-repo teacher
-   fixture; KL and accuracy deltas versus the same student without KD.
-2. **router-warm-start.** `gamma L_router` from task tags for the first
-   fraction of training; specialization with and without warm start.
-3. **expert-delta-distillation.** Low-rank expert deltas fitted to the dense
-   teacher's activations on routed subsets; compare with random-init deltas.
-4. **external-teacher-gate.** Opt-in fixture export from a local quantized
-   teacher through the gated path; identical fixture schema; documented exit
-   status when unavailable.
-
-Exit: each distillation term has a measured, diagrammed, and tabled effect.
-
-## Saga 11: quantization, packed format, and expert cache
+With most blocks state-space after Saga 7, only the attention blocks keep a
+key-value cache; the compression lesson (KC01) therefore compresses the
+remaining attention state after the architecture has removed most of it,
+and the diagram shows both reductions: pure transformer (every block a
+cache), hybrid (a few caches plus fixed states), hybrid plus compressed
+caches.
 
 1. **int8-experts (QZ01).** Symmetric INT8 experts and shared weights as
    integer-valued arrays plus scales; quality delta; bytes per expert.
@@ -830,7 +943,7 @@ Exit: each distillation term has a measured, diagrammed, and tabled effect.
 Exit: the same model runs from a packed file through a capacity-limited cache
 with a checked curve of hit rate and bytes per token versus capacity.
 
-## Saga 12: hybrid execution and the embedded budget
+## Saga 15: hybrid execution and the embedded budget
 
 1. **bandwidth-calibration.** A tiny `bench bw` analogue measuring the
    simulated transfer and host-compute bandwidths (from counted bytes and
@@ -847,7 +960,7 @@ with a checked curve of hit rate and bytes per token versus capacity.
 Exit: HY01 and PK01 rows exist; the embedded gap is a written handoff, not a
 claim.
 
-## Saga 13: interactive microscope host, complete
+## Saga 16: interactive microscope host, complete
 
 1. **systems-recordings.** Pinned recordings for QZ01, XC01, HY01, and PK01;
    cache traces and q-star splits proven in the generic host.
@@ -862,7 +975,7 @@ claim.
 Exit: every recorded lesson renders in the generic host without lesson-
 specific Rust, and the pocket helper runs end to end.
 
-## Saga 14: configuration frontier
+## Saga 17: configuration frontier
 
 After the mechanisms exist, compare configurations on the dimensions the
 results table already records and produce a size, speed, quality frontier.
@@ -891,7 +1004,7 @@ results table already records and produce a size, speed, quality frontier.
 Exit: a frontier diagram whose every point is a results row and a
 recording.
 
-## Saga 15: CUDA system and CPU-resident expert weights
+## Saga 18: CUDA system and CPU-resident expert weights
 
 Today every lesson runs in the f64 CPU interpreter; `device("mlx")` and the
 CUDA backend in sw-MLPL are unused here. This saga moves the lab-scale runs
@@ -914,13 +1027,13 @@ cache or executed on the CPU.
    real); measured tokens per second against the transfer-only policy and
    against all-GPU, with VRAM held below a chosen ceiling.
 5. **vram-budget-report.** The smallest VRAM that serves each frontier pick
-   from Saga 12 at a stated tokens-per-second, with the CPU/GPU split that
+   from Saga 15 at a stated tokens-per-second, with the CPU/GPU split that
    achieves it.
 
 Exit: a lab-scale MoE runs on CUDA with expert weights in host RAM at a
 documented VRAM ceiling, and the sw-MLPL backend findings are filed.
 
-## Saga 16: findings, recommendations, and future work
+## Saga 19: findings, recommendations, and future work
 
 The closing document, `docs/report.md`, written from the results table,
 the recordings, the findings ledger, and the frontier: what was built, what

@@ -76,15 +76,19 @@ move every number.
 ## 6. Cheap experts are worth trying
 
 Evidence: sixteen rank-4 deltas cost 2,048 parameters against 4,288 for
-four full experts; validation loss 3.46 with a shared FFN and 3.37 without,
-the best in the table; no prose generalization on that run; noisier
-training.
+four full experts; validation loss 3.46 with a shared FFN (the best of the
+non-recurrent models at this data size) and 3.79 without (the dense
+baseline's loss, with the first held-out MLPL answers of a non-recurrent
+model); no prose generalization on either run.
 
-Interpretation: expert count is cheap when experts are deltas; what to buy
+Interpretation: expert count is cheap when experts are deltas, and the
+shared always-on expert is what makes the cheap experts pay; what to buy
 with the budget is the configuration frontier's question.
 
 Limitation: one run each; the deltas-only model is linear per token and
-leans on attention.
+leans on attention. The deltas-only number was first reported as 3.37,
+contaminated by Adam's global step counter (finding F22, fixed upstream on
+2026-09-15) and re-measured.
 
 ## 7. The teacher is a fixture, not a demonstration
 

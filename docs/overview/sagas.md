@@ -28,9 +28,15 @@ the user's decision, ahead of the routed docent.
    value or a cited mechanism property, honest placeholders for the
    cache, decode-cache compression, and multi-token prediction, and a
    per-scene acceptance rule the verifier reads back from the fixture.
-2. `landscape-player` - a generic panning stage under `learn/` that
-   renders a scene list from a scenes file over the pinned recordings,
-   with `?verify=1`.
+2. `landscape-player` - done: `learn/landscape.html` and
+   `learn/landscape.js` (static, no library) render a scene list from
+   `fixtures/landscape/scenes-v0.json` over the pinned recordings: a wide
+   track panned scene by scene (select, previous, next, play, scrubber,
+   reduced motion), stations and lanes from the scenes file, chip kinds
+   (token, vector, score, rows, group, strip) built from named
+   observations only, and `?verify=1` listing every read per scene. Two
+   proving scenes (tokens, router) verified locally; the build and page
+   checks include the new files; the frame-by-frame page links to it.
 3. `landscape-scenes` - the scenes file from the storyboard, deployed and
    verified.
 4. `landscape-acceptance` - browser verification of every scene against
@@ -71,7 +77,9 @@ saga and verified; F22, F23, and F24 stay open with probes.
    their reports and rows.
 
    Status: complete. Audit: LD01 already used distinct model names for its
-   second variant (fresh names get fresh Adam state), so LD01r stands; DS01
+   second variant, so LD01r was judged clean (wrongly: Adam's step counter
+   was global, found on 2026-09-15 when upstream fixed it; LD01r
+   re-measured 3.37 to 3.79); DS01
    runs one point per process; CD01b re-ran its frozen variant in its own
    process (paraphrase 0.259 to 0.204, held-out destination 0.369 to 0.407)
    and now trains one variant per process with a drawer composing the table
@@ -524,38 +532,52 @@ track in [`plan.md`](plan.md).
   scene per mechanism, each played back from a pinned recording with
   parallel work called out; next by the user's decision, its first
   scenes played from the recordings Saga 5 pinned.
-- Saga 7 `campus-docent-routed`: the docent saga continued: CD02 to CD04
-  routed experts and specialization, the batch export, browser inference
-  with the budgeted live-training probe, and the easel handoff; ships to
-  the campus only if the usefulness bar is met.
-- Saga 8 `campus-docent-live`: the trained docent replaces the mockup's
-  keyword matcher in the campus site: the frozen export contract and
-  validator, the browser bridge module with `predict(query)` and a parity
-  page, the campus model-bridge work order, and live acceptance against
-  the deployed page (edition line, thirty scripted queries matching the
-  export, fallback, stale badge, latency) recorded as CD09.
-- Saga 9 `campus-docent-v1`: when the campus adds the 1442 card reader and
-  its radio demo, the stale-model, retraining-versus-forgetting, and
-  quantization study (CD06 to CD08) and the revision comparison page.
-- Saga 10 `distillation`: token KD against the in-repo teacher, router warm
-  start, expert-delta distillation, and the gated external-teacher export.
-- Saga 11 `quantization-packing-and-cache`: INT8 and INT4 experts, the packed
-  TinyMoE file, the LRU expert-cache simulator with capacity curves, and
-  prefill double buffering, and KV01, decode-cache
-  compression measured on the generation benchmark.
-- Saga 12 `hybrid-execution-and-embedded-budget`: bandwidth calibration, the
-  q-star transfer/compute split, expert banks, and the 256 MB budget report.
-- Saga 13 `interactive-microscope-host`: systems recordings, live-demo
+- Saga 7 `state-space-and-hybrid`: the fifth axis, sequence state: a
+  simple then selective state-space block in place of attention (SS01,
+  SS02) with persistent state bytes against prompt length as the first
+  memory-first result, the state block with one attention block among
+  several (HA01), the state block with routed experts (SM01), latent
+  experts beside deltas and full experts (LM01), recordings and landscape
+  scenes; from `research4.txt`, prompted by Nemotron 3.
+- Saga 8 `distillation`: moved ahead of memory and prediction on the
+  research note's argument: the student matrix (ground truth, token KD,
+  hidden-state KD, both) on the dense student and the hybrid, router warm
+  start, expert-delta distillation, the gated external teacher; TE01's
+  teacher must first be made better than the student.
+- Saga 9 `where-information-lives`: the state block with Engram (SE01) and
+  with Engram and experts (SEM01): dynamic sequential memory, static
+  hashed memory, learned conditional computation on one token; the
+  four-memories page with measured bytes.
+- Saga 10 `multi-token-prediction`: a t+2 head as an auxiliary loss (MT01),
+  as a draft verified by the main head (MT02), and the horizon curriculum
+  to t+3 with the acceptance collapse measured (MT03).
+- Saga 11 `campus-docent-routed`: the docent saga continued: CD02 to CD04
+  (routed experts under the docent, the export, browser inference with the
+  same hashed features), the easel handoff, and the same usefulness bar.
+- Saga 12 `campus-docent-live`: the trained docent replaces the mockup's
+  matcher in the campus UI behind a query flag, once the bar is met;
+  browser verification with the sw-campus side's handoff.
+- Saga 13 `campus-docent-v1`: when the campus adds the 1442 card reader and
+  new exhibits, the retrain and the maturity-status intent grow with it.
+- Saga 14 `quantization-packing-and-cache`: INT8 and INT4 experts, the packed
+  TinyMoE file, the LRU expert-cache simulator with capacity curves, prefill
+  double buffering, and partial decode-cache compression (KC01) applied
+  only to the attention blocks the hybrid keeps.
+- Saga 15 `hybrid-execution-and-embedded-budget`: bandwidth calibration, the
+  q-star transfer/compute split, expert banks, and the 256 MB budget report,
+  now asking whether a logical model larger than RAM (cold experts and the
+  Engram table paged) behaves usefully on a 256 MB machine.
+- Saga 16 `interactive-microscope-host`: systems recordings, live-demo
   acceptance (the only `sw-checklist` scope), and the pocket-helper demo.
-- Saga 14 `configuration-frontier`: one harness over configuration records;
-  sweeps of expert count, top-k, shared always-on experts, Engram slots, and
-  recurrence depth; a Pareto frontier with smallest, fastest, and best picks;
-  first the Engram follow-ups NG01 (a count-based n-gram yardstick over
-  orders 1 to 5), EG02 (the table at 480 and 960 examples, with a frozen
-  base, and over orders 2 to 5), and MT01 (a second head predicting t+2,
-  as an auxiliary loss and as a draft), which can move earlier on request.
-- Saga 15 `cuda-and-host-resident-experts`: backend probes for CUDA and MLX,
+- Saga 17 `configuration-frontier`: one harness over configuration records;
+  sweeps of expert count, top-k, shared always-on experts, Engram slots,
+  state size, and recurrence depth; a Pareto frontier with smallest,
+  fastest, and best picks; first the Engram follow-ups NG01 (a count-based
+  n-gram yardstick over orders 1 to 5) and EG02 (the table at 480 and 960
+  examples, with a frozen base, and over orders 2 to 5), which can move
+  earlier on request.
+- Saga 18 `cuda-and-host-resident-experts`: backend probes for CUDA and MLX,
   lab-scale training on the GPU, expert weights in host RAM with a bounded
   GPU cache, CPU execution of missing experts, and a VRAM-budget report.
-- Saga 16 `findings-and-recommendations`: `docs/report.md` with findings,
+- Saga 19 `findings-and-recommendations`: `docs/report.md` with findings,
   recommendations, and ranked future improvements, every claim cited.

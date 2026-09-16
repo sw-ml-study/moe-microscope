@@ -93,7 +93,7 @@ li { margin-bottom: 10px; }
     <tr><td>DN01 dense</td><td class="n">3,812</td><td class="n">2,996</td><td class="n">3.79</td><td>baseline</td></tr>
     <tr><td>MX01 top-1 of 4</td><td class="n">7,096</td><td class="n">3,064</td><td class="n hi">3.76</td><td>specialization 0.61</td></tr>
     <tr><td>MX02 top-2 of 4</td><td class="n">7,096</td><td class="n">4,136</td><td class="n">3.92</td><td>fits better, generalizes differently</td></tr>
-    <tr><td>LD01 16 rank-4 deltas</td><td class="n">5,060</td><td class="n">2,324</td><td class="n hi">3.37</td><td>half the bytes of 4 full experts</td></tr>
+    <tr><td>LD01 shared + 16 rank-4 deltas</td><td class="n">6,132</td><td class="n">3,396</td><td class="n hi">3.46</td><td>an eighth of the bytes per expert</td></tr>
     <tr><td>RM01 recurrent MoE, R=3</td><td class="n">7,096</td><td class="n">7,392</td><td class="n hi">3.42</td><td>same block reused; 38% of tokens change expert</td></tr>
     <tr><td>EG01 dense + Engram 256</td><td class="n">8,708</td><td class="n">3,812</td><td class="n">4.67</td><td>equals the builtin exactly; memorizes at 90 rows</td></tr>
   </table>

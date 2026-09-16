@@ -100,9 +100,10 @@ is F5, F8, F7, F6, D1, because F5 and F8 change what the lessons and the
 observation facade can express. F1 to F4 were fixed upstream in
 `moe-microscope-findings` and are verified here. The fourth batch
 (`followups-4`) shipped F19, F20, and F21 on 2026-09-15 (verified here,
-probes flipped) and closed; F22 shipped `reset_optimizer()` and rebind
-clearing but the reproducer still differs (see the findings entry), so
-F22 stays open.
+probes flipped) and closed; F22 needed a second fix (a per-parameter Adam
+step counter, `3ffd7266`, in `followups-5`) and is verified resolved; the
+global step counter had also contaminated the one lesson that trained a
+second model with distinct names in one process (LD01r), re-measured.
 Filed after it, for the next batch: F23 (a reshape sized from `shape()`
 or from function parameters inside `grad` drops the gradient without an
 error, met in RM01 as a silent routing collapse and again in EG01) should

@@ -37,9 +37,10 @@ upstream `moe-microscope-followups-2` saga (`mlpl-repl` 08:11, `mlpl-serve`
 | F19 matmul inner-dimension mismatch inside `grad` panicked the process | a structured "shape mismatch: 8 vs 16 elements" error, no panic | `bbcf59dc`, verified against the 2026-09-15 11:36 rebuilt binary | probe file expects the error and forbids a panic |
 | F20 `take`'s index parameter unbound inside an inlined function on the tape | the axis and index resolve in the traced scope; out-of-range is a clean error | `e6070964`, verified against the 2026-09-15 11:36 rebuilt binary | probe file expects success (`grad 1 7 1 1`) |
 | F21 `adam` inside a user function trained local copies | the optimizer step inside an inlined user function updates the global param and model | `9d69cd04`, verified against the 2026-09-15 13:14 rebuilt binary | probe file expects `param moved 1 model moved 1` |
+| F22 `adam` state keyed by name outlived a re-created model, and the step counter was global | `reset_optimizer()`, moments cleared on rebind, and a per-parameter Adam step counter | `7d89e953` and `3ffd7266`, verified against the 2026-09-15 20:08 rebuilt binary | probe file expects `same 1`; the global step counter had also contaminated a second model with distinct names (LD01r, re-measured) |
 | S1 stale adjacent `mlpl-serve` | serve is rebuilt on evaluator changes | process | `scripts/select-mlpl-serve` prefers `MLPL_SERVE`, then a local build, then the adjacent binary |
 
-## Open, queued upstream as `moe-microscope-followups` (F7, F8, F17, F22, F23, F24; upstream `followups-4` shipped F19, F20, and F21 on 2026-09-15 and closed; F22's reproducer still differs)
+## Open, queued upstream as `moe-microscope-followups` (F7, F8, F17, F23, F24; upstream shipped F19 to F22 on 2026-09-15 and `followups-5` is working F23 and F24)
 
 ### F7: a model value cannot be a user-function argument
 
@@ -116,35 +117,6 @@ sizes a reshape from a value's shape or from an argument. Proposed fix: treat `s
 whose consumer keeps the tracked operand differentiable, or reject
 shape-derived reshapes inside `grad` with an error instead of dropping
 the gradient.
-
-### F22: `adam` state is keyed by name and outlives the model; no reset
-
-```
-h = linear(2, 1, 3); train 30 steps
-h = linear(2, 1, 3)        # a fresh model under the same name
-adam(loss(h), h, ...)      # first step differs from the same step on g = linear(2, 1, 3)
-```
-
-Reproducer: `probes/f22_adam_state_by_name.mlpl`. Met in RC01, where a
-sweep re-created the block under the same names for R = 1..4 in one
-process: the R = 4 run reached validation loss 2.88 in the sweep but 4.22
-when trained alone in the server, because runs 2 to 4 started with the
-previous run's Adam moments. The reference says the state "is maintained
-across calls" but not that it survives re-creation, and there is no reset
-builtin. Workaround: one training run per process (the gate scripts loop
-over processes), or unique names per run. Affects: every lesson that trains
-two variants in one process under the same names (CD01bf was contaminated
-and re-measured; LD01r used distinct names and stands; DS01 runs one point
-per process). Proposed fix: clear optimizer state when a name is
-rebound to a new model, and add `reset_optimizer()`.
-
-Upstream shipped `reset_optimizer()` and moment clearing on rebind on
-2026-09-15 (`7d89e953`). Against that binary the reproducer still
-differs: with the rebind alone the first steps are -0.2298 (reused name)
-against -0.2325 (fresh name), unchanged; with `reset_optimizer()` before
-the rebind the reused name steps -0.4000 (a clean first step) while the
-fresh name `g = linear(2, 1, 3)` steps -0.2977, so the fresh model now
-inherits state instead. Still open; the one-run-per-process rule stays.
 
 ### F17: record field access is rejected inside `grad`
 

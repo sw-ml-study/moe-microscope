@@ -1,6 +1,6 @@
 number = 2
 slug = "landscape-player"
-status = "pending"
+status = "in-progress"
 description = "Landscape player. Extend the live demo under learn/ with a generic panning st..."
 role = "production"
 context_files = []

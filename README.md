@@ -28,9 +28,11 @@ The moving parts step by step, live on GitHub Pages:
 <https://sw-ml-study.github.io/moe-microscope/>. Pick a lesson (the dense
 baseline, the top-1 and top-2 mixtures, the recurrent block, the
 recurrent mixture, the Engram table, the three sparsities together, or
-one window through routing and dispatch) and step through its frames. It is a playback: no sw-MLPL code
-runs in the browser, and every number is read from a pinned fixture that a
-real training run or its export script wrote. To produce those fixtures
+one window through routing and dispatch) and step through its frames. The landscape page beside it
+(`landscape.html`) pans along the same recordings as moving data, scene by
+scene. Both are playbacks: no sw-MLPL code runs in the browser, and every
+number is read from a pinned fixture that a real training run or its
+export script wrote. To produce those fixtures
 yourself, run the training at the command line: `just dense write`,
 `just moe write`, `just moe2 write`, `just recur write`, `just rm write`,
 `just engram write`, `just re write`, `just recordings write`, and
@@ -53,12 +55,18 @@ seven-row ablation matrix (RE01); seven recordings replayed in the live
 demo and handed to the generic Rust/Yew host; the campus docent's first
 five steps (paused: it does not yet beat a deterministic matcher).
 
-Still to come: the routed docent, distillation, quantization, the packed
-file, the expert cache, CPU/NPU scheduling, the 256 MB target, the
-configuration frontier, the CUDA move with host-resident experts, and an
-animated data-flow landscape. See the [saga queue](docs/overview/sagas.md).
+Still to come, in order: the animated data-flow landscape (in progress),
+a Mamba-style state-space block and the attention, state-space, and MoE
+hybrid with latent experts, distillation, the state-memory-experts
+composition, multi-token prediction, the routed docent, quantization and
+the packed file with the expert cache, CPU/NPU scheduling and the 256 MB
+target, the interactive host, the configuration frontier, the CUDA move
+with host-resident experts, and the findings report. See the [saga queue](docs/overview/sagas.md).
 
 ## What we have learned
+
+Every experiment is also graded and ranked against what it was expected
+to show in the [report card](docs/results/report-card.md).
 
 1. **Sparse capacity is real.** The four-expert mixture stores 7,096
    parameters and touches 3,064 per token; the dense model stores 3,812 and
@@ -87,9 +95,10 @@ animated data-flow landscape. See the [saga queue](docs/overview/sagas.md).
    matmuls skipped. Evidence: [SD01](docs/experiments/SD01.md) and the
    [generation benchmark](docs/reference/generation-benchmark.md).
 
-6. **Cheap experts are worth trying.** Sixteen rank-4 delta experts cost
-   2,048 parameters against 4,288 for four full experts and give
-   validation losses of 3.46 with a shared expert and 3.37 without.
+6. **Cheap experts are worth trying, with a shared expert.** Sixteen
+   rank-4 delta experts cost 2,048 parameters against 4,288 for four full
+   experts and give validation loss 3.46 with a shared always-on expert
+   (the best non-recurrent row) and 3.79 without (the dense baseline's).
    Evidence: [LD01](docs/experiments/LD01.md).
 7. **Reusing a block buys quality per parameter, and the router
    re-decides.** The mixture block applied three times with deep
@@ -142,7 +151,9 @@ Dense model, then routed experts, then top-k, then true sparse dispatch,
 then recurrence, then Engram memory, then quantization, then a bounded
 expert cache, then heterogeneous execution. Four independent sparsities
 organize it: parameter sharing (recurrence), conditional compute (MoE),
-conditional memory (Engram), and residency (cache). The
+conditional memory (Engram), and residency (cache); the state-space block
+(sequence state), quantization (precision), and multi-token prediction
+(time) extend the taxonomy to seven resource allocation axes. The
 [architecture page](docs/overview/architecture.md) has the full picture;
 the [concept pages](docs/concepts/README.md) walk it one mechanism at a
 time.

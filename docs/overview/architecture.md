@@ -65,7 +65,12 @@ a host language in order to draw it.
 Four independent kinds of sparsity are exposed as separate switches:
 parameter sharing (recurrence), conditional compute (MoE), conditional memory
 (Engram), and residency (expert cache). Each has a lesson that turns it on
-alone against the dense baseline.
+alone against the dense baseline. The taxonomy grew with
+[`research4.txt`](../research/research4.txt) into seven resource
+allocation axes (compute, parameters, memory, state, residency, precision,
+time), adding the state-space block (how much sequence history stays
+resident), quantization, and multi-token prediction; the
+[concepts index](../concepts/README.md) holds the table.
 
 ## Layering
 

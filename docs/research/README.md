@@ -7,3 +7,4 @@
 - [research3.txt](research3.txt): the campus docent discussion, a second
   training area whose domain is the evolving sw-campus site
 - [MoE and Engram questions and answers](moe-engram-discussion.md)
+- [State-space blocks, latent experts, distillation first, MTP, and the resource allocation axes](research4.txt): the Nemotron-prompted review that reshaped Sagas 7 to 19
