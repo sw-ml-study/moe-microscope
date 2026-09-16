@@ -5,7 +5,7 @@
 
 const SCENES_PATH = 'fixtures/landscape/scenes-v0.json';
 const SEGMENT = 960;
-const STATION_Y = 120;
+const STATION_Y = 156;
 
 const state = { scenes: null, recordings: {}, index: 0, timer: null, report: [], reduced: false };
 const $ = (id) => document.getElementById(id);
@@ -30,15 +30,23 @@ async function loadRecording(path) {
 
 // A read names a recording, an observation, and a frame index; it returns the observation or records an error.
 function read(scene, r) {
-  const rec = state.recordings[scene.recording];
-  const frame = rec.frames[r.frame];
+  const path = r.recording || scene.recording;
+  const rec = state.recordings[path];
+  const frame = rec && rec.frames[r.frame];
   const o = frame && frame.observations.find((x) => x.name === r.name);
   if (!o) {
-    state.report.push({ scene: scene.id, error: `missing ${r.name} at frame ${r.frame} of ${scene.recording}` });
+    state.report.push({ scene: scene.id, error: `missing ${r.name} at frame ${r.frame} of ${path}` });
     return null;
   }
-  state.report.push({ scene: scene.id, name: o.name, shape: o.shape, frame: r.frame, step: frame.step, sample: o.values.slice(0, 6).map(fmt) });
+  state.report.push({ scene: scene.id, name: o.name, shape: o.shape, frame: r.frame, step: frame.step, recording: path, sample: o.values.slice(0, 6).map(fmt) });
   return o;
+}
+
+function recordingsOf(scene) {
+  const out = new Set();
+  if (scene.recording) out.add(scene.recording);
+  (scene.chips || []).forEach((c) => { if (c.read && c.read.recording) out.add(c.read.recording); if (c.labelsFrom && c.labelsFrom.recording) out.add(c.labelsFrom.recording); });
+  return [...out];
 }
 
 function labelFor(scene, chip, id) {
@@ -66,16 +74,29 @@ const BUILDERS = {
     }));
   },
   score(scene, chip, o) {
+    const label = (i) => (chip.labelsAt ? labelFor(scene, chip, chip.labelsAt[i]) : (chip.items ? chip.items[i] : ''));
+    const cell = (v, i, pass) => ({ html: `<em style="width:${Math.round(100 * Math.min(1, Math.abs(v)))}%"></em><small>${label(i)}${label(i) ? ' ' : ''}${fmt(v)}</small>`, cls: 'c-score', from: chip.from, to: chip.to, index: i, pass });
+    if (chip.byRow && o.shape.length > 1) {
+      const out = [];
+      reshape(o.values, o.shape).forEach((row, r) => row.forEach((v, i) => out.push(cell(v, i, r))));
+      return out;
+    }
     const rows = o.shape.length > 1 ? reshape(o.values, o.shape) : o.values.map((v) => [v]);
     const n = Math.min(chip.count || rows.length, rows.length);
     const col = chip.col || 0;
-    return rows.slice(0, n).map((row, i) => ({ html: `<em style="width:${Math.round(100 * Math.min(1, Math.abs(row[col])))}%"></em><small>${fmt(row[col])}</small>`, cls: 'c-score', from: chip.from, to: chip.to, index: i }));
+    return rows.slice(0, n).map((row, i) => cell(row[col], i, 0));
+  },
+  matrix(scene, chip, o) {
+    const rows = reshape(o.values, o.shape);
+    const peak = Math.max(...o.values.map(Math.abs), 1e-9);
+    const html = `<table class="mini">${rows.map((row) => `<tr>${row.map((v) => `<td style="opacity:${(0.15 + 0.85 * Math.abs(v) / peak).toFixed(2)}" title="${fmt(v)}"></td>`).join('')}</tr>`).join('')}</table><small>${chip.label || o.name}</small>`;
+    return [{ html, cls: 'c-matrix', from: chip.from, to: chip.to, index: 0 }];
   },
   rows(scene, chip, o) {
     const rows = reshape(o.values, o.shape);
     const n = Math.min(chip.count || rows.length, rows.length);
     const out = [];
-    rows.slice(0, n).forEach((row, i) => row.forEach((v, j) => out.push({ html: `<b>${fmt(v)}</b><small>${chip.tags ? chip.tags[j] : j}</small>`, cls: 'c-row', from: chip.from, to: chip.to, index: i })));
+    rows.slice(0, n).forEach((row, i) => row.forEach((v, j) => out.push({ html: `<b>${fmt(v)}</b><small>${chip.tags ? chip.tags[j] : j}</small>`, cls: 'c-row', from: chip.from, to: chip.to, index: i * row.length + j })));
     return out;
   },
   group(scene, chip, o) {
@@ -88,7 +109,7 @@ const BUILDERS = {
   strip(scene, chip, o) {
     const rows = reshape(o.values, o.shape);
     const out = [];
-    rows.forEach((row, r) => row.forEach((v, i) => out.push({ html: `<b>${chip.prefix || ''}${fmt(v)}</b><small>${chip.labelsAt ? labelFor(scene, chip, chip.labelsAt[i]) : i}</small>`, cls: `c-token lane${Number.isInteger(v) ? v : 0}`, from: chip.from, to: chip.to, index: i, pass: r })));
+    rows.forEach((row, r) => row.forEach((v, i) => out.push({ html: `<b>${chip.prefix || ''}${fmt(v)}</b><small>${chip.labelsAt ? labelFor(scene, chip, chip.labelsAt[i]) : i}</small>`, cls: `c-token lane${Number.isInteger(v) ? v : 0}`, from: chip.from, to: (chip.lanes && chip.lanes[v]) || chip.to, index: i, pass: r })));
     return out;
   },
 };
@@ -114,9 +135,12 @@ function renderScene(scene, k) {
     const o = read(scene, chip.read);
     if (!o) return;
     const built = (BUILDERS[chip.kind] || BUILDERS.token)(scene, chip, o);
-    const vertical = chip.kind === 'vector';
-    const slotW = { token: 38, group: 38, score: 52, rows: 44, strip: 38 }[chip.kind] || 38;
+    const vertical = chip.kind === 'vector' || chip.kind === 'matrix';
+    const slotW = { token: 44, group: 44, score: 56, rows: 46, strip: 44 }[chip.kind] || 44;
     const baseY = STATION_Y + 64 + band;
+    // Arrivals pack by their order within the destination station and pass, so a far-right lane never runs off the segment.
+    const perDest = {};
+    built.forEach((c) => { const key = `${c.to}|${c.pass || 0}`; perDest[key] = (perDest[key] || 0) + 1; c.slot = perDest[key] - 1; });
     built.forEach((c) => {
       const el = document.createElement('div');
       el.className = `chip ${c.cls}`;
@@ -125,13 +149,13 @@ function renderScene(scene, k) {
       const dy = vertical ? c.index * 18 : (c.pass || 0) * 48;
       el.style.left = `${stationX(scene, c.from) + dx}px`;
       el.style.top = `${baseY + dy}px`;
-      el.dataset.to = String(stationX(scene, c.to) + dx);
+      el.dataset.to = String(stationX(scene, c.to) + (vertical ? 0 : (c.from === c.to ? dx : c.slot * slotW)));
       el.dataset.delay = String(((c.pass || 0) * 14 + c.index) * 90);
       seg.appendChild(el);
       chips.push(el);
     });
     const rowsUsed = vertical ? built.length : 1 + Math.max(0, ...built.map((c) => c.pass || 0));
-    band += vertical ? built.length * 18 + 12 : rowsUsed * 48 + 8;
+    band += chip.kind === 'matrix' ? 130 : (vertical ? built.length * 18 + 12 : rowsUsed * 48 + 8);
   });
   if (scene.placeholder) seg.innerHTML += '<div class="ph">no recording yet: nothing moves here</div>';
   return { seg, chips };
@@ -164,7 +188,7 @@ function renderReport() {
     const rows = state.report.filter((r) => r.scene === s.id);
     const errs = rows.filter((r) => r.error);
     lines.push(`${s.id}: ${rows.length - errs.length} reads, ${errs.length} errors`);
-    rows.forEach((r) => lines.push(r.error ? `  ERROR ${r.error}` : `  ${r.name} [${r.shape.join(', ')}] frame ${r.frame} step ${r.step}: ${r.sample.join(' ')}`));
+    rows.forEach((r) => lines.push(r.error ? `  ERROR ${r.error}` : `  ${r.name} [${r.shape.join(', ')}] frame ${r.frame} step ${r.step} of ${r.recording}: ${r.sample.join(' ')}`));
   });
   $('verify').hidden = false;
   $('verify').textContent = lines.join('\n');
@@ -179,7 +203,7 @@ async function main() {
   } catch (e) { /* the footer keeps its default text */ }
   const res = await fetch(SCENES_PATH);
   state.scenes = await res.json();
-  for (const s of state.scenes.scenes) { if (s.recording) await loadRecording(s.recording); }
+  for (const s of state.scenes.scenes) { for (const path of recordingsOf(s)) await loadRecording(path); }
   const track = $('track');
   track.style.width = `${state.scenes.scenes.length * SEGMENT}px`;
   state.scenes.scenes.forEach((s, k) => { track.appendChild(renderScene(s, k).seg); });

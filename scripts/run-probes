@@ -58,11 +58,11 @@ expect_error f18_shape_mismatch_panics_on_tape "shape mismatch"
 expect_error f19_matmul_shape_panics_in_grad "shape mismatch"
 "$mlpl" --source-dir "$repo_root" "$repo_root/probes/f19_matmul_shape_panics_in_grad.mlpl" 2>&1 | grep -q panicked && { echo "probe f19: grad panicked again" >&2; exit 1; }
 expect_output f20_take_param_index_in_grad "^grad 1 7 1 1"
-expect_error f24_apply_engram_ids_param_in_grad "does not depend on"
+expect_output f24_apply_engram_ids_param_in_grad "^parameter grad 0.0357"
 expect_output f21_adam_in_user_function "^param moved 1 model moved 1"
 expect_output f22_adam_state_by_name "same 1$"
 expect_error f23_shape_derived_reshape_in_grad "does not depend on 'W'"
-expect_error f23b_param_bound_reshape_in_grad "does not depend on 'W'"
+expect_output f23b_param_bound_reshape_in_grad "^parameter grad 4.56"
 "$mlpl" --source-dir "$repo_root" "$repo_root/probes/f18_shape_mismatch_panics_on_tape.mlpl" 2>&1 | grep -q panicked && { echo "probe f18: the tape panicked again" >&2; exit 1; }
 
 expect_error d1_silent_zero_grad "the loss does not depend on"

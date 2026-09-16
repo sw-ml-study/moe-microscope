@@ -37,8 +37,16 @@ the user's decision, ahead of the routed docent.
    observations only, and `?verify=1` listing every read per scene. Two
    proving scenes (tokens, router) verified locally; the build and page
    checks include the new files; the frame-by-frame page links to it.
-3. `landscape-scenes` - the scenes file from the storyboard, deployed and
-   verified.
+3. `landscape-scenes` - done: `fixtures/landscape/scenes-v0.json` holds
+   the storyboard's eight scenes (tokens, attention with the DN01 map
+   across the seam, the Engram lookup, the router, dispatch and the four
+   experts, the recurrence loop, the composition, the head) and the
+   placeholder station (cache, decode-cache compression, multi-token
+   prediction, sequence state); the player gained per-read recordings, a
+   matrix chip, pass-wise score strips, lane-routed strips, and arrivals
+   packed by lane; `?verify=1` reads 20 observations across five
+   recordings with no errors locally and on the published site (recorded
+   in `docs/results/live-demo.md`).
 4. `landscape-acceptance` - browser verification of every scene against
    its recording, README, docs, wiki, campus handoff, saga close.
 

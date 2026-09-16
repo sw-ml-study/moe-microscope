@@ -1,4 +1,4 @@
-# F23 reproducer, second form: a reshape whose dims are bound to user-function parameters (not literals or globals) loses the gradient through the reshaped value inside grad, silently; met in EG01 when the from-scratch Engram took its window length and width as arguments.
+# F23 reproducer, second form, resolved upstream (fca6043c): reshape dims bound to user-function parameters now resolve in the traced scope, so the parameter-bound form gives the same gradient as the literal form; checked by scripts/run-probes. The first form (dims derived from shape() of a tracked value, probes/f23_shape_derived_reshape_in_grad.mlpl) stays open.
 W = param[8, 4];
 W = reshape(range(32), [8, 4]) * 0.01;
 rows = [1, 3, 3, 5];

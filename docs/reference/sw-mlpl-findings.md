@@ -38,9 +38,11 @@ upstream `moe-microscope-followups-2` saga (`mlpl-repl` 08:11, `mlpl-serve`
 | F20 `take`'s index parameter unbound inside an inlined function on the tape | the axis and index resolve in the traced scope; out-of-range is a clean error | `e6070964`, verified against the 2026-09-15 11:36 rebuilt binary | probe file expects success (`grad 1 7 1 1`) |
 | F21 `adam` inside a user function trained local copies | the optimizer step inside an inlined user function updates the global param and model | `9d69cd04`, verified against the 2026-09-15 13:14 rebuilt binary | probe file expects `param moved 1 model moved 1` |
 | F22 `adam` state keyed by name outlived a re-created model, and the step counter was global | `reset_optimizer()`, moments cleared on rebind, and a per-parameter Adam step counter | `7d89e953` and `3ffd7266`, verified against the 2026-09-15 20:08 rebuilt binary | probe file expects `same 1`; the global step counter had also contaminated a second model with distinct names (LD01r, re-measured) |
+| F23 (second form) reshape dims bound to function parameters lost the gradient inside `grad` | reshape, window, and reduce dims resolve through the traced scope | `fca6043c`, verified against the 2026-09-16 11:08 rebuilt binary | probe `f23b` expects the literal and parameter forms to agree; the shape-derived first form stays open below |
+| F24 `apply_engram`'s ids bound to a function parameter were not seen inside `grad` | the ids resolve through the traced scope | `1b4d29e5`, verified against the 2026-09-16 11:08 rebuilt binary | probe file expects the global and parameter forms to agree |
 | S1 stale adjacent `mlpl-serve` | serve is rebuilt on evaluator changes | process | `scripts/select-mlpl-serve` prefers `MLPL_SERVE`, then a local build, then the adjacent binary |
 
-## Open, queued upstream as `moe-microscope-followups` (F7, F8, F17, F23, F24; upstream shipped F19 to F22 on 2026-09-15 and `followups-5` is working F23 and F24)
+## Open, queued upstream as `moe-microscope-followups` (F7, F8, F17, and F23's shape-derived form; upstream shipped F19 to F22 on 2026-09-15 and F23's parameter form and F24 on 2026-09-16)
 
 ### F7: a model value cannot be a user-function argument
 
@@ -73,22 +75,6 @@ Affects: observation facade, any generated or parameterized observation name
 string value for the name, or document the literal rule and provide a
 `str`-valued form.
 
-### F24: `apply_engram`'s ids bound to a function parameter are not seen inside `grad`
-
-```
-def u:with_global(h) { reduce_add(apply_engram(e, h, ids) * apply_engram(e, h, ids)) }        # a gradient
-def u:with_param(h, ids2) { reduce_add(apply_engram(e, h, ids2) * apply_engram(e, h, ids2)) } # error: the loss does not depend on the table
-```
-
-Reproducer: `probes/f24_apply_engram_ids_param_in_grad.mlpl`. Met in
-EG01 (the lesson's loss took the window's ids as an argument). The F20
-fix (`take`'s index parameter resolving in the traced scope) does not
-cover the ids argument of `apply_engram`; the same call with the ids in
-a global traces. Workaround: the current window's ids in a global.
-Affects: any traced function that passes token ids to `apply_engram`.
-Proposed fix: resolve `apply_engram`'s ids argument in the traced scope
-as F20 did for `take`.
-
 ### F23: a reshape whose row count comes from `shape()` loses the gradient inside `grad`
 
 ```
@@ -109,8 +95,9 @@ depends on W only through the reshaped gate, so the tape reports "no
 gradient flows"; in the lesson the experts kept a path to the loss and
 the failure was silent. Second form (EG01, `probes/f23b_param_bound_reshape_in_grad.mlpl`):
 dims bound to user-function parameters (`reshape(x, [n, w])` with `n`
-and `w` arguments) lose the gradient the same way, while literal dims and
-global-bound dims trace. Workaround: literal or global shapes inside
+and `w` arguments) lost the gradient the same way; resolved upstream on
+2026-09-16 (`fca6043c`), the probe now expects agreement. The
+shape-derived form of this entry is what remains open. Workaround: literal or global shapes inside
 traced blocks (the window length and the retrieved width are globals),
 and pad evaluation prompts to that length. Affects: any traced block that
 sizes a reshape from a value's shape or from an argument. Proposed fix: treat `shape()` of a tracked value as a constant

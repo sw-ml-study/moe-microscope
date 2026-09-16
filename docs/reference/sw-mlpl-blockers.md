@@ -61,8 +61,7 @@ Gaps with reproducers are written up as upstream work orders in
 |---|---|---|
 | F7 model as user-function argument | probe "a model value cannot be a user-function argument"; `probes/f7_model_argument.mlpl` | globals |
 | F8 `emit_frame` literal name | probe "emit_frame rejects a name held in a variable"; `probes/f8_emit_frame_name.mlpl` | literal names |
-| F23 shape-derived or parameter-bound reshape dims inside `grad` drop the gradient (silent routing collapse) | `probes/f23_shape_derived_reshape_in_grad.mlpl`, `probes/f23b_param_bound_reshape_in_grad.mlpl` | literal or global dims; pad prompts to the window |
-| F24 `apply_engram`'s ids bound to a function parameter are not seen inside `grad` | `probes/f24_apply_engram_ids_param_in_grad.mlpl` | the window's ids in a global |
+| F23 shape-derived reshape dims inside `grad` drop the gradient (silent routing collapse); the parameter-bound form was fixed upstream on 2026-09-16 | `probes/f23_shape_derived_reshape_in_grad.mlpl` | literal or global dims; pad prompts to the window |
 | F17 record field access inside `grad` | `probes/f17_record_field_in_grad.mlpl` | bind fields to variables eagerly |
 
 ## Still to be probed

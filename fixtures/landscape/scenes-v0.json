@@ -16,7 +16,7 @@
    "id": "tokens",
    "title": "Tokens become vectors",
    "recording": "fixtures/recordings/walkthrough-v0.json",
-   "caption": "The walkthrough window 17+25=|42. (walk/tokens, frame 0): ten real token chips travel from the input strip into the embedding, which reads one of 52 rows per token; the 18 padding positions stay dim. The vector chips that leave carry walk/hidden (frame 1), the state after attention, because the embedding output itself was not recorded.",
+   "caption": "The walkthrough window 17+25=|42. (walk/tokens, frame 0): ten real token chips travel from the input strip into the embedding, which reads one of 52 rows per token; the 18 padding positions stay out of the picture. The vector chips that leave carry walk/hidden (frame 1), the state after attention, because the embedding output itself was not recorded.",
    "stations": [
     {
      "id": "input",
@@ -56,10 +56,128 @@
    ]
   },
   {
+   "id": "attention",
+   "title": "Attention mixes the window",
+   "recording": "fixtures/recordings/walkthrough-v0.json",
+   "caption": "Seam: the walkthrough did not record its attention map, so the map is dense/attention/example (DN01 recording, frame 12) for the seven-position window 2+3=|5.: row t attends to columns up to t, nothing right of the diagonal. The vectors leaving are walk/hidden, the walkthrough's state after attention. The next scene's row hashing depends only on the ids and could run alongside this station.",
+   "stations": [
+    {
+     "id": "in",
+     "label": "vectors in"
+    },
+    {
+     "id": "attn",
+     "label": "attention (7 x 7 weights)"
+    },
+    {
+     "id": "out",
+     "label": "vectors out"
+    }
+   ],
+   "chips": [
+    {
+     "kind": "matrix",
+     "read": {
+      "name": "dense/attention/example",
+      "frame": 12,
+      "recording": "fixtures/recordings/dense-baseline-run-v0.json"
+     },
+     "label": "attention weights, rows attend to columns",
+     "from": "attn",
+     "to": "attn"
+    },
+    {
+     "kind": "vector",
+     "read": {
+      "name": "walk/hidden",
+      "frame": 1
+     },
+     "count": 7,
+     "from": "in",
+     "to": "out"
+    }
+   ]
+  },
+  {
+   "id": "engram",
+   "title": "The Engram lookup",
+   "recording": "fixtures/recordings/engram-run-v0.json",
+   "caption": "Each position of 2+3=|5. hashes its last two and last three ids (ngram_hash, pad 0 before the start) to one row per region of a 512-row table: engram/rows/example (frame 12). The two rows' eight values are gathered into sixteen (engram/retrieved/example), projected, and admitted by the gate (engram/gate/example, mean per position). The lane: addresses depend only on the ids (EG01 report).",
+   "stations": [
+    {
+     "id": "ids",
+     "label": "ids of 2+3=|5."
+    },
+    {
+     "id": "table",
+     "label": "table 512 x 8"
+    },
+    {
+     "id": "gate",
+     "label": "projection + gate"
+    },
+    {
+     "id": "sum",
+     "label": "h + gate * value"
+    }
+   ],
+   "lanes": [
+    {
+     "label": "row addresses depend only on the ids: hashed alongside attention, waiting at the table (EG01 report)",
+     "above": true
+    }
+   ],
+   "chips": [
+    {
+     "kind": "rows",
+     "read": {
+      "name": "engram/rows/example",
+      "frame": 12
+     },
+     "tags": [
+      "2-gram",
+      "3-gram"
+     ],
+     "from": "ids",
+     "to": "table"
+    },
+    {
+     "kind": "vector",
+     "read": {
+      "name": "engram/retrieved/example",
+      "frame": 12
+     },
+     "count": 7,
+     "from": "table",
+     "to": "gate"
+    },
+    {
+     "kind": "score",
+     "read": {
+      "name": "engram/gate/example",
+      "frame": 12
+     },
+     "count": 7,
+     "labelsAt": [
+      4,
+      12,
+      5,
+      15,
+      50,
+      7,
+      51
+     ],
+     "label": "alphabet",
+     "from": "gate",
+     "to": "sum"
+    }
+   ]
+  },
+  {
    "id": "router",
    "title": "The router decides",
    "recording": "fixtures/recordings/walkthrough-v0.json",
-   "caption": "Each real token's vector enters the router (a 16 to 4 linear layer); walk/probs (frame 3) is the softmax per token and walk/groups (frame 6) the expert that won, so each chip leaves along its expert's lane. Below: walk/load (frame 4) counts the tokens per expert; the balance term is a function of the same mask (SD01, MX01 reports).",
+   "caption": "Each real token's vector enters the router (a 16 to 4 linear layer); walk/probs (frame 3) is the softmax per token (expert 0's score shown; the kept one is the largest), and walk/groups (frame 6) the expert that won, so each chip leaves along its expert's lane. Below: walk/load (frame 4) counts the tokens per expert; the balance term is a function of the same mask (SD01, MX01 reports).",
    "stations": [
     {
      "id": "router",
@@ -97,6 +215,18 @@
      },
      "count": 10,
      "col": 0,
+     "items": [
+      "E0",
+      "E0",
+      "E0",
+      "E0",
+      "E0",
+      "E0",
+      "E0",
+      "E0",
+      "E0",
+      "E0"
+     ],
      "from": "router",
      "to": "router"
     },
@@ -127,10 +257,338 @@
       "frame": 4
      },
      "count": 4,
+     "items": [
+      "E0",
+      "E1",
+      "E2",
+      "E3"
+     ],
      "from": "router",
      "to": "router"
     }
    ]
+  },
+  {
+   "id": "dispatch",
+   "title": "Dispatch and the four experts",
+   "recording": "fixtures/recordings/walkthrough-v0.json",
+   "caption": "Token chips leave along their lanes (walk/groups, frame 6); expert 0's sub-batch arrives as walk/expert0-rows and leaves as walk/expert0-out (frame 7); the lanes rejoin at the scatter, where dense-masked and sparse outputs (frame 8) differ by walk/parity, zero. The four sub-batches are independent: each expert runs once on its compressed rows (SD01); walk/expert-evals counts both paths.",
+   "stations": [
+    {
+     "id": "router",
+     "label": "router"
+    },
+    {
+     "id": "e0",
+     "label": "expert 0 (16 rows)"
+    },
+    {
+     "id": "e1",
+     "label": "expert 1"
+    },
+    {
+     "id": "e2",
+     "label": "expert 2"
+    },
+    {
+     "id": "e3",
+     "label": "expert 3"
+    },
+    {
+     "id": "scatter",
+     "label": "scatter and compare"
+    }
+   ],
+   "lanes": [
+    {
+     "label": "the four sub-batches are independent: each expert runs once on its compressed rows (SD01); evaluations dense-masked against sparse below",
+     "above": true
+    }
+   ],
+   "chips": [
+    {
+     "kind": "group",
+     "read": {
+      "name": "walk/groups",
+      "frame": 6
+     },
+     "count": 10,
+     "label": "alphabet",
+     "labelsFrom": {
+      "name": "walk/tokens",
+      "frame": 0
+     },
+     "from": "router",
+     "lanes": [
+      "e0",
+      "e1",
+      "e2",
+      "e3"
+     ]
+    },
+    {
+     "kind": "vector",
+     "read": {
+      "name": "walk/expert0-out",
+      "frame": 7
+     },
+     "count": 6,
+     "from": "e0",
+     "to": "scatter"
+    },
+    {
+     "kind": "score",
+     "read": {
+      "name": "walk/expert-evals",
+      "frame": 7
+     },
+     "count": 2,
+     "items": [
+      "dense-masked",
+      "sparse"
+     ],
+     "from": "scatter",
+     "to": "scatter"
+    },
+    {
+     "kind": "score",
+     "read": {
+      "name": "walk/parity",
+      "frame": 9
+     },
+     "count": 1,
+     "items": [
+      "max |dense - sparse|"
+     ],
+     "from": "scatter",
+     "to": "scatter"
+    }
+   ]
+  },
+  {
+   "id": "recurrence",
+   "title": "The block repeats, and the router re-decides",
+   "recording": "fixtures/recordings/recurrent-moe-run-v0.json",
+   "caption": "Seam: back to 2+3=|5. The trained R=3 mixture routes each position at each pass (rm/route/example, frame 12, rows are passes): a chip that changes lane between passes crossed experts; over the training rows 38 percent did (rm/change-share). Nothing here runs in parallel: pass two starts from pass one's output, by construction (RM01 report).",
+   "stations": [
+    {
+     "id": "block",
+     "label": "attention + mixture (pass r)"
+    },
+    {
+     "id": "e0",
+     "label": "expert 0"
+    },
+    {
+     "id": "e1",
+     "label": "expert 1"
+    },
+    {
+     "id": "e2",
+     "label": "expert 2"
+    },
+    {
+     "id": "e3",
+     "label": "expert 3"
+    }
+   ],
+   "lanes": [
+    {
+     "label": "sequential by construction: pass r+1 reads pass r's output; the change-of-expert share over the training rows is rm/change-share",
+     "above": false
+    }
+   ],
+   "chips": [
+    {
+     "kind": "strip",
+     "read": {
+      "name": "rm/route/example",
+      "frame": 12
+     },
+     "prefix": "E",
+     "labelsAt": [
+      4,
+      12,
+      5,
+      15,
+      50,
+      7,
+      51
+     ],
+     "label": "alphabet",
+     "from": "block",
+     "lanes": [
+      "e0",
+      "e1",
+      "e2",
+      "e3"
+     ]
+    },
+    {
+     "kind": "score",
+     "read": {
+      "name": "rm/change-share",
+      "frame": 12
+     },
+     "count": 1,
+     "items": [
+      "change share"
+     ],
+     "from": "block",
+     "to": "block"
+    }
+   ]
+  },
+  {
+   "id": "composition",
+   "title": "All three sparsities together",
+   "recording": "fixtures/recordings/recurrent-moe-engram-run-v0.json",
+   "caption": "The loop with the Engram station inside it (RE01): at each pass the same two rows light (addresses are a function of the ids), the gate per position and pass is re/gate/example (frame 12, rows are passes, as a fraction), and the expert per pass is re/route/example. The lane: addresses arrive ahead of the vectors at every pass; the table is hashed once and read three times.",
+   "stations": [
+    {
+     "id": "block",
+     "label": "attention + Engram + mixture (pass r)"
+    },
+    {
+     "id": "e0",
+     "label": "expert 0"
+    },
+    {
+     "id": "e1",
+     "label": "expert 1"
+    },
+    {
+     "id": "e2",
+     "label": "expert 2"
+    },
+    {
+     "id": "e3",
+     "label": "expert 3"
+    }
+   ],
+   "lanes": [
+    {
+     "label": "the row addresses arrive ahead of the vectors at every pass: hashed once, read three times (RE01 report)",
+     "above": true
+    }
+   ],
+   "chips": [
+    {
+     "kind": "strip",
+     "read": {
+      "name": "re/route/example",
+      "frame": 12
+     },
+     "prefix": "E",
+     "labelsAt": [
+      4,
+      12,
+      5,
+      15,
+      50,
+      7,
+      51
+     ],
+     "label": "alphabet",
+     "from": "block",
+     "lanes": [
+      "e0",
+      "e1",
+      "e2",
+      "e3"
+     ]
+    },
+    {
+     "kind": "score",
+     "read": {
+      "name": "re/gate/example",
+      "frame": 12
+     },
+     "byRow": true,
+     "labelsAt": [
+      4,
+      12,
+      5,
+      15,
+      50,
+      7,
+      51
+     ],
+     "label": "alphabet",
+     "from": "block",
+     "to": "block"
+    }
+   ]
+  },
+  {
+   "id": "head",
+   "title": "The head predicts",
+   "recording": "fixtures/recordings/walkthrough-v0.json",
+   "caption": "The walkthrough's vectors enter the head (linear 16 to 52) and leave as the predicted next characters, walk/next-tokens (frame 9); the graded positions are the answer 42 and the stop. Beside them, dense/logits/example-argmax (DN01 recording, frame 12) is the prediction for 2+3=|5. Validation losses in the results table: DN01 3.79, MX01 3.76, RM01@3 3.42, EG01@256 4.67, RE01 4.76.",
+   "stations": [
+    {
+     "id": "vectors",
+     "label": "vectors"
+    },
+    {
+     "id": "head",
+     "label": "head 16 -> 52"
+    },
+    {
+     "id": "next",
+     "label": "predicted next token"
+    }
+   ],
+   "chips": [
+    {
+     "kind": "token",
+     "read": {
+      "name": "walk/next-tokens",
+      "frame": 9
+     },
+     "count": 10,
+     "label": "alphabet",
+     "from": "head",
+     "to": "next"
+    },
+    {
+     "kind": "token",
+     "read": {
+      "name": "dense/logits/example-argmax",
+      "frame": 12,
+      "recording": "fixtures/recordings/dense-baseline-run-v0.json"
+     },
+     "count": 7,
+     "label": "alphabet",
+     "from": "vectors",
+     "to": "head"
+    }
+   ]
+  },
+  {
+   "id": "placeholders",
+   "title": "Not yet measured: cache, decode-cache compression, multi-token prediction, sequence state",
+   "placeholder": true,
+   "caption": "No pinned recording yet, so nothing moves here. Hot and cached experts: XC01 (Saga 14) would move chips between a resident and a fetched shelf. Decode-cache compression: KC01 (Saga 14), only on the attention blocks the hybrid keeps. Multi-token prediction: MT01 to MT03 (Saga 10), a second head drafting t+2 for the main head to verify. Sequence state: SS01 (Saga 7), a fixed-size state chip carried along the window.",
+   "stations": [
+    {
+     "id": "cache",
+     "label": "hot and cached experts (XC01)"
+    },
+    {
+     "id": "kc",
+     "label": "decode-cache compression (KC01)"
+    },
+    {
+     "id": "mtp",
+     "label": "multi-token prediction (MT01)"
+    },
+    {
+     "id": "ssm",
+     "label": "sequence state (SS01)"
+    }
+   ],
+   "chips": []
   }
  ]
 }
