@@ -55,6 +55,17 @@ over the composed site with headless Chrome before its first deploy:
 The two scenes are the player's proof; the storyboard's eight scenes are
 the next step and are verified on the published site when they land.
 
+## 2026-09-16, landscape scenes on the published site
+
+| Check | Result |
+|---|---|
+| Deploy | Pages workflow run for commit `f83813f` completed successfully |
+| Build info | `runnervmlun5p / f83813f / 2026-09-16T20:01:04Z` from `build-info.json` on the live site |
+| `landscape.html?verify=1&motion=off` (headless Chrome, 2026-09-16) | title `verified: ok`; nine scenes; 20 reads across five recordings; 0 errors; 180 chips |
+| Scenes and reads | tokens 2, attention 2 (the DN01 map across the seam), Engram lookup 3, router 4, dispatch 5, recurrence 2, composition 2, head 2, placeholders 0 |
+| Placeholders | cache (XC01), decode-cache compression (KC01), multi-token prediction (MT01), sequence state (SS01): labeled stations, no chips, no numbers |
+| Footer and links | the same footer as the frame-by-frame page; the frame-by-frame page links to the landscape and the landscape to the storyboard |
+
 What the page does and does not do: it is a playback. No sw-MLPL code runs
 in the browser and no model runs in the page. Every number it draws is read
 from a fixture in the repository: the seven training recordings were
