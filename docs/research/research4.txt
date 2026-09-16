@@ -1,0 +1,684 @@
+read 
+sw-ml-study/moe-microscopeand determine if it is feasible and advisable to explore mamba spaces in a tiny MoE hybrid model? This is inspired by https://en.wikipedia.org/wiki/Nemotron - can we combine MoE and Mamba (and Engram, MTP, distillation, KV-cache compression, etc.). We are trying to show the concepts in action using very small experts, showing some small value in a system with no GPU, limited RAM, and few cores.
+
+Yes. It is feasible, and I think it is a particularly good direction for moe-microscope—provided Mamba/SSM is introduced as another independently measurable mechanism rather than immediately creating a kitchen-sink architecture.
+
+Your repository is already structured around exactly the right scientific question: what does each mechanism buy at tiny scale? It currently isolates MoE routing, sparse dispatch, low-rank experts, recurrence, Engram, distillation plans, quantization, expert caching, and heterogeneous execution. It also already records parameter counts, active parameters, latency, quality, specialization, and memory.
+
+Modern Nemotron makes the proposed combination much less speculative than it would have been a few years ago. NVIDIA's current Nemotron 3 family explicitly uses hybrid Mamba-Transformer-MoE architectures; Nemotron 3.5 Lightning, for example, documents 23 Mamba-2 layers, 6 attention layers, and 23 MoE layers. Nemotron 3 Super additionally incorporates latent MoE and multi-token prediction.
+
+The interesting research question for you, though, isn't:
+
+Can we make a microscopic Nemotron?
+
+It's:
+
+At toy/embedded scale, which forms of sparsity and memory remain useful when compute, RAM, cores, and bandwidth—not GPU FLOPS—are the scarce resources?
+
+That is a very strong extension of the microscope.
+
+1. I would add a fifth axis: state sparsity
+
+Your current architecture describes four independent sparsities:
+
+parameter sharing → recurrence
+conditional compute → MoE
+conditional memory → Engram
+residency → expert cache
+
+I would extend this taxonomy to:
+
+Axis	Mechanism	Resource avoided
+Parameter sharing	recurrence	stored parameters
+Conditional compute	MoE	active FLOPs
+Conditional memory	Engram	learned computation
+Residency	expert cache	RAM/fast-storage residency
+Sequence state	Mamba/SSM	growing KV state
+
+That makes Mamba conceptually fit the project extraordinarily well.
+
+A Transformer says, roughly:
+
+past tokens
+   |
+   v
+K V K V K V K V K V...
+   |
+attention
+
+The state grows with history.
+
+A simple SSM/Mamba-like layer instead has:
+
+token ----+
+          |
+          v
+     +---------+
+state| update  |----> new state
+---->|         |
+     +----+----+
+          |
+          v
+        output
+
+The persistent sequence state is fixed-sized.
+
+For your intended limited-RAM CPU target, that distinction may actually matter more than its FLOP advantage.
+
+Recent work on hybrid Mamba/Transformer inference explicitly notes this asymmetry: attention KV storage grows with sequence length while SSM state remains fixed per layer.
+
+2. Don't start with "real Mamba-2"
+
+I would not begin by porting full Mamba-2.
+
+That would bury the lesson underneath implementation machinery.
+
+Instead introduce:
+
+SS01: scalar state-space recurrence
+SS02: vector diagonal SSM
+SS03: selective/gated SSM
+SS04: tiny Mamba-like block
+
+Something pedagogically like:
+
+$$ s_t = A(x_t) \odot s_{t-1} + B(x_t) $$ $$ y_t = C(x_t) \odot s_t $$
+
+where initially even A, B, and C can be tiny learned linear projections.
+
+The microscope could literally display:
+
+token x_t
+   |
+   +-------> B(x) ------+
+   |                    |
+   +-------> A(x) --*---+--> state[t]
+                       ^
+                       |
+                   state[t-1]
+
+state[t] ---> C(x) ---> y[t]
+
+And show the actual state vector evolving.
+
+That is a better educational entry point than dropping a production selective-scan kernel into MLPL.
+
+3. Your first experiment should be Attention vs SSM
+
+Before involving MoE at all.
+
+Call it something like:
+
+SS01 — Fixed-state sequence model
+
+Compare:
+
+DN01
+embedding
+   ↓
+attention
+   ↓
+FFN
+
+against:
+
+SS01
+embedding
+   ↓
+tiny SSM
+   ↓
+FFN
+
+and perhaps:
+
+HY01
+embedding
+   ↓
+tiny SSM
+   ↓
+attention
+   ↓
+FFN
+
+Measure:
+
+Metric	Attention	SSM	Hybrid
+parameters			
+active params/token			
+state bytes	grows	fixed	mixed
+prompt length 16			
+prompt length 64			
+prompt length 256			
+prompt length 1024			
+µs/token			
+held-out loss			
+exact match			
+
+That experiment would make the reason Mamba exists visually obvious.
+
+At your current model scale, speed may initially get worse, just as your sparse dispatch experiment did. You already discovered that reducing arithmetic doesn't automatically improve latency because interpreter/gather/scatter overhead dominates tiny operations.
+
+That's okay.
+
+Indeed it makes the experiment more credible.
+
+4. Then combine SSM + MoE
+
+This is where it gets especially interesting.
+
+There is precedent independent of Nemotron: the 2024 MoE-Mamba work explicitly combined Mamba and sparse experts and reported substantially faster training convergence than a Mamba baseline while retaining Mamba's inference advantages versus Transformers.
+
+Your tiny version might be:
+
+              token
+                |
+            embedding
+                |
+                v
+        +---------------+
+state ->| tiny Mamba    | -> state'
+        +-------+-------+
+                |
+             router
+        ________|________
+       /        |        \
+      E0       E1        E2
+       \________|________/
+                |
+             combine
+                |
+              head
+
+There are two interesting architectural interpretations.
+
+A. Mamba → MoE
+Mamba sequence mixing
+        ↓
+MoE channel/semantic transformation
+
+This resembles the role separation appearing in contemporary hybrids.
+
+B. MoE inside the SSM
+
+Route parts of:
+
+B(x)
+C(x)
+Δ(x)
+
+or the SSM projection itself through experts.
+
+I would postpone B.
+
+A is vastly easier to understand and measure.
+
+5. But your latent experts deserve attention
+
+Nemotron 3 Super's latent MoE is especially relevant to moe-microscope.
+
+Instead of:
+
+hidden[d]
+   |
+ router
+   |
+expert[d -> ff -> d]
+
+use:
+
+hidden[d]
+   |
+project down
+   ↓
+latent[r]
+   |
+ router
+   |
+tiny expert[r -> r]
+   |
+project up
+   ↓
+hidden[d]
+
+NVIDIA describes this as allowing expert work in a compressed latent space, enabling more expert capacity for similar computation.
+
+You've already practically arrived next door to this idea with your rank-4 delta experts.
+
+Your current result is fascinating:
+
+sixteen rank-4 delta experts cost 2,048 parameters versus 4,288 for four full experts.
+
+I'd therefore add:
+
+LM01 full experts
+LM02 low-rank delta experts
+LM03 latent-space experts
+
+This could be more valuable on a tiny CPU than conventional MoE because it reduces both expert computation and movement.
+
+6. Mamba changes the importance of KV-cache compression
+
+This is one place I would modify your proposed ordering.
+
+You mentioned:
+
+MoE + Mamba + Engram + MTP + distillation + KV-cache compression
+
+If most layers are Mamba/SSM:
+
+KV-cache compression becomes less central.
+
+That's because the SSM layers don't need an ever-growing KV cache.
+
+Suppose you create:
+
+12 tiny blocks
+
+as:
+
+M M M A M M M A M M M A
+
+Then only the three A layers maintain KV caches.
+
+So instead of first studying:
+
+How do we compress a Transformer KV cache?
+
+you can demonstrate something more fundamental:
+
+How can architecture reduce the amount of KV state that exists in the first place?
+
+Then apply KV compression only to the remaining attention layers.
+
+Conceptually:
+
+Pure Transformer
+12 KV caches
+████████████████████████
+
+Hybrid
+3 KV caches + 9 fixed SSM states
+██████  ░ ░ ░ ░ ░ ░ ░ ░ ░
+
+Hybrid + compressed KV
+███     ░ ░ ░ ░ ░ ░ ░ ░ ░
+
+For a 256-MB-class machine, that's a very compelling lesson.
+
+7. Engram becomes more, not less, interesting
+
+Your current Engram result is negative but scientifically useful.
+
+You found that at the current tiny dataset scale it mostly provides memorization:
+
+training loss improves while validation gets worse, and the full recurrent-MoE+Engram composition memorizes particularly strongly.
+
+That's exactly why I would keep it.
+
+The published Engram hypothesis is that static/local knowledge need not consume expensive neural computation: deterministic hashed lookup provides another sparsity axis complementary to MoE. The 2026 paper explicitly frames this as conditional memory versus conditional computation.
+
+Now your tiny hybrid can ask:
+
+Where should information live?
+
+Three possibilities:
+
+Mamba state
+dynamic sequential memory
+
+Engram
+static associative memory
+
+MoE experts
+learned conditional computation
+
+That's an excellent teaching decomposition.
+
+Beautiful microscope view
+
+For token t:
+
+             "println"
+                 |
+      +----------+----------+
+      |          |          |
+      v          v          v
+   Engram      Mamba       Router
+ n-gram hit    state      expert #3
+      |          |          |
+      +----------+----------+
+                 |
+              output
+
+Then display:
+
+Engram hit       = bucket 42
+Engram gate      = 0.18
+SSM state Δ      = 0.036
+router           = [0.02, 0.04, 0.91, 0.03]
+active expert    = E2
+
+That's practically the thesis of moe-microscope.
+
+8. Distillation is probably essential
+
+This is one technique I would move earlier.
+
+Your models are so tiny that asking them simultaneously to discover:
+
+sequence modeling,
+routing,
+specialization,
+external memory,
+MTP,
+recurrence,
+
+from tiny datasets may simply exceed their learning capacity.
+
+So I would make the comparison:
+
+Student training
+
+A. ground truth only
+B. logits distillation
+C. hidden-state distillation
+D. logits + intermediate-state distillation
+
+Your existing TE01 teacher fixture is already a strong architectural foundation for that. The README says the in-repo teacher exists but distillation remains future work.
+
+I'd do distillation before MTP.
+
+9. MTP: useful, but fairly late
+
+Nemotron 3 Super uses MTP for native speculative generation.
+
+At toy scale, MTP is attractive because it's extremely visible:
+
+hidden state
+   |
+   +---- head 1 ---> token t+1
+   |
+   +---- head 2 ---> token t+2
+   |
+   +---- head 3 ---> token t+3
+
+Then measure:
+
+proposal length
+accepted tokens
+rejected tokens
+effective tokens / main step
+
+But there's a warning specifically relevant to you: research on small models has found MTP harder for small models to exploit; curriculum training appears to help.
+
+So don't initially do:
+
+4-token MTP
+
+Do:
+
+MT01 = +1 only
+MT02 = +1,+2
+MT03 = +1,+2,+3
+
+and watch acceptance collapse as the horizon grows.
+
+That itself is educational.
+
+10. The complete tiny architecture I would work toward
+
+Not immediately, but eventually:
+
+                    token id
+                       |
+                  embedding
+                       |
+           +-----------+-----------+
+           |                       |
+       Engram lookup             bypass
+           |                       |
+           +-----------+-----------+
+                       |
+                 Mamba block
+                       |
+                 tiny attention        <- occasionally
+                       |
+                project down
+                       |
+                 MoE router
+                 /   |   \
+               E3   E7   E11
+                 \   |   /
+                  combine
+                       |
+                 project up
+                       |
+                 residual
+                       |
+              +--------+--------+
+              |        |        |
+             NTP      MTP1     MTP2
+              |        |        |
+             t+1      t+2      t+3
+
+With inference storage:
+
+RAM
+├── embeddings
+├── Mamba state             fixed
+├── attention KV            small number of layers
+├── hot experts             bounded cache
+├── Engram hot buckets
+└── activations
+
+SSD / mmap / file
+├── cold experts
+├── Engram table
+└── packed quantized weights
+
+Now it is beginning to look like a genuine memory hierarchy for inference, not merely an LLM.
+
+11. This gives you a better definition of a "Tiny Hybrid Model"
+
+I'd make the conceptual model:
+
+$$ \text{TinyHybrid} = \text{SSM} + \text{sparse attention} + \text{sparse experts} + \text{conditional memory} $$
+
+and optimizations:
+
+$$ + \text{distillation} + \text{quantization} + \text{MTP} + \text{expert paging} $$
+
+There are then four kinds of memory:
+
+                  lifetime       addressing
+-------------------------------------------------
+SSM state         dynamic        sequential
+KV cache          dynamic        content-based
+Engram            static         hashed
+experts           static         learned routing
+
+That's a very powerful explanatory framework.
+
+12. Suggested experiment sequence
+
+I would resist adding everything at once and extend the current experiment methodology like this:
+
+Phase	Experiment	Question
+1	SS01 simple SSM	Can fixed-size state learn anything here?
+2	SS02 selective SSM	Does input-dependent gating help?
+3	HA01 SSM + attention	How little attention is necessary?
+4	SM01 SSM + MoE	Are SSM and conditional compute complementary?
+5	LM01 latent MoE	Can experts become cheaper?
+6	DS01 distillation	Can the tiny hybrid learn from a stronger teacher?
+7	SE01 SSM + Engram	Dynamic versus static memory
+8	SEM01 SSM + Engram + MoE	Three different allocation mechanisms
+9	MT01 two-token MTP	Can we get accepted speculative tokens?
+10	KC01 partial KV compression	Compress only remaining attention state
+11	QC01 quantized hybrid	RAM/storage economics
+12	EC01 expert paging	Can total capacity exceed RAM?
+
+And crucially:
+
+Keep an ablation matrix.
+
+Something like:
+
+                   SSM   Attn   MoE   Engram
+Dense               -     ✓     -      -
+SSM                 ✓     -     -      -
+Hybrid              ✓     ✓     -      -
+SSM-MoE             ✓     -     ✓      -
+SSM-Engram          ✓     -     -      ✓
+Hybrid-MoE          ✓     ✓     ✓      -
+Full                ✓     ✓     ✓      ✓
+
+That matches the scientific discipline you already established with RE01.
+
+13. Tiny hardware makes some metrics more important than perplexity
+
+For this project I'd elevate these to first-class results:
+
+Memory
+model bytes
+resident model bytes
+working-set bytes
+persistent state bytes/token history
+peak activation bytes
+bytes read/token
+expert-cache misses/token
+Compute
+MACs/token
+expert MACs/token
+SSM operations/token
+attention operations/token
+router operations/token
+CPU behavior
+
+Eventually:
+
+wall µs/token
+CPU µs/token
+instructions/token
+L1 misses
+LLC misses
+bytes/sec from backing store
+Quality
+validation loss
+exact match
+task-family accuracy
+specialization score
+MTP acceptance
+
+At your scale,
+
+bytes moved per useful output token
+
+may prove to be more informative than FLOPs.
+
+14. The 256 MB experiment gets genuinely interesting now
+
+Suppose, later, you deliberately construct a model whose total stored components exceed memory:
+
+total stored model      512 MB
+
+resident:
+core / SSM               24 MB
+attention                 8 MB
+hot experts              32 MB
+Engram cache             16 MB
+runtime + activations    32 MB
+--------------------------------
+working model           ~112 MB
+
+while the rest lives on flash.
+
+Then the question becomes:
+
+Can a 512 MB logical model behave usefully on a 256 MB machine?
+
+That is much more interesting than merely:
+
+Can we make a 100 MB model?
+
+MoE + Engram + fixed-size SSM state + expert paging all push in that direction.
+
+15. One conceptual rename may help the project
+
+Your architecture presently talks about four sparsities.
+
+I'd consider generalizing that section to:
+
+Resource allocation axes
+COMPUTE
+MoE
+"Which computation executes?"
+
+STATE
+Mamba / SSM
+"How much sequence history stays resident?"
+
+MEMORY
+Engram
+"What can be retrieved instead of recomputed?"
+
+PARAMETERS
+recurrence / sharing
+"How many transformations share weights?"
+
+RESIDENCY
+expert cache
+"What must be in fast memory right now?"
+
+PRECISION
+quantization
+"How many bits represent each parameter?"
+
+TIME
+MTP
+"How many future tokens can one state predict?"
+
+Now all the proposed techniques fit one coherent story rather than looking like a bag of tricks.
+
+Recommendation
+
+Add Mamba/SSM, but make it the next fundamental mechanism rather than immediately building a full Mamba+MoE+Engram+MTP model.
+
+The progression I'd use is:
+
+current MicroMoE
+      |
+      v
+tiny SSM
+      |
+      v
+SSM vs attention
+      |
+      v
+SSM + sparse attention
+      |
+      v
+SSM + MoE
+      |
+      v
+latent tiny MoE
+      |
+      v
+distill it
+      |
+      v
++ Engram
+      |
+      v
++ MTP
+      |
+      v
+quantize / page / constrain RAM
+
+The most important near-term result does not need to be that Mamba improves loss. A successful first result could simply demonstrate:
+
+As sequence length increases, the attention model's working memory grows while the tiny SSM's persistent state remains constant, with measurable quality/latency tradeoffs.
+
+That would be a clean, demonstrable piece of value on a single CPU core with no GPU, and it naturally connects today's MicroMoE work to Nemotron-style hybrid models without pretending a 10K-parameter educational model inherits 120B-model scaling behavior.
+
+And after that, I think the particularly interesting experiment is SSM + latent MoE + Engram. It gives you three visibly different ways of spending scarce resources—state, computation, and lookup memory—and could become one of the strongest conceptual demonstrations in the repo.
+

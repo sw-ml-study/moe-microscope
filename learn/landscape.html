@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MoE Microscope landscape</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>MoE Microscope: follow the data across the landscape</h1>
+  <p>One wide scene, panned station by station in the order a forward pass happens. Chips move between stations, and every value on a chip is read from a pinned recording in the repository: nothing is computed in the browser and nothing moves that a recording does not hold. Stations without a recording yet are drawn empty and say so. The <a href="index.html">frame-by-frame page</a> shows the same recordings as tables; the <a href="https://github.com/sw-ml-study/moe-microscope/blob/main/docs/overview/landscape-storyboard.md">storyboard</a> lists every scene, its source, and its acceptance rule.</p>
+</header>
+<section class="controls" aria-label="Camera">
+  <label for="scene">Scene</label>
+  <select id="scene"></select>
+  <button type="button" id="prev">Previous</button>
+  <button type="button" id="next">Next</button>
+  <button type="button" id="play">Play</button>
+  <input type="range" id="slider" min="0" max="0" value="0" aria-label="Scene">
+  <span class="frame-label" id="scene-label">loading</span>
+</section>
+<main class="landscape">
+  <div class="stage" id="stage"><div class="track" id="track"></div></div>
+  <pre id="verify" hidden></pre>
+  <p class="caption">Reduced motion: chips jump instead of gliding when your system asks for reduced motion, or with <code>?motion=off</code>. <code>?verify=1</code> lists every recording value each scene read. <code>?scene=N</code> opens at a scene.</p>
+</main>
+<footer>
+  <span>MIT License</span><span class="sep">&middot;</span>
+  <span>&copy; 2026 Michael A Wright</span><span class="sep">&middot;</span>
+  <a href="https://software-wrighter-lab.github.io/sw-campus/" target="_blank" rel="noopener">Campus</a><span class="sep">&middot;</span>
+  <a href="https://blog.softwarewrighter.com/2026/09/13/saw-building-a-tiny-mixture-of-experts/" target="_blank" rel="noopener">Blog</a><span class="sep">&middot;</span>
+  <a href="https://discord.com/invite/Ctzk5uHggZ" target="_blank" rel="noopener">Discord</a><span class="sep">&middot;</span>
+  <a href="https://github.com/sw-ml-study/moe-microscope" target="_blank" rel="noopener">GitHub</a><span class="sep">&middot;</span>
+  <a href="https://github.com/sw-ml-study/moe-microscope/wiki" target="_blank" rel="noopener">Wiki</a><span class="sep">&middot;</span>
+  <span id="build-info">build info unavailable</span>
+</footer>
+<script src="landscape.js"></script>
+</body>
+</html>

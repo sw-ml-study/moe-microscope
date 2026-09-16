@@ -1,0 +1,136 @@
+{
+ "schema": "sw-ml-study.landscape-scenes",
+ "version": 0,
+ "storyboard": "docs/overview/landscape-storyboard.md",
+ "labels": {
+  "alphabet": "~ 0123456789+-*=>,[]():abcdefghijklmnopqrstuvwxyz_|.",
+  "experts": [
+   "E0",
+   "E1",
+   "E2",
+   "E3"
+  ]
+ },
+ "scenes": [
+  {
+   "id": "tokens",
+   "title": "Tokens become vectors",
+   "recording": "fixtures/recordings/walkthrough-v0.json",
+   "caption": "The walkthrough window 17+25=|42. (walk/tokens, frame 0): ten real token chips travel from the input strip into the embedding, which reads one of 52 rows per token; the 18 padding positions stay dim. The vector chips that leave carry walk/hidden (frame 1), the state after attention, because the embedding output itself was not recorded.",
+   "stations": [
+    {
+     "id": "input",
+     "label": "input ids"
+    },
+    {
+     "id": "embed",
+     "label": "embedding (52 x 16)"
+    },
+    {
+     "id": "attn",
+     "label": "attention + residual"
+    }
+   ],
+   "chips": [
+    {
+     "kind": "token",
+     "read": {
+      "name": "walk/tokens",
+      "frame": 0
+     },
+     "count": 10,
+     "label": "alphabet",
+     "from": "input",
+     "to": "embed"
+    },
+    {
+     "kind": "vector",
+     "read": {
+      "name": "walk/hidden",
+      "frame": 1
+     },
+     "count": 10,
+     "from": "embed",
+     "to": "attn"
+    }
+   ]
+  },
+  {
+   "id": "router",
+   "title": "The router decides",
+   "recording": "fixtures/recordings/walkthrough-v0.json",
+   "caption": "Each real token's vector enters the router (a 16 to 4 linear layer); walk/probs (frame 3) is the softmax per token and walk/groups (frame 6) the expert that won, so each chip leaves along its expert's lane. Below: walk/load (frame 4) counts the tokens per expert; the balance term is a function of the same mask (SD01, MX01 reports).",
+   "stations": [
+    {
+     "id": "router",
+     "label": "router 16 -> 4"
+    },
+    {
+     "id": "e0",
+     "label": "expert 0"
+    },
+    {
+     "id": "e1",
+     "label": "expert 1"
+    },
+    {
+     "id": "e2",
+     "label": "expert 2"
+    },
+    {
+     "id": "e3",
+     "label": "expert 3"
+    }
+   ],
+   "lanes": [
+    {
+     "label": "the balance term is computed from the same mask (walk/load, walk/balance, frame 4)",
+     "above": false
+    }
+   ],
+   "chips": [
+    {
+     "kind": "score",
+     "read": {
+      "name": "walk/probs",
+      "frame": 3
+     },
+     "count": 10,
+     "col": 0,
+     "from": "router",
+     "to": "router"
+    },
+    {
+     "kind": "group",
+     "read": {
+      "name": "walk/groups",
+      "frame": 6
+     },
+     "count": 10,
+     "label": "alphabet",
+     "labelsFrom": {
+      "name": "walk/tokens",
+      "frame": 0
+     },
+     "from": "router",
+     "lanes": [
+      "e0",
+      "e1",
+      "e2",
+      "e3"
+     ]
+    },
+    {
+     "kind": "score",
+     "read": {
+      "name": "walk/load",
+      "frame": 4
+     },
+     "count": 4,
+     "from": "router",
+     "to": "router"
+    }
+   ]
+  }
+ ]
+}

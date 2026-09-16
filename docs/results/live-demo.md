@@ -37,6 +37,24 @@ for it.
 | Routing and dispatch walkthrough | 10 frames stepped, 20 observations rendered, last step 9 |
 | New lesson captions and labels | recurrence strip (`rm/route/example`, `re/route/example`), the Engram rows, gate, and retrieved values of one window (`engram/rows/example`, `engram/gate/example`, `engram/retrieved/example`), the per-recurrence Engram gate (`re/gate/example`), all drawn from recorded values only |
 
+## 2026-09-15, landscape player (local, before deploy)
+
+The landscape page (`learn/landscape.html`, `learn/landscape.js`) is the
+panning stage of Saga 6: one wide track, one segment per scene, stations
+and chips positioned from the scenes file, chips gliding (or jumping under
+reduced motion) from their source station to their destination. Checked
+over the composed site with headless Chrome before its first deploy:
+
+| Check | Result |
+|---|---|
+| `?verify=1&motion=off` | title `verified: ok`; scene `tokens` 2 reads, 0 errors; scene `router` 4 reads, 0 errors |
+| Reads listed | `walk/tokens [28]` frame 0, `walk/hidden [28, 16]` frame 1, `walk/probs [28, 4]` frame 3, `walk/groups [28]` frame 6, `walk/load [4]` frame 4, every value sampled in the report |
+| Chips | 44 chips over 8 stations; token chips labeled by the scenes file's alphabet, lane colors from `walk/groups`, vector strips from `walk/hidden` |
+| Footer | the same license, copyright, campus, blog, Discord, GitHub, wiki, and build-info footer as the frame-by-frame page (`scripts/check-learn` requires it on both pages) |
+
+The two scenes are the player's proof; the storyboard's eight scenes are
+the next step and are verified on the published site when they land.
+
 What the page does and does not do: it is a playback. No sw-MLPL code runs
 in the browser and no model runs in the page. Every number it draws is read
 from a fixture in the repository: the seven training recordings were
