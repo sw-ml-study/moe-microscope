@@ -1,9 +1,10 @@
 number = 1
 slug = "gate-cache"
-status = "in-progress"
+status = "completed"
 description = "Gate cache. The full gate (just check) takes about 35 minutes because every l..."
 role = "deterministic"
 context_files = []
 created_at = "2026-09-16T19:28:19"
+completed_at = "2026-09-17T09:29:24"
 task_type = "maintenance"
-commits = []
+commits = ["0dcf46527ba9dfec80434fe0a75053b928260700"]
