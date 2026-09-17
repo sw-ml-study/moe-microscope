@@ -10,6 +10,9 @@ the same hierarchy as a navigation layer. Three reader journeys:
 - [Project overview](../README.md)
 - [Live demo](https://sw-ml-study.github.io/moe-microscope/): the pinned
   recordings stepped frame by frame in the browser
+- [Landscape](https://sw-ml-study.github.io/moe-microscope/landscape.html):
+  the same recordings as moving data, panned scene by scene along one
+  wide track
 - [Architecture](overview/architecture.md): the model under the lens, the
   four sparsities, ownership and layering
 - [Delivery plan](overview/plan.md): the sagas, the two scales, the visual

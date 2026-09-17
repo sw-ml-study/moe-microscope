@@ -239,9 +239,11 @@ without motion, so the still frame at any station is complete.
   it read (name, shape, frame) and the values it placed on chips, and
   reports a missing observation as an error; the report must be empty of
   errors on the published site.
-- Each scene's acceptance rule above is checked by reading the fixture
-  and comparing with the rendered text of the chips (a headless-browser
-  script in step 4).
+- Each scene's acceptance rule above is checked by
+  `scripts/check-landscape` (in the gate): every read must exist in its
+  fixture with a usable shape, and with a Chrome binary the composed
+  page's verify report must be error-free with every value placed on a
+  chip equal to its fixture value.
 - The placeholders carry no numbers.
 - Every caption that states a mechanism property (the two call-out
   justifications that are not measurements) cites the report that

@@ -49,6 +49,12 @@ structure, not that it emerges in ordinary text.
 - [MX01 routing](../experiments/MX01-routing.md) (before training)
 - [MX01 top-1](../experiments/MX01.md), [MX02 top-2](../experiments/MX02.md)
 
+## On the landscape
+
+Watch the data move: the router deciding (scene 4) on the
+[panned animation](https://sw-ml-study.github.io/moe-microscope/landscape.html?scene=3), every chip value read from the
+pinned recordings.
+
 ## Deeper reference
 
 - [How experts specialize, how routing decides](../research/moe-engram-discussion.md)

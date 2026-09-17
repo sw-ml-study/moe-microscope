@@ -43,6 +43,12 @@ experts for.
 - [GB01 generation benchmark](../experiments/GB01.md): the same cost per
   generated token
 
+## On the landscape
+
+Watch the data move: dispatch and the four experts (scene 5) on the
+[panned animation](https://sw-ml-study.github.io/moe-microscope/landscape.html?scene=4), every chip value read from the
+pinned recordings.
+
 ## Deeper reference
 
 - [Results table](../reference/results.md), SD01 row

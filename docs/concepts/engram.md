@@ -178,6 +178,12 @@ placeholder.
 EG01 and RE01 measured; the saga closes next. Engram at more data (480 and 960 examples)
 and with a frozen dense block are the open candidates.
 
+## On the landscape
+
+Watch the data move: the Engram lookup (scene 3) and the composition (scene 7) on the
+[panned animation](https://sw-ml-study.github.io/moe-microscope/landscape.html?scene=2), every chip value read from the
+pinned recordings.
+
 ## Deeper reference
 
 - [How Engram is sized](../research/moe-engram-discussion.md)

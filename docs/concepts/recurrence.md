@@ -56,6 +56,12 @@ RC01, RM01, and RE01 measured; the ablation matrix is in the RE01 report. sw-MLP
 parameter-bound counts (findings F6 and F15, resolved), so depth is a
 function argument.
 
+## On the landscape
+
+Watch the data move: the block repeating and re-routing (scene 6) and the composition (scene 7) on the
+[panned animation](https://sw-ml-study.github.io/moe-microscope/landscape.html?scene=5), every chip value read from the
+pinned recordings.
+
 ## Deeper reference
 
 - [Delivery plan](../overview/plan.md), the recurrence-and-Engram saga

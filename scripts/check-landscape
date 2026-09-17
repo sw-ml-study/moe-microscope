@@ -1,0 +1,109 @@
+#!/bin/sh
+# Landscape acceptance: every scene's reads exist in the pinned recordings with the shapes the chips need (always), and, when a Chrome binary is available, the composed page's ?verify=1 report must be error-free and every value it placed on a chip must equal the fixture value it names.
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+scenes="$repo_root/fixtures/landscape/scenes-v0.json"
+
+python3 - "$repo_root" "$scenes" <<'PY'
+import json, sys
+root, scenes_path = sys.argv[1], sys.argv[2]
+doc = json.load(open(scenes_path))
+recs = {}
+def rec(path):
+    if path not in recs:
+        recs[path] = json.load(open(f"{root}/{path}"))
+    return recs[path]
+problems = []
+for sc in doc["scenes"]:
+    ids = {s["id"] for s in sc["stations"]}
+    if sc.get("placeholder") and sc.get("chips"):
+        problems.append(f"{sc['id']}: a placeholder scene carries chips")
+    for chip in sc.get("chips", []):
+        for key in ("from", "to"):
+            if key in chip and chip[key] not in ids:
+                problems.append(f"{sc['id']}: chip {chip['kind']} names unknown station {chip[key]}")
+        for lane in chip.get("lanes", []):
+            if lane not in ids:
+                problems.append(f"{sc['id']}: lane {lane} is not a station")
+        for read in (chip["read"], chip.get("labelsFrom")):
+            if not read:
+                continue
+            path = read.get("recording") or sc.get("recording")
+            r = rec(path)
+            frame = r["frames"][read["frame"]] if read["frame"] < len(r["frames"]) else None
+            o = frame and next((x for x in frame["observations"] if x["name"] == read["name"]), None)
+            if not o:
+                problems.append(f"{sc['id']}: {read['name']} is not in frame {read['frame']} of {path}")
+                continue
+            n = chip.get("count")
+            rows = o["shape"][0] if o["shape"] else 1
+            if n and n > rows:
+                problems.append(f"{sc['id']}: {read['name']} has {rows} rows, chip asks for {n}")
+            if chip["kind"] in ("rows", "matrix", "strip") and len(o["shape"]) != 2:
+                problems.append(f"{sc['id']}: {read['name']} must be a matrix for a {chip['kind']} chip")
+            if chip["kind"] == "vector" and len(o["shape"]) != 2:
+                problems.append(f"{sc['id']}: {read['name']} must be a matrix for a vector chip")
+            if chip["kind"] == "group" and read is chip["read"] and any(v >= len(chip.get("lanes", [])) for v in o["values"][: (n or len(o["values"]))]):
+                problems.append(f"{sc['id']}: {read['name']} routes to a lane the chip does not list")
+if problems:
+    print("\n".join(problems), file=sys.stderr)
+    sys.exit(1)
+print(f"landscape scenes: {len(doc['scenes'])} scenes, every read present with a usable shape")
+PY
+
+chrome=${CHROME:-}
+for candidate in "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" google-chrome chromium chromium-browser; do
+    [ -n "$chrome" ] && break
+    if [ -x "$candidate" ] || command -v "$candidate" >/dev/null 2>&1; then chrome=$candidate; fi
+done
+if [ -z "$chrome" ]; then
+    echo "SKIP landscape browser acceptance: no Chrome binary (set CHROME to run it)"
+    exit 0
+fi
+
+site="$repo_root/tmp/site-landscape-check"
+dom_file=""
+"$repo_root/scripts/build-site" "$site" > /dev/null
+port=${LANDSCAPE_PORT:-8791}
+(cd "$site" && python3 -m http.server "$port" --bind 127.0.0.1 > /dev/null 2>&1) &
+server=$!
+trap 'kill $server 2>/dev/null; rm -rf "$site" "$dom_file"' EXIT
+sleep 1
+dom_file=$(mktemp)
+"$chrome" --headless --disable-gpu --virtual-time-budget=12000 --dump-dom "http://127.0.0.1:$port/landscape.html?verify=1&motion=off" > "$dom_file" 2>/dev/null || true
+python3 - "$repo_root" "$scenes" "$dom_file" <<'PY'
+import json, re, sys, html
+root, scenes_path, dom_file = sys.argv[1], sys.argv[2], sys.argv[3]
+dom = open(dom_file).read()
+title = re.search(r"<title>(.*?)</title>", dom)
+if not title or title.group(1) != "verified: ok":
+    print(f"landscape page title is {title.group(1) if title else None!r}, expected 'verified: ok'", file=sys.stderr)
+    sys.exit(1)
+report = html.unescape(re.sub("<[^>]+>", "", re.search(r'<pre[^>]*id="verify"[^>]*>(.*?)</pre>', dom, re.S).group(1)))
+doc = json.load(open(scenes_path))
+recs = {}
+def fmt(v):
+    if float(v).is_integer(): return str(int(v))
+    return f"{v:.1f}" if abs(v) >= 100 else f"{v:.3f}"
+reads = 0
+for line in report.split("\n"):
+    m = re.match(r"  (\S+) \[(.*?)\] frame (\d+) step (\S+) of (\S+): (.*)$", line)
+    if not m:
+        if "ERROR" in line:
+            print(line, file=sys.stderr); sys.exit(1)
+        continue
+    name, frame, path, sample = m.group(1), int(m.group(3)), m.group(5), m.group(6).split()
+    if path not in recs: recs[path] = json.load(open(f"{root}/{path}"))
+    o = next(x for x in recs[path]["frames"][frame]["observations"] if x["name"] == name)
+    expect = [fmt(v) for v in o["values"][:6]]
+    if sample != expect:
+        print(f"{name} frame {frame}: page shows {sample}, fixture holds {expect}", file=sys.stderr); sys.exit(1)
+    reads += 1
+chips = dom.count('class="chip')
+expected_scenes = len(doc["scenes"])
+found = len(re.findall(r"^\S+: \d+ reads, 0 errors$", report, re.M))
+if found != expected_scenes:
+    print(f"{found} scenes reported without errors, expected {expected_scenes}", file=sys.stderr); sys.exit(1)
+print(f"PASS landscape acceptance: {expected_scenes} scenes, {reads} reads equal to their fixture values, {chips} chips, no errors")
+PY

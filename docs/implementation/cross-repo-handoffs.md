@@ -115,3 +115,12 @@ For the campus docent, one ask is shared with `../demo-abstract-algebra`
 (its blocker B7): a headless `--target web` build of `mlpl-wasm` alone, so a
 page can load the evaluator as a library instead of the whole playground in
 a hidden iframe. Until then both projects use the iframe bridge.
+
+## `../../software-wrighter-lab/sw-campus`: the landscape in the lobby
+
+The Computational Sciences Institute's featured moe-microscope demo can
+link both pages: the frame-by-frame live demo
+(<https://sw-ml-study.github.io/moe-microscope/>) and the panned animation
+(<https://sw-ml-study.github.io/moe-microscope/landscape.html>), described
+as playbacks of pinned recordings. Both pages carry the campus link in
+their footer; nothing else is needed from the campus side.

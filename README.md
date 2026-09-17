@@ -28,11 +28,17 @@ The moving parts step by step, live on GitHub Pages:
 <https://sw-ml-study.github.io/moe-microscope/>. Pick a lesson (the dense
 baseline, the top-1 and top-2 mixtures, the recurrent block, the
 recurrent mixture, the Engram table, the three sparsities together, or
-one window through routing and dispatch) and step through its frames. The landscape page beside it
-(`landscape.html`) pans along the same recordings as moving data, scene by
-scene. Both are playbacks: no sw-MLPL code runs in the browser, and every
-number is read from a pinned fixture that a real training run or its
-export script wrote. To produce those fixtures
+one window through routing and dispatch) and step through its frames.
+
+The panned animation, follow the data across the landscape:
+<https://sw-ml-study.github.io/moe-microscope/landscape.html>. One wide
+scene panned station by station in the order a forward pass happens
+(tokens, attention, the Engram lookup, the router, the experts, the
+recurrence loop, the composition, the head); chips move between stations
+and every value on a chip is read from the same pinned recordings. Both
+pages are playbacks: no sw-MLPL code runs in the browser, and every number
+is read from a pinned fixture that a real training run or its export
+script wrote. To produce those fixtures
 yourself, run the training at the command line: `just dense write`,
 `just moe write`, `just moe2 write`, `just recur write`, `just rm write`,
 `just engram write`, `just re write`, `just recordings write`, and
@@ -55,8 +61,8 @@ seven-row ablation matrix (RE01); seven recordings replayed in the live
 demo and handed to the generic Rust/Yew host; the campus docent's first
 five steps (paused: it does not yet beat a deterministic matcher).
 
-Still to come, in order: the animated data-flow landscape (in progress),
-a Mamba-style state-space block and the attention, state-space, and MoE
+Still to come, in order: the landscape's acceptance pass (the animation
+itself is live), a Mamba-style state-space block and the attention, state-space, and MoE
 hybrid with latent experts, distillation, the state-memory-experts
 composition, multi-token prediction, the routed docent, quantization and
 the packed file with the expert cache, CPU/NPU scheduling and the 256 MB
@@ -176,10 +182,12 @@ which the composed model memorizes best and generalizes worst). The
 recurrence-and-Engram saga is closed. The campus docent (a tiny model
 trained in batch here to direct visitors of the research campus site) is
 paused after its first five steps: it does not yet beat a deterministic
-matcher. Next is an animated data-flow landscape (every mechanism's data
-movement played back from the pinned recordings, panning along one wide
-scene), then the routed docent, distillation, quantization, the expert
-cache, and heterogeneous execution. Plan:
+matcher. The animated data-flow landscape (every mechanism's data movement
+played back from the pinned recordings, panning along one wide scene) is
+live and closes its saga next; then the state-space block and the tiny
+hybrid, distillation, the state-memory-experts composition, multi-token
+prediction, the routed docent, quantization, the expert cache, and
+heterogeneous execution. Plan:
 [docs/overview/plan.md](docs/overview/plan.md).
 
 ## What is here

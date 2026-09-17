@@ -52,6 +52,12 @@ quality win at this scale (DS01 shows the data needed for one).
 - [MX01 top-1 mixture](../experiments/MX01.md)
 - [DS01 data scale](../experiments/DS01.md) for both models against data size
 
+## On the landscape
+
+Watch the data move: tokens, embedding, and attention (scenes 1 and 2), and the head (scene 8) on the
+[panned animation](https://sw-ml-study.github.io/moe-microscope/landscape.html?scene=0), every chip value read from the
+pinned recordings.
+
 ## Deeper reference
 
 - [Resource economics](../results/resource-economics.md)

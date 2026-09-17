@@ -1,6 +1,6 @@
 number = 4
 slug = "landscape-acceptance"
-status = "pending"
+status = "in-progress"
 description = "Landscape acceptance and saga close. Verify every scene in a browser against ..."
 role = "production"
 context_files = []

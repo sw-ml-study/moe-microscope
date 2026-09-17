@@ -10,7 +10,7 @@ The mandatory checklist in `AGENTS.md` applies to every step: focused tests,
 tracked-file audit, named-file staging, a detailed commit on `main`,
 Agentrail completion metadata, and a verified `git push origin main`.
 
-## Active: `animated-data-flow-landscape` (Saga 6)
+## Completed: `animated-data-flow-landscape` (Saga 6)
 
 Purpose: a very visual explanation of the combined techniques that
 eschews tables for movement of data: tokens flow through the embedding,
@@ -18,7 +18,14 @@ attention, the Engram lookup, the router, the experts, the recurrence
 loop, and the head on one landscape wider than the screen, the camera
 panning along it roughly chronologically with parallel work called out;
 every moving value read from a pinned recording. Started 2026-09-15 by
-the user's decision, ahead of the routed docent.
+the user's decision, ahead of the routed docent; completed 2026-09-16.
+
+Outcome: the panned animation is live at
+<https://sw-ml-study.github.io/moe-microscope/landscape.html>: nine scenes
+(eight mechanisms and a labeled placeholder station), 180 chips whose 20
+reads across five recordings equal their fixture values on the published
+site, two justified parallel lanes, reduced motion, and a verify mode; the
+generic player knows recordings, scenes, stations, chips, and lanes only.
 
 1. `landscape-storyboard` - done: [`landscape-storyboard.md`](landscape-storyboard.md):
    eight scenes in forward-pass order over two example windows (the
@@ -47,8 +54,14 @@ the user's decision, ahead of the routed docent.
    packed by lane; `?verify=1` reads 20 observations across five
    recordings with no errors locally and on the published site (recorded
    in `docs/results/live-demo.md`).
-4. `landscape-acceptance` - browser verification of every scene against
-   its recording, README, docs, wiki, campus handoff, saga close.
+4. `landscape-acceptance` - done: `scripts/check-landscape` in the gate
+   checks every scene's reads against the fixtures (always) and, with a
+   Chrome binary, composes the site and requires the page's `?verify=1`
+   report to be error-free with every value placed on a chip equal to
+   its fixture value; the landscape is linked with its URL from the
+   README's live-demo section, the docs index, each concept page (its
+   scene), the wiki, and the carousel; the campus handoff asks for a lobby
+   link.
 
 ## Completed: `recurrence-and-engram` (Saga 5)
 
@@ -534,7 +547,7 @@ track in [`plan.md`](plan.md).
 - Saga 5 `recurrence-and-engram` (completed, above): RC01, RM01, EG01 (both
   forms: from scratch and builtin, with parity), RE01, the seven-row
   ablation table, and the live-demo and host handoffs.
-- Saga 6 `animated-data-flow-landscape`: a panning animation of tokens
+- Saga 6 `animated-data-flow-landscape` (completed, above): a panning animation of tokens
   moving through routing, hot and cached experts, Engram lookups,
   recurrence, decode-cache compression, and multi-token prediction, one
   scene per mechanism, each played back from a pinned recording with
