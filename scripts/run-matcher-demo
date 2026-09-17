@@ -5,6 +5,11 @@ set -eu
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 mlpl=$("$repo_root/scripts/select-mlpl")
 mode=${1:-check}
+. "$repo_root/scripts/gate-cache"
+gate_cache_start "$mode" run-matcher-demo \
+    demos/matcher_baseline.mlpl assets/previews/matcher-scores.svg \
+    "row:docs/reference/docent-results.md:| MB01 |" \
+    "row:docs/reference/docent-results.md:| MB01t |"
 tmp_rel="tmp/matcher-demo"
 mkdir -p "$repo_root/$tmp_rel"
 binary=$("$mlpl" --version 2>/dev/null | head -1 | tr -d '\n')
@@ -40,4 +45,5 @@ for lesson in MB01 MB01t; do
     fi
 done
 rm -rf "$repo_root/$tmp_rel"
+gate_cache_record "$mode"
 echo "PASS matcher baseline contract, preview, and results rows ($mode)"

@@ -1,0 +1,162 @@
+#!/bin/sh
+# Gate cache, sourced by the demo gate scripts: a check run whose inputs are byte-identical to a
+# previous passing check run prints "PASS <script> (cached)" and exits 0 instead of retraining.
+#
+# Usage inside a gate script (after repo_root and mode are set):
+#
+#   . "$repo_root/scripts/gate-cache"
+#   gate_cache_start "$mode" run-dense-demo demos/dense_baseline.mlpl \
+#       assets/previews/dense-run.svg "row:docs/reference/results.md:| DN01 |" conf:DN01
+#   ... the run and its comparisons, exiting non-zero on any failure ...
+#   gate_cache_record "$mode"
+#   echo "PASS ..."
+#
+# Loops that cache one entry per item use the pieces: gate_cache_key NAME SPEC..., then
+# gate_cache_hit MODE (true on a usable entry), then gate_cache_record MODE after the item passes.
+#
+# Input specs, paths relative to the repository root:
+#   PATH            a file (hashed) or a directory (every file under it, sorted). A .mlpl file
+#                   also contributes its transitive include closure and every fixtures/, docs/,
+#                   assets/, or catalog/ path literal those sources name.
+#   row:FILE:TEXT   the lines of FILE that contain TEXT (one lesson's results rows)
+#   conf:ID         the scripts/recordings.conf line for lesson ID
+#   bin:PATH        an absolute path to an executable, hashed as bytes (mlpl-serve has no --version)
+#   text:STRING     a literal
+# Always included: the calling script, this file, and the selected mlpl-repl's version and
+# commit lines. The key is the sha256 of the sorted manifest; the entry file holds the manifest.
+#
+# Environment: GATE_FRESH=1 ignores existing entries (a passing run still records one);
+# GATE_CACHE_DIR overrides tmp/gate-cache. Write mode never reads or records the cache, so the
+# first check after a write reruns the lesson against the files the write installed.
+
+gate_cache_dir=${GATE_CACHE_DIR:-$repo_root/tmp/gate-cache}
+gate_root=$(CDPATH= cd -- "$repo_root" && pwd)
+gate_key=""
+gate_name=""
+gate_manifest=""
+
+gate_sha() {
+    shasum -a 256 "$1" | awk '{ print $1 }'
+}
+
+gate_rel() {
+    case "$1" in
+        "$gate_root"/*) printf '%s\n' "${1#"$gate_root"/}" ;;
+        *) printf '%s\n' "$1" ;;
+    esac
+}
+
+# Print the absolute path of $1 and, recursively, every file it includes; $2 is the chain guarding cycles.
+gate_includes() {
+    _gi_file=$1
+    _gi_chain=${2:-}
+    case " $_gi_chain " in *" $_gi_file "*) return 0 ;; esac
+    printf '%s\n' "$_gi_file"
+    _gi_dir=$(dirname -- "$_gi_file")
+    for _gi_target in $(sed -n 's/^include "\([^"]*\)".*/\1/p' "$_gi_file"); do
+        _gi_path=$(CDPATH= cd -- "$_gi_dir" && cd -- "$(dirname -- "$_gi_target")" && pwd)/$(basename -- "$_gi_target")
+        gate_includes "$_gi_path" "$_gi_chain $_gi_file"
+    done
+}
+
+# Print "file REL SHA" for a file, or for every file under a directory.
+gate_hash_path() {
+    if [ -d "$1" ]; then
+        find "$1" -type f | LC_ALL=C sort | while IFS= read -r _hp_file; do
+            printf 'file %s %s\n' "$(gate_rel "$_hp_file")" "$(gate_sha "$_hp_file")"
+        done
+    elif [ -f "$1" ]; then
+        printf 'file %s %s\n' "$(gate_rel "$1")" "$(gate_sha "$1")"
+    else
+        printf 'missing %s\n' "$(gate_rel "$1")"
+    fi
+}
+
+# Print the manifest lines for one spec.
+gate_spec_lines() {
+    _sl_spec=$1
+    case "$_sl_spec" in
+        row:*)
+            _sl_rest=${_sl_spec#row:}
+            _sl_file=${_sl_rest%%:*}
+            _sl_text=${_sl_rest#*:}
+            _sl_sha=$(grep -F -- "$_sl_text" "$repo_root/$_sl_file" 2>/dev/null | shasum -a 256 | awk '{ print $1 }')
+            printf 'row %s %s %s\n' "$_sl_file" "$_sl_text" "$_sl_sha"
+            ;;
+        conf:*)
+            _sl_id=${_sl_spec#conf:}
+            _sl_sha=$(grep -- "^$_sl_id|" "$repo_root/scripts/recordings.conf" 2>/dev/null | shasum -a 256 | awk '{ print $1 }')
+            printf 'conf %s %s\n' "$_sl_id" "$_sl_sha"
+            ;;
+        bin:*)
+            _sl_bin=${_sl_spec#bin:}
+            printf 'bin %s %s\n' "$_sl_bin" "$(gate_sha "$_sl_bin")"
+            ;;
+        text:*)
+            printf 'text %s\n' "${_sl_spec#text:}"
+            ;;
+        *)
+            case "$_sl_spec" in
+                /*) _sl_abs=$_sl_spec ;;
+                *) _sl_abs=$repo_root/$_sl_spec ;;
+            esac
+            case "$_sl_abs" in
+                *.mlpl)
+                    _sl_closure=$(gate_includes "$_sl_abs" | LC_ALL=C sort -u)
+                    for _sl_src in $_sl_closure; do
+                        gate_hash_path "$_sl_src"
+                    done
+                    for _sl_lit in $(printf '%s\n' "$_sl_closure" | xargs grep -o -h -E '"(fixtures|docs|assets|catalog)/[^"]*"' 2>/dev/null | tr -d '"' | LC_ALL=C sort -u); do
+                        [ -e "$repo_root/$_sl_lit" ] && gate_hash_path "$repo_root/$_sl_lit"
+                    done
+                    ;;
+                *) gate_hash_path "$_sl_abs" ;;
+            esac
+            ;;
+    esac
+}
+
+# Compute gate_key and gate_manifest for NAME over the given specs.
+gate_cache_key() {
+    gate_name=$1
+    shift
+    _ck_mlpl=$("$repo_root/scripts/select-mlpl")
+    _ck_self=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/$(basename -- "$0")
+    gate_manifest=$(
+        printf 'mlpl %s\n' "$("$_ck_mlpl" --version 2>/dev/null | awk 'NR == 1 || /Commit:/ { gsub(/^[ \t]+/, ""); printf "%s ", $0 } END { print "" }')"
+        gate_hash_path "$_ck_self"
+        gate_hash_path "$repo_root/scripts/gate-cache"
+        for _ck_spec in "$@"; do
+            gate_spec_lines "$_ck_spec"
+        done
+    )
+    gate_manifest=$(printf '%s\n' "$gate_manifest" | LC_ALL=C sort -u)
+    gate_key=$(printf '%s\n' "$gate_manifest" | shasum -a 256 | awk '{ print $1 }')
+}
+
+# True when MODE is check, the cache is not bypassed, and the current key has a recorded pass.
+gate_cache_hit() {
+    [ "$1" = "check" ] || return 1
+    case "${GATE_FRESH:-}" in ''|0) ;; *) return 1 ;; esac
+    [ -n "$gate_key" ] && [ -f "$gate_cache_dir/$gate_name/$gate_key" ]
+}
+
+# Record the current key as passed when MODE is check.
+gate_cache_record() {
+    [ "$1" = "check" ] || return 0
+    [ -n "$gate_key" ] || return 0
+    mkdir -p "$gate_cache_dir/$gate_name"
+    printf '%s\n' "$gate_manifest" > "$gate_cache_dir/$gate_name/$gate_key.tmp.$$"
+    mv "$gate_cache_dir/$gate_name/$gate_key.tmp.$$" "$gate_cache_dir/$gate_name/$gate_key"
+}
+
+# Convenience for single-entry scripts: compute the key and exit 0 with a PASS line on a hit.
+gate_cache_start() {
+    _cs_mode=$1
+    shift
+    gate_cache_key "$@"
+    if gate_cache_hit "$_cs_mode"; then
+        echo "PASS $gate_name (cached)"
+        exit 0
+    fi
+}

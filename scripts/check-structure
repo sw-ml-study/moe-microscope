@@ -19,6 +19,7 @@ for path in AGENTS.md CLAUDE.md COPYRIGHT LICENSE README.md justfile mlplunit.co
     scripts/capture-recording scripts/check-recordings scripts/run-recording-parity scripts/recordings.conf \
     fixtures/recordings/moe-top1-run-v0.json fixtures/recordings/moe-top2-run-v0.json \
     scripts/make-recording-index scripts/run-emit-frame-loops scripts/build-local-serve \
+    scripts/gate-cache scripts/check-gate-cache scripts/check-docs \
     demos/teacher.mlpl tests/test_teacher.mlpl docs/implementation/teacher-fixture.md fixtures/teacher/teacher-v0.json \
     fixtures/teacher/index-v1.json assets/previews/teacher-fixture.svg scripts/run-teacher \
     lib/moe.mlpl tests/test_moe.mlpl demos/router_microscope.mlpl assets/previews/router-routing.svg scripts/run-router-demo demos/moe_baseline.mlpl scripts/run-moe-demo assets/previews/moe-run.svg assets/previews/moe-balance.svg \

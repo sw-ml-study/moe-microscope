@@ -5,6 +5,12 @@ set -eu
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 mlpl=$("$repo_root/scripts/select-mlpl")
 mode=${1:-check}
+. "$repo_root/scripts/gate-cache"
+gate_cache_start "$mode" run-campus-demo \
+    demos/campus_corpus.mlpl assets/previews/campus-snapshot.svg \
+    assets/previews/campus-corpus.svg assets/previews/campus-split.svg \
+    assets/previews/campus-stories.svg fixtures/campus/corpus-a.json \
+    "row:docs/reference/results.md:| CD00 |"
 tmp_rel="tmp/campus-demo"
 mkdir -p "$repo_root/$tmp_rel"
 binary=$("$mlpl" --version 2>/dev/null | head -1 | tr -d '\n')
@@ -49,4 +55,5 @@ else
     }
 fi
 rm -rf "$repo_root/$tmp_rel"
+gate_cache_record "$mode"
 echo "PASS campus corpus contract, previews, fixture, and results row ($mode)"

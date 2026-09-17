@@ -1,16 +1,24 @@
 #!/bin/sh
-# Prove that live mlpl-serve runs reproduce the committed recordings exactly. usage: run-recording-parity [check|write] [ID ...] (default: every configured lesson)
+# Prove that live mlpl-serve runs reproduce the committed recordings exactly; each lesson has its own gate-cache entry. usage: run-recording-parity [check|write] [ID ...] (default: every configured lesson)
 set -eu
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 mode=${1:-check}
 [ "$#" -gt 0 ] && shift
 wanted="$*"
+server=$("$repo_root/scripts/select-mlpl-serve")
+. "$repo_root/scripts/gate-cache"
 
 while IFS='|' read -r id lesson demo recording preview mf mo mv mt first last; do
     case "$id" in ''|\#*) continue ;; esac
     if [ -n "$wanted" ]; then
         case " $wanted " in *" $id "*) ;; *) continue ;; esac
+    fi
+    gate_cache_key "run-recording-parity-$id" "$demo" "$recording" "conf:$id" \
+        scripts/capture-recording scripts/bundle-program scripts/select-mlpl-serve "bin:$server"
+    if gate_cache_hit "$mode"; then
+        echo "PASS run-recording-parity-$id (cached)"
+        continue
     fi
     actual=$("$repo_root/scripts/capture-recording" "$demo" "$lesson" "$mf" "$mo" "$mv" "$mt")
     if [ "$mode" = "write" ]; then
@@ -20,6 +28,7 @@ while IFS='|' read -r id lesson demo recording preview mf mo mv mt first last; d
         echo "live $id recording differs from the committed fixture; run scripts/run-recording-parity write $id" >&2
         exit 1
     else
+        gate_cache_record "$mode"
         echo "PASS live $id SSE recording matches the committed fixture"
     fi
 done < "$repo_root/scripts/recordings.conf"

@@ -222,7 +222,9 @@ The scripts only select existing tools; they never install or overwrite them.
 
 ```sh
 just                 # list recipes
-just check           # the complete pre-commit gate
+just check           # the complete pre-commit gate (lessons served from tmp/gate-cache when unchanged)
+just check --fresh   # the same gate with every lesson retrained (about 40 minutes)
+just check-docs      # the documentation-only gate: structure, links, style, catalog, page, landscape
 just tests           # native mlplunit tests (arguments filter paths or tags)
 just probes          # re-run the upstream-finding reproducers
 just domain          # run DM01 and check its diagrams
@@ -237,14 +239,28 @@ just delta           # run LD01 low-rank delta experts with a shared FFN (about 
 just budget          # RB01 resource budget: document and diagram, no training
 just benchmark       # GB01 generation benchmark fixture and document (write to re-measure)
 just mlpl-style      # canonical formatting and docstring checks
+just check-gate-cache # prove the gate cache reruns exactly the lessons a library edit touches
 ```
 
 `just check` validates repository structure, documentation links,
 peer-identical license files, the generated Agentrail briefing, MLPL style,
-the native test suites, the pinned reproducers, and the DM01 and DN01 lessons
-with their diagrams and results row (about half a minute in total). Each lesson extends the
+the native test suites, the pinned reproducers, and every lesson with its
+diagrams, fixtures, results rows, and live recordings. Each lesson extends the
 gate with its own demo run, preview freshness check, recording check, and
-catalog check.
+catalog check. Retraining every lesson takes about 40 minutes (2495 s
+measured on 2026-09-16) and the same gate with a warm cache takes 51 s, so each demo
+gate script keys a cache entry under `tmp/gate-cache/` on the sha256 of its
+demo source, the library files it includes (transitively), the fixtures and
+tables it reads, the previews and results rows it checks, its
+`recordings.conf` line, and the mlpl binary's version and commit; a check run
+whose key was already recorded by a passing check run prints `PASS (cached)`.
+Write mode never touches the cache, `just check --fresh` (or `GATE_FRESH=1`)
+ignores it, and `just check-gate-cache` proves the keying by editing a library
+file in a scratch copy. `just check-docs` runs only the structure, link,
+style, catalog, page, and landscape checks; it is acceptable for a commit
+that changes nothing under `lib/`, `demos/`, `tests/`, `probes/`,
+`scripts/run-*`, or `fixtures/` and does not change the binary
+([`AGENTS.md`](AGENTS.md) states the rule).
 
 The interactive host is the generic Rust/Yew/WASM microscope and MLPL web
 framework in `../demo-extensions`; that Rust code is the only part of this

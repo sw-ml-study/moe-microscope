@@ -4,6 +4,10 @@ set -eu
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 mode=${1:-check}
+. "$repo_root/scripts/gate-cache"
+gate_cache_start "$mode" run-teacher \
+    demos/teacher.mlpl fixtures/teacher assets/previews/teacher-fixture.svg \
+    docs/implementation/teacher-fixture.md "row:docs/reference/results.md:| TE01 |"
 fixture="$repo_root/fixtures/teacher/teacher-v0.json"
 index="$repo_root/fixtures/teacher/index-v1.json"
 preview="$repo_root/assets/previews/teacher-fixture.svg"
@@ -62,4 +66,5 @@ grep -q '^| TE01 |' "$repo_root/docs/reference/results.md" || { echo "missing TE
 for path in "$(field '.guide')" "$(field '.source')" "$(field '.preview')"; do
     [ -f "$repo_root/$path" ] || { echo "missing indexed teacher input: $path" >&2; exit 1; }
 done
+gate_cache_record "$mode"
 echo "PASS teacher fixture schema, bounds, pinned hashes, preview, and results row"

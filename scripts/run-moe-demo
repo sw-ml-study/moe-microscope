@@ -5,6 +5,10 @@ set -eu
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 mlpl=$("$repo_root/scripts/select-mlpl")
 mode=${1:-check}
+. "$repo_root/scripts/gate-cache"
+gate_cache_start "$mode" run-moe-demo \
+    demos/moe_baseline.mlpl assets/previews/moe-run.svg assets/previews/moe-balance.svg \
+    fixtures/moe/mx01-family-by-expert.json "row:docs/reference/results.md:| MX01 |" conf:MX01
 tmp_rel="tmp/moe-demo"
 mkdir -p "$repo_root/$tmp_rel"
 binary=$("$mlpl" --version 2>/dev/null | head -1 | tr -d '\n')
@@ -47,4 +51,5 @@ else
     }
 fi
 rm -rf "$repo_root/$tmp_rel"
+gate_cache_record "$mode"
 echo "PASS moe baseline contract, previews, and results row ($mode)"

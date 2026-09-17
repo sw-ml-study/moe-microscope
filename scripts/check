@@ -3,9 +3,18 @@ set -eu
 
 repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 
+# --fresh (or GATE_FRESH=1) makes every demo gate script ignore tmp/gate-cache and retrain.
+for arg in "$@"; do
+    case "$arg" in
+        --fresh) GATE_FRESH=1; export GATE_FRESH ;;
+        *) echo "usage: scripts/check [--fresh]" >&2; exit 2 ;;
+    esac
+done
+
 "$repo_dir/scripts/check-structure"
 "$repo_dir/scripts/check-doc-links"
 "$repo_dir/scripts/check-mlpl-style"
+"$repo_dir/scripts/check-gate-cache"
 "$repo_dir/scripts/run-tests"
 "$repo_dir/scripts/run-probes"
 "$repo_dir/scripts/run-domain-demo"

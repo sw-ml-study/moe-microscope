@@ -5,6 +5,10 @@ set -eu
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 mlpl=$("$repo_root/scripts/select-mlpl")
 mode=${1:-check}
+. "$repo_root/scripts/gate-cache"
+gate_cache_start "$mode" run-domain-demo \
+    demos/domain_microscope.mlpl assets/previews/domain-window.svg \
+    assets/previews/domain-tags.svg assets/previews/domain-split.svg
 tmp_rel="tmp/domain-demo"
 mkdir -p "$repo_root/$tmp_rel"
 
@@ -22,4 +26,5 @@ for name in domain-window domain-tags domain-split; do
     fi
 done
 rm -rf "$repo_root/$tmp_rel"
+gate_cache_record "$mode"
 echo "PASS domain microscope contract and preview freshness ($mode)"

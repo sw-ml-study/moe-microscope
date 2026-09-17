@@ -66,10 +66,13 @@ site="$repo_root/tmp/site-landscape-check"
 dom_file=""
 "$repo_root/scripts/build-site" "$site" > /dev/null
 port=${LANDSCAPE_PORT:-8791}
-(cd "$site" && python3 -m http.server "$port" --bind 127.0.0.1 > /dev/null 2>&1) &
+# Started directly (no subshell) so the trap's kill reaches the server itself and cannot orphan it on the port.
+python3 -m http.server "$port" --bind 127.0.0.1 --directory "$site" > /dev/null 2>&1 &
 server=$!
-trap 'kill $server 2>/dev/null; wait $server 2>/dev/null; rm -rf "$site" "$dom_file"' EXIT
+trap 'kill $server 2>/dev/null || true; wait $server 2>/dev/null || true; rm -rf "$site" "$dom_file"' EXIT
 sleep 1
+# A stale server on the port would serve an old site and pass falsely; require our own to be alive.
+kill -0 "$server" 2>/dev/null || { echo "landscape check server did not start on port $port (already in use?)" >&2; exit 1; }
 dom_file=$(mktemp)
 "$chrome" --headless --disable-gpu --virtual-time-budget=12000 --dump-dom "http://127.0.0.1:$port/landscape.html?verify=1&motion=off" > "$dom_file" 2>/dev/null || true
 python3 - "$repo_root" "$scenes" "$dom_file" <<'PY'

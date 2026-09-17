@@ -128,6 +128,14 @@ benchmark mode="check":
 mlpl-path:
     ./scripts/select-mlpl
 
-# Run the complete precommit gate.
-check:
-    ./scripts/check
+# Run the complete precommit gate; demo runs whose inputs are unchanged are served from tmp/gate-cache. `just check --fresh` retrains everything.
+check *args:
+    ./scripts/check {{args}}
+
+# The documentation-only gate (structure, links, style, catalog, page, landscape); acceptable when nothing under lib/, demos/, tests/, probes/, scripts/run-*, fixtures/, or the binary changed.
+check-docs:
+    ./scripts/check-docs
+
+# Prove the gate cache is keyed by content: a library edit reruns only the lessons that include it.
+check-gate-cache:
+    ./scripts/check-gate-cache

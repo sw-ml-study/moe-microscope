@@ -1,0 +1,90 @@
+#!/bin/sh
+# Prove the gate cache is keyed by content. In a scratch copy of the sources with its own cache directory: a second check run
+# is cached; editing a library file reruns exactly the lessons whose include closure contains it; a stale preview fails and
+# records nothing; write mode and GATE_FRESH=1 never use the cache; the manifest lists transitive includes, path literals,
+# rows, and the recordings.conf line. The two lessons run are DM01 and the routing microscope (well under a second each).
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+MLPL=$("$repo_root/scripts/select-mlpl")
+export MLPL
+work=$(mktemp -d "${TMPDIR:-/tmp}/gate-cache-test.XXXXXX")
+work=$(CDPATH= cd -- "$work" && pwd)
+trap 'rm -rf "$work"' EXIT HUP INT TERM
+copy="$work/repo"
+for dir in lib demos scripts fixtures assets/previews docs/reference; do
+    mkdir -p "$copy/$(dirname -- "$dir")"
+    cp -R "$repo_root/$dir" "$copy/$dir"
+done
+GATE_CACHE_DIR="$work/cache"
+export GATE_CACHE_DIR
+unset GATE_FRESH
+
+fail() { echo "gate cache test: $1" >&2; exit 1; }
+
+# run NAME [ARGS...]: run the copied script, remember its output and status.
+run() {
+    name=$1
+    shift
+    if output=$("$copy/scripts/$name" "$@" 2>&1); then status=0; else status=$?; fi
+}
+expect_ran() { [ "$status" -eq 0 ] || fail "$1 failed: $output"; case "$output" in *"(cached)"*) fail "$1 was served from the cache but $2" ;; esac; }
+expect_cached() { [ "$status" -eq 0 ] || fail "$1 failed: $output"; case "$output" in *"(cached)"*) ;; *) fail "$1 reran but $2" ;; esac; }
+expect_failed() { [ "$status" -ne 0 ] || fail "$1 passed but $2"; }
+entries() { find "$GATE_CACHE_DIR/$1" -type f 2>/dev/null | wc -l | tr -d ' '; }
+
+run run-domain-demo; expect_ran run-domain-demo "the cache was empty"
+run run-router-demo; expect_ran run-router-demo "the cache was empty"
+[ "$(entries run-domain-demo)" = 1 ] && [ "$(entries run-router-demo)" = 1 ] || fail "a passing check run did not record one entry each"
+
+run run-domain-demo; expect_cached run-domain-demo "nothing changed"
+run run-router-demo; expect_cached run-router-demo "nothing changed"
+
+run run-router-demo write; expect_ran "run-router-demo write" "write mode never uses the cache"
+[ "$(entries run-router-demo)" = 1 ] || fail "write mode recorded an entry"
+# A command, not the run function: a VAR=value prefix on a function call persists in POSIX sh.
+if output=$(GATE_FRESH=1 "$copy/scripts/run-router-demo" 2>&1); then status=0; else status=$?; fi
+expect_ran "GATE_FRESH=1 run-router-demo" "GATE_FRESH must bypass it"
+[ "$(entries run-router-demo)" = 1 ] || fail "a fresh run of unchanged inputs recorded a second key"
+
+# lib/moe.mlpl is included by the routing microscope and not by the domain microscope.
+printf '\n# gate cache test edit\n' >> "$copy/lib/moe.mlpl"
+run run-router-demo; expect_ran run-router-demo "lib/moe.mlpl, which it includes, changed"
+run run-domain-demo; expect_cached run-domain-demo "lib/moe.mlpl is not in its include closure"
+[ "$(entries run-router-demo)" = 2 ] || fail "the rerun after the library edit did not record a second key"
+
+# lib/svg.mlpl is in both closures.
+printf '\n# gate cache test edit\n' >> "$copy/lib/svg.mlpl"
+run run-router-demo; expect_ran run-router-demo "lib/svg.mlpl changed"
+run run-domain-demo; expect_ran run-domain-demo "lib/svg.mlpl changed"
+
+# A stale committed preview must fail the check and record nothing.
+cp "$copy/assets/previews/router-routing.svg" "$work/router-routing.svg"
+printf '<!-- stale -->\n' >> "$copy/assets/previews/router-routing.svg"
+before=$(entries run-router-demo)
+run run-router-demo; expect_failed run-router-demo "its committed preview is stale"
+[ "$(entries run-router-demo)" = "$before" ] || fail "a failing run recorded an entry"
+cp "$work/router-routing.svg" "$copy/assets/previews/router-routing.svg"
+run run-router-demo; expect_cached run-router-demo "the preview is back to the recorded content"
+
+# The manifest names transitive includes, path literals, results rows, and the recordings.conf line.
+manifest=$(
+    cd "$copy" && repo_root=$copy && . "$copy/scripts/gate-cache" &&
+    gate_cache_key probe demos/dense_baseline.mlpl "row:docs/reference/results.md:| DN01 |" conf:DN01 &&
+    printf '%s\n' "$gate_manifest"
+)
+for needle in "file lib/dense.mlpl" "file lib/domain.mlpl" "file lib/evaluate.mlpl" "file fixtures/domain/mixture-v0.json" \
+    "file scripts/gate-cache" "row docs/reference/results.md | DN01 |" "conf DN01" "mlpl mlpl-repl"; do
+    case "$manifest" in *"$needle"*) ;; *) fail "manifest lacks '$needle': $manifest" ;; esac
+done
+case "$manifest" in *"lib/moe.mlpl"*) fail "manifest for the dense baseline names lib/moe.mlpl, which it does not include" ;; esac
+key_before=$(printf '%s\n' "$manifest" | shasum -a 256 | awk '{ print $1 }')
+sed -i '' 's/^| DN01 |/| DN01 | edited/' "$copy/docs/reference/results.md"
+manifest_after=$(
+    cd "$copy" && repo_root=$copy && . "$copy/scripts/gate-cache" &&
+    gate_cache_key probe demos/dense_baseline.mlpl "row:docs/reference/results.md:| DN01 |" conf:DN01 &&
+    printf '%s\n' "$gate_manifest"
+)
+[ "$(printf '%s\n' "$manifest_after" | shasum -a 256 | awk '{ print $1 }')" != "$key_before" ] || fail "editing the DN01 row did not change the key"
+
+echo "PASS gate cache keyed by source, include closure, fixtures, previews, rows, and conf (library edit reruns only dependents)"

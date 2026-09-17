@@ -5,6 +5,13 @@ set -eu
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 mlpl=$("$repo_root/scripts/select-mlpl")
 mode=${1:-check}
+. "$repo_root/scripts/gate-cache"
+gate_cache_start "$mode" run-engram-demo \
+    demos/engram_microscope.mlpl demos/engram_diagrams.mlpl assets/previews/engram-structure.svg \
+    assets/previews/engram-sweep.svg assets/previews/engram-parity.svg \
+    "row:docs/reference/results.md:| EG01@1024 |" "row:docs/reference/results.md:| EG01@256 |" \
+    "row:docs/reference/results.md:| EG01@64 |" "row:docs/reference/results.md:| EG01@16 |" \
+    "row:docs/reference/results.md:| EG01b@256 |" conf:EG01
 tmp_rel="tmp/engram-demo"
 rm -rf "$repo_root/$tmp_rel"
 mkdir -p "$repo_root/$tmp_rel"
@@ -51,4 +58,5 @@ for name in engram-structure engram-sweep engram-parity; do
     fi
 done
 rm -rf "$repo_root/$tmp_rel"
+gate_cache_record "$mode"
 echo "PASS engram contract, previews, and results rows ($mode)"

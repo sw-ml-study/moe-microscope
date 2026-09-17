@@ -12,4 +12,6 @@ For modifying or reproducing the microscope.
 
 Every lesson is an MLPL program under `demos/` built from `lib/` modules
 with native mlplunit tests under `tests/`; `just check` is the gate and
-`AGENTS.md` the process.
+`AGENTS.md` the process. The gate serves unchanged lessons from a content-keyed
+cache and `just check-docs` covers documentation-only commits; see the
+incremental gate section of the [architecture](../overview/architecture.md).

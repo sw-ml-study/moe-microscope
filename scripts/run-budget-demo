@@ -5,6 +5,10 @@ set -eu
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 mlpl=$("$repo_root/scripts/select-mlpl")
 mode=${1:-check}
+. "$repo_root/scripts/gate-cache"
+gate_cache_start "$mode" run-budget-demo \
+    demos/resource_budget.mlpl docs/results/resource-economics.md \
+    assets/previews/budget-storage.svg
 tmp_rel="tmp/budget-demo"
 mkdir -p "$repo_root/$tmp_rel"
 
@@ -24,4 +28,5 @@ pair() {
 pair resource-budget.md docs/results/resource-economics.md
 pair budget-storage.svg assets/previews/budget-storage.svg
 rm -rf "$repo_root/$tmp_rel"
+gate_cache_record "$mode"
 echo "PASS resource budget document and diagram ($mode)"

@@ -358,7 +358,15 @@ it with duplicated content or edit it independently.
   behavior lives in `scripts/`; do not add a Makefile.
 - Before every commit and push, run `just check`. The gate grows with each
   lesson: demo run, preview freshness, recording check, catalog check, and
-  results-table check.
+  results-table check. Demo gate scripts serve unchanged lessons from
+  `tmp/gate-cache/` (keyed on source, include closure, fixtures, previews,
+  rows, `recordings.conf`, and the binary); `just check --fresh` retrains
+  everything and is required before a release row or when in doubt.
+  `just check-docs` (structure, links, style, catalog, page, landscape) is
+  acceptable instead of `just check` only for a commit that changes nothing
+  under `lib/`, `demos/`, `tests/`, `probes/`, `scripts/run-*`, or
+  `fixtures/` and does not change the mlpl binary; any other change runs
+  `just check`, which is cheap when the cache is warm.
 - `sw-checklist` applies only to Rust code. If a Rust/Yew/WASM live demo is
   ever built (here under `crates/` or in `../demo-extensions`), that Rust
   code, and only that code, must pass `sw-checklist`.

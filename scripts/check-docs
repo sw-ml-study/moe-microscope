@@ -1,0 +1,15 @@
+#!/bin/sh
+# The documentation-only gate: structure, links, style, catalog, live page, and landscape checks, with no lesson run.
+# Acceptable in place of scripts/check only for a commit that changes nothing under lib/, demos/, tests/, probes/,
+# scripts/run-*, or fixtures/, and does not change the mlpl binary (AGENTS.md, "Testing and completion gate").
+set -eu
+
+repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+
+"$repo_dir/scripts/check-structure"
+"$repo_dir/scripts/check-doc-links"
+"$repo_dir/scripts/check-mlpl-style"
+"$repo_dir/scripts/check-catalog"
+"$repo_dir/scripts/check-learn"
+"$repo_dir/scripts/check-landscape"
+echo "PASS documentation-only gate (structure, links, style, catalog, page, landscape)"

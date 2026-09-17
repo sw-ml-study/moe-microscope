@@ -140,6 +140,42 @@ same recorded values the tests assert on. Every lesson records memory, speed,
 and quality in the catalog and the results table. The full contract is in the
 [delivery plan](plan.md).
 
+## Incremental gate
+
+`scripts/check` runs every check in order; the demo gate scripts
+(`scripts/run-*-demo`, `run-scale-sweep`, `run-benchmark`, `run-teacher`,
+`run-walkthrough-export`, `run-recording-parity`) retrain or replay a lesson
+and compare its diagrams, fixtures, and results rows with the committed
+files. Retraining everything takes about 40 minutes (2495 s measured on
+2026-09-16; the warm gate the same day took 51 s with 27 cached entries), so each of those scripts
+sources `scripts/gate-cache` and computes a key before it runs: the sha256 of
+its demo source and the library files that source includes (transitively,
+following `include` lines the way `scripts/bundle-program` does), every
+`fixtures/`, `docs/`, `assets/`, or `catalog/` path literal those sources
+name, the previews and fixtures it compares, the results-table lines of its
+lessons, its `scripts/recordings.conf` line, the script itself, the helper,
+and the mlpl binary's version and commit line (`run-recording-parity` also
+hashes the `mlpl-serve` binary and keeps one entry per lesson). A check run
+whose key exists under `tmp/gate-cache/<script>/` prints `PASS <script>
+(cached)` and exits 0; a passing check run records its key with the manifest
+it hashed, so `cat` on the entry shows exactly what was pinned. Failing runs
+record nothing. Write mode never reads or records the cache, so the first
+check after a write reruns the lesson against the files the write installed.
+`just check --fresh` (or `GATE_FRESH=1`) ignores existing entries; the cache
+lives under the ignored `tmp/` and is discarded with it.
+
+The keying is proven by `scripts/check-gate-cache`, which runs in the gate:
+in a scratch copy with its own cache directory it shows a second run cached,
+a library edit rerunning exactly the lessons whose include closure contains
+the file, a stale preview failing without recording, write mode and
+`GATE_FRESH` bypassing the cache, and the manifest naming transitive
+includes, path literals, rows, and the recordings line.
+
+`scripts/check-docs` is the documentation-only gate (structure, links,
+style, catalog, page, landscape). It is acceptable for a commit that changes
+nothing under `lib/`, `demos/`, `tests/`, `probes/`, `scripts/run-*`, or
+`fixtures/` and does not change the binary; `AGENTS.md` states the rule.
+
 ## Delivery boundary
 
 This repository implements `.mlpl` model code, lessons, generators, oracles,
