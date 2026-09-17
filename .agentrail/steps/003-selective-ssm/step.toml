@@ -1,0 +1,9 @@
+number = 3
+slug = "selective-ssm"
+status = "pending"
+description = "SS02 selective state-space block. The SS01 block with A, B, and C computed fr..."
+role = "production"
+context_files = []
+created_at = "2026-09-16T19:28:19"
+task_type = "mlpl-lesson"
+commits = []
