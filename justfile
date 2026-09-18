@@ -72,6 +72,10 @@ rm mode="check":
 dense mode="check":
     ./scripts/run-dense-demo {{mode}}
 
+# Run SS01, the state-space block in place of attention (about a minute), and check its diagrams, state-bytes fixture, and results row; `just ssm write` regenerates and re-measures them.
+ssm mode="check":
+    ./scripts/run-ssm-demo {{mode}}
+
 # Prove that emit_frame streams every train step and while iteration over live SSE, and pin F16.
 emit-frame-loops:
     ./scripts/run-emit-frame-loops

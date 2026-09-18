@@ -1,6 +1,6 @@
 number = 2
 slug = "simple-ssm"
-status = "pending"
+status = "in-progress"
 description = "SS01 simple state-space block. lib/ssm.mlpl: a diagonal linear state-space bl..."
 role = "production"
 context_files = []

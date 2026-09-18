@@ -1,8 +1,8 @@
-# Results-table writer: one fixed-column markdown row per lesson run, appended to docs/reference/results.md.
+# Results-table writer: one fixed-column markdown row per lesson run, appended to docs/reference/results.md (the last column, persistent state bytes at 16 and 1,024 tokens of history, is a text cell).
 
 def u:results_columns() {
   "Record keys of the fixed results columns, in table order.";
-  ["lesson", "config", "binary", "params", "active_params", "bytes_per_expert", "packed_bytes", "expert_evals", "bytes_per_token", "cache_hit_rate", "ms_per_token", "val_loss", "ppl", "arith_acc", "seq_acc", "mlpl_acc", "prose_acc", "kl", "router_entropy", "balance", "specialization", "gate_mean"]
+  ["lesson", "config", "binary", "params", "active_params", "bytes_per_expert", "packed_bytes", "expert_evals", "bytes_per_token", "cache_hit_rate", "ms_per_token", "val_loss", "ppl", "arith_acc", "seq_acc", "mlpl_acc", "prose_acc", "kl", "router_entropy", "balance", "specialization", "gate_mean", "state_bytes"]
 }
 
 def u:results_cell(row, key) {

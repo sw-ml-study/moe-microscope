@@ -172,6 +172,31 @@ and with routing and recurrence (RE01) to 4.76 at training loss 0.006:
 the table turns every extra mechanism's capacity into memorization. The
 ablation matrix is in the [RE01 report](../experiments/RE01.md).
 
+## 11. A fixed-size state replaces the key-value cache exactly; here it memorizes more and generalizes less
+
+Evidence: SS01 is DN01 with the attention block replaced by a diagonal
+linear scan of matched size (1,056 parameters against 1,024), trained with
+the same budget. Its persistent sequence state is 256 bytes at any history
+where one-head attention keeps a key and a value row per token: 4,096
+bytes at 16 tokens and 262,144 at 1,024 (results table, last column;
+`fixtures/ssm/state-bytes-v0.json`). It reaches training exact match 0.99
+(DN01 0.70) and validation loss 4.56 (DN01 3.79) with the same prose
+answers and one more held-out MLPL answer; its validation loss bottoms out
+at the same first checkpoint as DN01's (1.96 against 1.94) and climbs
+higher. The learned decay spans 0.26 to 0.98 (mean 0.76).
+
+Interpretation: at 90 windows the fixed-size state is one more way to
+memorize; the soft, decaying summary is enough to fit the training rows
+and not to hold the held-out ones. The memory claim needs no
+interpretation: it is shape arithmetic, and the row states it beside the
+attention row.
+
+Limitation: one seed, one state width (32), one decay initialization; the
+sequential scan costs 17 to 42 microseconds per token of prefill in this
+interpreter against 2 to 16 for attention, so the constant-memory block is
+not the faster one here. SS02 (token-dependent decay) and HA01 (one
+attention block among state blocks) are the next rows.
+
 ## Supported now versus plausible but not demonstrated
 
 Supported: more stored than active capacity; measurable specialization; a

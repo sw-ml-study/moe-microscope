@@ -9,7 +9,7 @@
 <body>
 <header>
   <h1>MoE Microscope: the moving parts, step by step</h1>
-  <p>This page is a playback, not a live computation: no sw-MLPL code runs in your browser. Every number is read from a JSON fixture in the repository. Seven fixtures are recordings that real training runs wrote with <code>emit_frame</code> in sw-MLPL, captured over <code>mlpl-serve</code> and pinned by hash; the eighth was written by an export script after training the same mixture. The gate regenerates or checks all eight. This page only lays the values out. Pick a lesson, then step through its frames. The <a href="landscape.html">landscape page</a> pans along the same recordings as moving data.</p>
+  <p>This page is a playback, not a live computation: no sw-MLPL code runs in your browser. Every number is read from a JSON fixture in the repository. Eight fixtures are recordings that real training runs wrote with <code>emit_frame</code> in sw-MLPL, captured over <code>mlpl-serve</code> and pinned by hash; the ninth was written by an export script after training the same mixture. The gate regenerates or checks all nine. This page only lays the values out. Pick a lesson, then step through its frames. The <a href="landscape.html">landscape page</a> pans along the same recordings as moving data.</p>
 </header>
 <section class="controls" aria-label="Playback">
   <label for="lesson">Lesson</label>
@@ -42,6 +42,7 @@ just recur write         # RC01: one block applied R=1..4 times (minutes)
 just rm write            # RM01: the mixture block applied R=2,3 times (minutes)
 just engram write        # EG01: four table sizes plus the builtin form (minutes)
 just re write            # RE01: recurrence, routing, and Engram together (minutes)
+just ssm write           # SS01: the state-space block in place of attention (about a minute)
 just recordings write    # recapture the seven recordings over mlpl-serve
 just walkthrough write   # retrain 40 epochs and rewrite the walkthrough fixture
 just serve-learn         # compose this page locally and serve it

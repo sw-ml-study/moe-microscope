@@ -29,6 +29,7 @@ was not proved, and where the raw evidence lives. Numbers cite a row of the
 | 18 | [RM01 recurrent mixture](RM01.md) | Does expert selection change over reasoning time, and do experts specialize by recurrence? |
 | 19 | [EG01 Engram from scratch](EG01.md) | Does external memory improve loss and tasks, at what table size, and is the hand-written form the builtin's function? |
 | 20 | [RE01 recurrent mixture plus Engram](RE01.md) | Do memory sparsity and compute sparsity complement each other? |
+| 21 | [SS01 simple state-space block](SS01.md) | Can a fixed-size state carry the history instead of a growing key-value cache, and at what cost? |
 
 The machine-readable inventory is [`catalog/lessons.toml`](../../catalog/lessons.toml).
 Experiments planned for later sagas (KD01, RW01,

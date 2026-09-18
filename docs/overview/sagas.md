@@ -559,7 +559,11 @@ track in [`plan.md`](plan.md).
   memory-first result, the state block with one attention block among
   several (HA01), the state block with routed experts (SM01), latent
   experts beside deltas and full experts (LM01), recordings and landscape
-  scenes; from `research4.txt`, prompted by Nemotron 3.
+  scenes; from `research4.txt`, prompted by Nemotron 3. In progress: the
+  gate cache and SS01 are done (SS01: a constant 256-byte state, validation
+  loss 4.56 against DN01's 3.79, a slower sequential scan in the
+  interpreter); a literate org-mode reading of the lessons was inserted
+  after SS01 at the user's request.
 - Saga 8 `distillation`: moved ahead of memory and prediction on the
   research note's argument: the student matrix (ground truth, token KD,
   hidden-state KD, both) on the dense student and the hybrid, router warm

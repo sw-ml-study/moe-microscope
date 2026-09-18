@@ -94,7 +94,8 @@ canonical committed evidence  optional native graphics host
 Observation names are literal strings (finding F8: `emit_frame` rejects a
 name held in a variable), stable, slash-separated, and grouped by the
 mechanism prefixes listed in `lib/observe.mlpl`, for example `moe/router/logits`, `moe/router/mask`, `moe/dispatch/expert-load`,
-`engram/rows/example`, `engram/gate/mean`, `rm/route/example`, `cache/hit-miss`,
+`engram/rows/example`, `engram/gate/mean`, `rm/route/example`,
+`ssm/state/example`, `ssm/decay`, `cache/hit-miss`,
 `cache/bytes-per-token`, `hybrid/q-star`. A host groups by prefix and chooses a
 presentation from shape; it never learns what a router is.
 

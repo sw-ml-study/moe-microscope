@@ -7,7 +7,7 @@ def u:observe_path(prefix, leaf) {
 
 def u:observe_prefixes() {
   "The mechanism prefixes lessons group observations under in a generic host.";
-  ["data", "dense", "recur", "moe", "engram", "distill", "quant", "cache", "hybrid", "packed"]
+  ["data", "dense", "recur", "moe", "engram", "distill", "quant", "cache", "hybrid", "packed", "ssm"]
 }
 
 def u:observe_prefix_known(prefix) {

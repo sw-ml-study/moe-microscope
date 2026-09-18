@@ -125,7 +125,7 @@ prose_prompt = unwrap(list_get(d.prompts, take(prose_index, 0, 0)));
 prose_answer = unwrap(list_get(d.answers, take(prose_index, 0, 0)));
 prose_pred = u:answer_text(u:greedy(:u:forward, unwrap(u:domain_encode(str_concat(prose_prompt, "|"))), 12));
 
-row = {lesson: "DN01", config: "dense d16 h32 1head T28 120ex 300ep lr0.003", binary: binary, params: params, active_params: active, expert_evals: 1, bytes_per_token: active * 8, ms_per_token: u:svg_round(ms_per_token, 4), val_loss: u:svg_round(final_val, 4), ppl: u:svg_round(ppl, 2), arith_acc: u:svg_round(rv.accuracy.arithmetic, 3), seq_acc: u:svg_round(rv.accuracy.sequence, 3), mlpl_acc: u:svg_round(rv.accuracy.mlpl, 3), prose_acc: u:svg_round(rv.accuracy.prose, 3)};
+row = {lesson: "DN01", config: "dense d16 h32 1head T28 120ex 300ep lr0.003", binary: binary, params: params, active_params: active, expert_evals: 1, bytes_per_token: active * 8, ms_per_token: u:svg_round(ms_per_token, 4), val_loss: u:svg_round(final_val, 4), ppl: u:svg_round(ppl, 2), arith_acc: u:svg_round(rv.accuracy.arithmetic, 3), seq_acc: u:svg_round(rv.accuracy.sequence, 3), mlpl_acc: u:svg_round(rv.accuracy.mlpl, 3), prose_acc: u:svg_round(rv.accuracy.prose, 3), state_bytes: str_concat(str_concat(u:svg_num(2 * 16 * dm * 8), " / "), u:svg_num(2 * 1024 * dm * 8))};
 r_row = if writing {
   write_atomic(str_concat(out_dir, "/results-row.md"), str_concat(u:results_row(row), "\n"))
 } else {

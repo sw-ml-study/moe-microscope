@@ -314,3 +314,20 @@ memory = "11,992 parameters (the MX01 mixture plus a 512-row Engram table of 8 a
 speed = "two processes (R = 1 for ME01 and R = 3 for RE01) of 300 epochs each, minutes in the interpreter; the R = 3 run is the pinned recording"
 quality = "validation loss and per-family exact match for the two composed rows, entropy, balance, specialization and Engram gate per recurrence, and the seven-row ablation matrix read from the results table"
 status = "accepted"
+
+[[lesson]]
+id = "SS01"
+slug = "state-space-block"
+title = "A fixed-size state in place of attention: what constant memory learns and costs"
+source = "demos/ssm_block.mlpl"
+library = ["lib/ssm.mlpl", "lib/dense.mlpl"]
+test = ["tests/test_ssm.mlpl"]
+previews = ["assets/previews/ssm-structure.svg", "assets/previews/ssm-window.svg", "assets/previews/ssm-bytes.svg"]
+fixture = "fixtures/recordings/state-space-run-v0.json"
+implementation = "from-scratch"
+observations = ["ssm/config", "ssm/loss/train", "ssm/loss/val", "ssm/accuracy/val", "ssm/accuracy/train", "ssm/decay", "ssm/state/example", "ssm/logits/example-argmax", "ssm/survival/example", "ssm/kv-bytes", "ssm/state-bytes"]
+memory = "3,844 parameters (scan block 1,056 against attention's 1,024); active parameters per token 3,028; persistent sequence state 256 B at every history against attention's 4,096 to 262,144 B at 16 to 1,024 tokens (fixtures/ssm/state-bytes-v0.json)"
+speed = "about a minute for 300 epochs in the interpreter; prefill 17.7 to 42.3 microseconds per token for the sequential scan against 2.3 to 16.0 for attention at 16 to 1,024 tokens (machine-dependent, pinned in the fixture)"
+quality = "validation loss 4.56 against DN01's 3.79; held-out exact match 0 / 0 / 0.286 / 0.667 (arith, seq, mlpl, prose); training exact match 0.99; learned decay 0.26 to 0.98"
+status = "accepted"
+

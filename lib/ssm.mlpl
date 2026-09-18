@@ -1,0 +1,51 @@
+# State-space block: a diagonal linear recurrence written out (s_t = decay * s_(t-1) + x_t B, y_t = s_t C) with a learned decay held in 0 to 1 by a sigmoid, so the sequence history lives in one fixed-size state instead of attention's growing key-value cache.
+include "dense.mlpl";
+
+def u:ssm_decay(a_logit) {
+  "Per-dimension decay in (0, 1): sigmoid of the raw learned logit, so training can only slide it between forgetting and accumulating.";
+  sigmoid(a_logit)
+}
+
+def u:ssm_scan(xB, decay, n, ds) {
+  "The scan over n positions of the projected input xB [n, ds]: s_t = decay * s_(t-1) + xB_t, stacked as [n, ds]; sequential by construction (one repeat per position; the count traces through grad, finding F15; ds is passed because shape arithmetic is not traced, F11).";
+  h = take(xB, 0, 0);
+  out = reshape(h, [1, ds]);
+  t = 1;
+  steps = n - 1;
+  repeat steps {
+    h = decay * h + take(xB, 0, t);
+    out = concat(out, reshape(h, [1, ds]), 0);
+    t = t + 1
+  };
+  out
+}
+
+def u:ssm_states(x, a_logit, B, n, ds) {
+  "The state at every position [n, ds] of an input x [n, dm]: project by B, then scan with the sigmoid decay.";
+  u:ssm_scan(matmul(x, B), u:ssm_decay(a_logit), n, ds)
+}
+
+def u:ssm_out(x, a_logit, B, C, n, ds) {
+  "The block output [n, dm]: every position's state read through C; the caller adds the residual.";
+  matmul(u:ssm_states(x, a_logit, B, n, ds), C)
+}
+
+def u:ssm_params(dm, ds) {
+  "Trainable parameters of the block: the decay logits, B [dm, ds], and C [ds, dm].";
+  ds + dm * ds + ds * dm
+}
+
+def u:ssm_state_bytes(ds) {
+  "Persistent sequence state at f64: one vector of ds values, whatever the history length.";
+  ds * 8
+}
+
+def u:kv_bytes(history, dm) {
+  "Persistent sequence state a one-head, one-layer causal attention keeps at f64: a key and a value row per token of history.";
+  2 * history * dm * 8
+}
+
+def u:ssm_survival(decay, from_pos, to_pos) {
+  "Mean over dimensions of the share of position from_pos's contribution still present in the state at to_pos: decay^(to_pos - from_pos), averaged.";
+  mean(pow(decay, to_pos - from_pos))
+}

@@ -31,6 +31,7 @@ do not know why", and nothing has earned it.
 | 10 | EG01 Engram | D+ mechanism A | worse than expected | equal to the builtin to the bit; at 90 windows every table size raises validation loss (3.93 to 4.67 against 3.79) |
 | 11 | RE01 all three sparsities | D | worse than expected | training loss 0.006, validation 4.76, the worst row of the ablation; the mechanisms work, the composition memorizes |
 | 12 | TE01 in-repo teacher | C- | worse than expected | the teacher is worse held out (4.14) than the student it is meant to teach; distillation cannot start from it |
+| 13 | SS01 state-space block | C+ mechanism A | as expected on memory, worse on loss | 256 B of sequence state at any history against 262,144 B for attention at 1,024 tokens, exactly; validation loss 4.56 against 3.79 and a slower sequential scan in the interpreter |
 
 Infrastructure lessons are graded below the mechanisms; they are what
 makes the numbers above trustworthy.
@@ -181,6 +182,22 @@ makes the numbers above trustworthy.
   data, the RM01 shape, or the gated external teacher) before any
   distillation term is measured; a distillation result against a worse
   teacher would be meaningless.
+
+
+### SS01 state-space block: C+ (mechanism A), as expected on memory, worse on loss
+
+- Expected: constant sequence memory at a small loss margin against
+  attention at matched parameters.
+- Result: the memory claim holds by construction (256 bytes at any
+  history against 4,096 to 262,144 for attention at 16 to 1,024 tokens);
+  the loss margin does not (4.56 against 3.79) while training exact match
+  is higher (0.99 against 0.70); the sequential scan is two to eight times
+  slower per token in the interpreter, stated in the fixture.
+- Value now: the first row with a measured state-bytes column, the decay
+  and the fading state drawn from recorded values, and an honest speed
+  number.
+- Next: SS02 makes the decay depend on the token; HA01 keeps one attention
+  block among state blocks and asks how little attention is enough.
 
 ## Infrastructure lessons
 

@@ -1,7 +1,7 @@
 number = 4
-slug = "ssm-plus-attention"
+slug = "selective-ssm"
 status = "pending"
-description = "HA01 the state block with one attention block among several. The Nemotron pat..."
+description = "SS02 selective state-space block. The SS01 block with A, B, and C computed fr..."
 role = "production"
 context_files = []
 created_at = "2026-09-16T19:28:19"

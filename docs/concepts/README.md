@@ -29,7 +29,7 @@ flowchart LR
 | 7 | How many experts fit in the same storage? | [Quantization](quantization.md) | projected (RB01) |
 | 8 | Does the whole model need to be resident? | [Expert cache](expert-cache.md) | estimated (RB01) |
 | 9 | Should every expert run on the same device? | [Heterogeneous execution](heterogeneous-execution.md) | planned |
-| 10 | Can a state-space block replace attention, and does a hybrid keep the best of each? | [State-space block](state-space.md) | planned (SS01, SS02); the scan is probed |
+| 10 | Can a state-space block replace attention, and does a hybrid keep the best of each? | [State-space block](state-space.md) | measured (SS01: constant 256 B state, validation loss 4.56 against 3.79); SS02 and HA01 next |
 
 ## Resource allocation axes
 
@@ -43,7 +43,7 @@ on alone against the dense baseline.
 | Compute | which computation executes? | top-k routing and sparse dispatch | MX01, MX02, SD01 |
 | Parameters | how many transformations share weights? | recurrence | RC01, RM01, RE01 (measured) |
 | Memory | what can be retrieved instead of recomputed? | Engram | EG01, RE01 (measured; not yet valuable at 90 windows) |
-| State | how much sequence history stays resident? | state-space block | SS01, SS02, HA01 (planned, Saga 7) |
+| State | how much sequence history stays resident? | state-space block | SS01 (measured: 256 B at any history against 262,144 B for attention at 1,024 tokens); SS02, HA01 (Saga 7) |
 | Residency | what must be in fast memory right now? | expert cache | XC01 (planned); RB01 gives the estimates |
 | Precision | how many bits represent each parameter? | quantization | QZ01 (planned); RB01 projects |
 | Time | how many future tokens can one state predict? | multi-token prediction | MT01 to MT03 (planned, Saga 10) |

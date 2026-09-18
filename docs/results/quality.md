@@ -18,6 +18,7 @@ in the [results table](../reference/results.md).
 | EG01 Engram 256 slots | 4.67 | 0 | 0 | 0 | 0 | 0.80 |
 | ME01 MoE + Engram | 4.60 | 0 | 0 | 0 | 0.333 | 0.79 |
 | RE01 recurrent MoE + Engram | 4.76 | 0 | 0 | 0.286 | 0 | 0.99 |
+| SS01 state-space block for attention | 4.56 | 0 | 0 | 0.286 | 0.667 | 0.99 |
 
 Data scale (DS01, 200 epochs):
 

@@ -16,45 +16,71 @@ everywhere else.
 
 ```mermaid
 flowchart LR
-  x[token x_t] --> g[decay a_t and input b_t from x_t]
-  h0[state h_t-1] --> u[h_t = a_t * h_t-1 + b_t * x_t]
-  g --> u
-  u --> o[output projection and gate]
+  x[token x_t] --> b[x_t B]
+  h0[state s_t-1] --> u[s_t = a * s_t-1 + x_t B]
+  b --> u
+  a[decay a = sigmoid A] --> u
+  u --> o[s_t C]
   o --> y[y_t into the residual stream]
 ```
 
-The selective scan written out: `h_t = a_t * h_(t-1) + b_t * x_t`, with
-`a_t = sigmoid(x_t Wa)` (per-dimension decay in 0 to 1) and `b_t = x_t Wb`
-(per-dimension input gate), then `y_t = h_t Wo` gated by the token. At
-microscope scale the scan runs sequentially over the 28-position window;
-`probes/c1_selective_scan_in_grad.mlpl` shows it traces through `grad`
-and trains with `adam` today.
+The simple block (SS01) written out: `s_t = a * s_(t-1) + x_t B` and
+`y_t = s_t C`, with `a = sigmoid(A)` a learned decay per state dimension
+held in 0 to 1, and `B`, `C` small projections. The selective block (SS02)
+makes the decay and the input gate functions of the token: `a_t =
+sigmoid(x_t Wa)`, `b_t = x_t Wb`. At microscope scale the scan runs
+sequentially over the 28-position window as one `repeat` per position;
+`probes/c1_selective_scan_in_grad.mlpl` shows the form traces through
+`grad` and trains with `adam`, and `lib/ssm.mlpl` is the lesson's version.
 
-## What the microscope will measure
+## What the microscope measured
 
-SS01: DN01 with attention replaced by the scan at matched parameters:
-validation loss and family accuracy; the decay `a_t` per position on one
-window (what the block forgets, drawn as a fading state chip); decode-time
-bytes held per token for the state against the key-value cache attention
-would hold, on the generation benchmark. SS02: the attention, state-space,
-and MoE hybrid at several ratios, with the recurrence machinery for depth.
+SS01 is DN01 with attention replaced by the simple scan at matched size
+(1,056 parameters against 1,024), trained with the DN01 budget:
+
+| | SS01 scan | DN01 attention |
+|---|---:|---:|
+| Validation loss | 4.56 | 3.79 |
+| Held-out exact match, arith / seq / mlpl / prose | 0 / 0 / 0.286 / 0.667 | 0 / 0 / 0 / 0.667 |
+| Training exact match | 0.99 | 0.70 |
+| Persistent state at 1,024 tokens of history | 256 B | 262,144 B |
+| Prefill, microseconds per token at 1,024 tokens (interpreter) | 42.3 | 16.0 |
+
+The learned decay spans 0.26 to 0.98 (mean 0.76): about a third of the
+first position of a seven-token window is still in the state at its end.
+The [SS01 report](../experiments/SS01.md) has the full rows and the three
+diagrams (structure and bytes, the state along one window as fading chips,
+state bytes against history).
+
+Did a fixed-size state learn anything here? It learned the training rows
+at least as well as attention (better exact match, lower training loss)
+and generalized worse (validation loss 4.56 against 3.79, the same prose
+answers, one more MLPL answer). What it costs: nothing in memory, exactly
+256 bytes at any history where attention holds 256 bytes per token; and,
+in this interpreter, two to eight times the prefill microseconds per
+token, because a sequential scan is one interpreter step per position
+while attention is one matmul over the window.
 
 ## What would demonstrate value
 
 At matched parameters, the scan block within a small margin of attention's
 validation loss with constant decode memory; and a hybrid ratio that keeps
 attention's held-out MLPL answers (the first ones came from RC01 and RM01)
-while the state-space blocks carry the rest at lower bytes per token.
+while the state-space blocks carry the rest at lower bytes per token. SS01
+delivers the constant memory and not the margin; SS02 (selective gating)
+and HA01 (one attention block among state blocks) are the next two rows.
 
 ## Status
 
-Planned as Saga 7 (state-space-and-hybrid), next after the landscape:
-SS01 simple, SS02 selective, HA01 with attention, SM01 with experts, LM01
-latent experts. Nothing measured yet; the only evidence is the capability
-probe.
+Saga 7 (state-space-and-hybrid) is in progress: SS01 is measured (this
+page's table); SS02 selective, HA01 with attention, SM01 with experts, and
+LM01 latent experts follow. The results table carries a state-bytes column
+for every row from SS01 on.
 
 ## Deeper reference
 
+- [SS01 report](../experiments/SS01.md) and the
+  [results table](../reference/results.md)
 - [Delivery plan](../overview/plan.md), Saga 7, and
   [`research4.txt`](../research/research4.txt)
 - [Recurrence](recurrence.md) for the depth-without-parameters machinery

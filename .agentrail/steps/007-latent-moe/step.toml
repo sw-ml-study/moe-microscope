@@ -1,4 +1,4 @@
-number = 6
+number = 7
 slug = "latent-moe"
 status = "pending"
 description = "LM01 latent experts. Experts in a projected-down latent space (d -> r shared ..."

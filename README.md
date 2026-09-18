@@ -57,13 +57,15 @@ experts with a shared expert (LD01); an in-repo teacher fixture (TE01); the
 resource budget (RB01) and a measured generation benchmark (GB01);
 recurrence (RC01, RM01); the Engram table from scratch with exact parity
 against the sw-MLPL builtin (EG01); all three sparsities together and the
-seven-row ablation matrix (RE01); seven recordings replayed in the live
-demo and handed to the generic Rust/Yew host; the campus docent's first
-five steps (paused: it does not yet beat a deterministic matcher).
+seven-row ablation matrix (RE01); a state-space block in place of
+attention with a constant 256-byte sequence state (SS01); eight recordings
+replayed in the live demo and handed to the generic Rust/Yew host; the
+campus docent's first five steps (paused: it does not yet beat a
+deterministic matcher).
 
-Still to come, in order: the landscape's acceptance pass (the animation
-itself is live), a Mamba-style state-space block and the attention, state-space, and MoE
-hybrid with latent experts, distillation, the state-memory-experts
+Still to come, in order: the selective (Mamba-style) state-space block
+and the attention, state-space, and MoE hybrid with latent experts, a
+literate org-mode reading of the lessons, distillation, the state-memory-experts
 composition, multi-token prediction, the routed docent, quantization and
 the packed file with the expert cache, CPU/NPU scheduling and the 256 MB
 target, the interactive host, the configuration frontier, the CUDA move
@@ -125,6 +127,14 @@ to show in the [report card](docs/results/report-card.md).
    0.407, so the docent stays out of the campus site until it earns its
    place. Evidence: [CD01b](docs/experiments/CD01b.md).
 
+10. **A fixed-size state replaces the key-value cache exactly, and here
+   it memorizes more and generalizes less than attention.** DN01 with its
+   attention block swapped for a diagonal scan of matched size keeps 256
+   bytes of sequence state at any history where attention keeps 262,144
+   bytes at 1,024 tokens; it reaches training exact match 0.99 (DN01
+   0.70) and validation loss 4.56 (DN01 3.79), and the sequential scan is
+   two to eight times slower per token in the interpreter. Evidence:
+   [SS01](docs/experiments/SS01.md).
 ![MX02 specialization map: family-by-expert share heatmaps for top-1 and top-2 routing with their specialization scores](assets/previews/moe2-specialization.svg)
 
 ## How small is MicroMoE?
@@ -179,7 +189,11 @@ table from scratch (EG01: exact parity with the sw-MLPL builtin; at 90
 training windows the table adds memorization, not generalization), and
 the three sparsities together (RE01: the seven-row ablation matrix, in
 which the composed model memorizes best and generalizes worst). The
-recurrence-and-Engram saga is closed. The campus docent (a tiny model
+recurrence-and-Engram saga is closed. The state-space saga has begun:
+SS01 puts a diagonal scan with a constant 256-byte state in attention's
+place (constant memory, worse held-out loss, slower in the interpreter);
+SS02 makes the decay depend on the token and HA01 keeps one attention
+block among state blocks. The campus docent (a tiny model
 trained in batch here to direct visitors of the research campus site) is
 paused after its first five steps: it does not yet beat a deterministic
 matcher. The animated data-flow landscape (every mechanism's data movement

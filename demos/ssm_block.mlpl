@@ -1,0 +1,331 @@
+# SS01 simple state-space block: DN01 with its attention block replaced by a diagonal linear scan (a fixed-size state per sequence instead of a growing key-value cache), trained on the synthetic domain with the DN01 budget, with the state along one window, the learned decay, the state-bytes-against-history measurement, diagrams, and the results row.
+include "../lib/ssm.mlpl";
+include "../lib/observe.mlpl";
+include "../lib/svg.mlpl";
+include "../lib/results.mlpl";
+
+print("WHAT THIS SHOWS -- The DN01 block with attention replaced by a diagonal linear state-space scan of matched size: what a fixed 256-byte state learns on 90 examples, and what history costs attention (grows) against the scan (fixed).");
+print("SHAPES -- ids:[T], embedding:[T,16], projected input xB:[T,32], state:[T,32], decay:[32], block out:[T,16], logits:[T,52]; T=28 window, 120 examples, 90 train / 30 validation.");
+
+out_dir = if list_len(args()) {
+  unwrap(list_get(args(), 0))
+} else {
+  ""
+};
+binary = if gt(list_len(args()), 1) {
+  unwrap(list_get(args(), 1))
+} else {
+  "unknown"
+};
+mode = if gt(list_len(args()), 2) {
+  unwrap(list_get(args(), 2))
+} else {
+  "check"
+};
+writing = str_len(out_dir);
+m = unwrap(u:domain_load_mixture(u:domain_mixture_path()));
+d = u:domain_build(m);
+w = unwrap(u:domain_windows(d.texts, m.window));
+s = u:domain_split(d.count, m.train_fraction, m.seed);
+V = u:domain_vocab_size();
+T = m.window;
+dm = 16;
+hidden = 32;
+ds = 32;
+epochs = 300;
+lr = 0.003;
+every = 25;
+ntrain = reduce_mul(shape(s.train));
+nval = reduce_mul(shape(s.val));
+train_x = gather_rows(w.x, s.train);
+train_y = gather_rows(w.y, s.train);
+train_m = gather_rows(w.mask, s.train);
+val_x = gather_rows(w.x, s.val);
+val_y = gather_rows(w.y, s.val);
+val_m = gather_rows(w.mask, s.val);
+posT = u:positions(T, dm);
+config = emit_frame("ssm/config", 0, [dm, hidden, ds, T, epochs, ntrain, nval]);
+
+emb = embed(V, dm, 0);
+ssm_pre = rms_norm(dm);
+ssm_a = param[32];
+ssm_a = fill([32], 2.2);
+ssm_B = param[16, 32];
+ssm_B = randn(21, [16, 32]) * 0.1;
+ssm_C = param[32, 16];
+ssm_C = randn(22, [32, 16]) * 0.1;
+ffn = chain(rms_norm(dm), linear(dm, hidden, 2), relu_layer(), linear(hidden, dm, 3));
+norm = rms_norm(dm);
+head = linear(dm, V, 4);
+
+def u:body(h0, n) {
+  "Explicit residual block (the state-space scan over n positions, then the FFN), final norm, and the vocabulary head.";
+  h1 = h0 + u:ssm_out(apply(ssm_pre, h0), ssm_a, ssm_B, ssm_C, n, 32);
+  h2 = h1 + apply(ffn, h1);
+  apply(head, apply(norm, h2))
+}
+
+def u:forward(x1) {
+  "Logits for one sequence of any length: embedding plus positions through the body (eager; the scan runs one repeat per position).";
+  n = reduce_mul(shape(x1));
+  u:body(apply(emb, x1) + u:positions(n, dm), n)
+}
+
+p_emb = param_count(emb);
+p_ssm = u:ssm_params(dm, ds);
+p_ffn = param_count(ffn);
+p_norm = param_count(norm);
+p_head = param_count(head);
+params = p_emb + p_ssm + p_ffn + p_norm + p_head;
+active = params - p_emb + dm;
+p_att_ref = param_count(causal_attention(dm, 1, 1));
+print("MODEL -- params", params, "of which embedding", p_emb, "state block", p_ssm, "(DN01 attention", p_att_ref, ") ffn", p_ffn, "head", p_head, "; active per token", active);
+
+curve_e = fill([0], 0);
+curve_t = fill([0], 0);
+curve_v = fill([0], 0);
+train_ms = 0;
+e = 0;
+while lt(e, epochs) {
+  ts = clock_ms();
+  i = 0;
+  while lt(i, ntrain) {
+    x1 = take(train_x, 0, i);
+    y1 = take(train_y, 0, i);
+    m1 = take(train_m, 0, i);
+    adam(u:masked_ce(u:body(apply(emb, x1) + posT, T), y1, m1, V), [emb, ssm_pre, ffn, norm, head, ssm_a, ssm_B, ssm_C], lr, 0.9, 0.999, 0.00000001);
+    i = i + 1
+  };
+  train_ms = train_ms + (clock_ms() - ts);
+  e = e + 1;
+  if eq(mod(e, every), 0) {
+    tl = emit_frame("ssm/loss/train", e, u:set_loss(:u:forward, train_x, train_y, train_m, ntrain, V));
+    vl = emit_frame("ssm/loss/val", e, u:set_loss(:u:forward, val_x, val_y, val_m, nval, V));
+    curve_e = concat(curve_e, e);
+    curve_t = concat(curve_t, tl);
+    curve_v = concat(curve_v, vl);
+    print("epoch", e, "train loss", u:svg_round(tl, 4), "val loss", u:svg_round(vl, 4))
+  } else {
+    0
+  }
+};
+steps = epochs * ntrain;
+ms_per_step = train_ms / steps;
+ms_per_token = train_ms / (steps * T);
+
+td = clock_ms();
+rv = u:evaluate_prompts(:u:forward, d, s.val, 12);
+decode_ms = clock_ms() - td;
+rt = u:evaluate_prompts(:u:forward, d, s.train, 12);
+val_acc = emit_frame("ssm/accuracy/val", epochs, [rv.accuracy.arithmetic, rv.accuracy.sequence, rv.accuracy.mlpl, rv.accuracy.prose, rv.accuracy.overall]);
+train_acc = emit_frame("ssm/accuracy/train", epochs, [rt.accuracy.arithmetic, rt.accuracy.sequence, rt.accuracy.mlpl, rt.accuracy.prose, rt.accuracy.overall]);
+final_val = take(curve_v, 0, reduce_mul(shape(curve_v)) - 1);
+final_train = take(curve_t, 0, reduce_mul(shape(curve_t)) - 1);
+ppl = exp(final_val);
+
+example = "2+3=|5.";
+ex_ids = unwrap(u:domain_encode(example));
+ex_h0 = apply(emb, ex_ids) + u:positions(7, dm);
+decay = emit_frame("ssm/decay", epochs, u:ssm_decay(ssm_a));
+ex_states = emit_frame("ssm/state/example", epochs, u:ssm_states(apply(ssm_pre, ex_h0), ssm_a, ssm_B, 7, 32));
+ex_pred = emit_frame("ssm/logits/example-argmax", epochs, argmax(u:forward(ex_ids), 1));
+ex_survival = emit_frame("ssm/survival/example", epochs, [u:ssm_survival(decay, 0, 6), u:ssm_survival(decay, 1, 6), u:ssm_survival(decay, 2, 6), u:ssm_survival(decay, 3, 6), u:ssm_survival(decay, 4, 6), u:ssm_survival(decay, 5, 6), u:ssm_survival(decay, 6, 6)]);
+histories = [16, 64, 256, 1024];
+kv_bytes = emit_frame("ssm/kv-bytes", epochs, [u:kv_bytes(16, dm), u:kv_bytes(64, dm), u:kv_bytes(256, dm), u:kv_bytes(1024, dm)]);
+state_bytes = emit_frame("ssm/state-bytes", epochs, fill([4], u:ssm_state_bytes(ds)));
+
+# Time the two sequence mixers on the same fresh input at each history length (latency does not depend on weight values); microseconds per token of prefill, mean of three runs.
+bench_att = chain(rms_norm(dm), causal_attention(dm, 1, 1));
+
+def u:us_per_token(kind, n) {
+  "Mean microseconds per token over three timed forwards of the attention block (kind 0) or the trained scan block (kind 1) on a fresh [n, 16] input.";
+  x = randn(7, [n, dm]);
+  total = 0;
+  k = 0;
+  while lt(k, 3) {
+    t0 = clock_ms();
+    y = if eq(kind, 0) {
+      apply(bench_att, x)
+    } else {
+      u:ssm_out(apply(ssm_pre, x), ssm_a, ssm_B, ssm_C, n, 32)
+    };
+    total = total + (clock_ms() - t0) + reduce_add(y) * 0;
+    k = k + 1
+  };
+  total / 3 * 1000 / n
+}
+
+att_us = [u:us_per_token(0, 16), u:us_per_token(0, 64), u:us_per_token(0, 256), u:us_per_token(0, 1024)];
+scan_us = [u:us_per_token(1, 16), u:us_per_token(1, 64), u:us_per_token(1, 256), u:us_per_token(1, 1024)];
+fixture_path = "fixtures/ssm/state-bytes-v0.json";
+fresh = {schema: "sw-ml-study.moe-microscope-state-bytes", version: 0, binary: binary, dm: dm, ds: ds, histories: histories, kv_bytes: kv_bytes, state_bytes: state_bytes, attention_us_per_token: att_us, scan_us_per_token: scan_us};
+measured = if writing * str_eq(mode, "check") {
+  unwrap(parse_json(unwrap(read_text(fixture_path))))
+} else {
+  fresh
+};
+bytes_pinned = eq(reduce_add(abs(measured.kv_bytes - kv_bytes)), 0) * eq(reduce_add(abs(measured.state_bytes - state_bytes)), 0);
+r_fix = if writing * str_eq(mode, "write") {
+  write_atomic(str_concat(out_dir, "/state-bytes-v0.json"), unwrap(to_json(fresh)))
+} else {
+  ok(0)
+};
+
+row = {lesson: "SS01", config: "ssm d16 s32 h32 T28 120ex 300ep lr0.003 (DN01 with the scan for attention)", binary: binary, params: params, active_params: active, expert_evals: 1, bytes_per_token: active * 8, ms_per_token: u:svg_round(ms_per_token, 4), val_loss: u:svg_round(final_val, 4), ppl: u:svg_round(ppl, 2), arith_acc: u:svg_round(rv.accuracy.arithmetic, 3), seq_acc: u:svg_round(rv.accuracy.sequence, 3), mlpl_acc: u:svg_round(rv.accuracy.mlpl, 3), prose_acc: u:svg_round(rv.accuracy.prose, 3), state_bytes: str_concat(str_concat(u:svg_num(u:ssm_state_bytes(ds)), " / "), u:svg_num(u:ssm_state_bytes(ds)))};
+r_row = if writing {
+  write_atomic(str_concat(out_dir, "/results-row.md"), str_concat(u:results_row(row), "\n"))
+} else {
+  ok(0)
+};
+print("MEMORY -- params", params, "active/token", active, "bytes/token (f64)", active * 8, "; persistent state", u:ssm_state_bytes(ds), "B at every history; attention would hold", kv_bytes, "B at histories", histories);
+print("SPEED -- ms/step", u:svg_round(ms_per_step, 3), "ms/token", u:svg_round(ms_per_token, 4), "greedy decode ms for", nval, "prompts", u:svg_round(decode_ms, 1), "; prefill us/token attention", att_us, "scan", scan_us, "(", binary, ")");
+print("QUALITY -- val loss", u:svg_round(final_val, 4), "ppl", u:svg_round(ppl, 2), "val acc [arith seq mlpl prose all]", val_acc, "train acc", train_acc, "; decay min/mean/max", u:svg_round(reduce(:min, decay), 3), u:svg_round(mean(decay), 3), u:svg_round(reduce(:max, decay), 3));
+
+def u:b(v) {
+  "Bytes as text.";
+  u:svg_num(v)
+}
+
+def u:svg_row(x0, y0, label, vals, note1, note2) {
+  "One table row: a label, four values in fixed columns, and a two-part note.";
+  out = u:svg_text(x0, y0, "", label);
+  i = 0;
+  while lt(i, 4) {
+    out = str_concat(out, u:svg_text(x0 + 150 + i * 80, y0, "", u:svg_num(take(vals, 0, i))));
+    i = i + 1
+  };
+  str_concat(str_concat(out, u:svg_text(x0 + 480, y0, "m", note1)), u:svg_text(x0 + 640, y0, "m", note2))
+}
+
+def u:structure_svg() {
+  "Diagram: the state block's data structures with shapes, parameter counts, and bytes, the learned decay vector, and the persistent state against attention's key-value rows.";
+  page = u:svg_head("SS01 state-space block structure", "One window flows through the embedding, positions, an RMS norm, the input projection B, the diagonal scan whose state is one 32-value vector updated once per position, the output projection C, the residual, the DN01 feed-forward block, the norm, and the head; the learned decay per state dimension is drawn as a strip, and the persistent state bytes are compared with the key and value rows attention keeps per token.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "SS01 STATE-SPACE BLOCK -- one window, one fixed-size state"));
+  page = str_concat(page, u:svg_text(32, 60, "m", str_concat(str_concat(str_concat("WHAT: ", u:svg_num(params)), " parameters; the scan block has "), str_concat(u:svg_num(p_ssm), str_concat(" against DN01 attention's ", str_concat(u:svg_num(p_att_ref), " (matched); no key or value is stored"))))));
+  page = str_concat(page, u:svg_box(32, 80, 148, 64, "ids [T]", "52-symbol alphabet", "0 params"));
+  page = str_concat(page, u:svg_box(192, 80, 176, 64, "embed [T,16]", "+ sinusoidal positions", str_concat(u:svg_num(p_emb), " params")));
+  page = str_concat(page, u:svg_box(380, 80, 150, 64, "xB [T,32]", "rms_norm, then x B", "B: 512 params"));
+  page = str_concat(page, u:svg_box(542, 80, 210, 64, "s_t = a*s_(t-1) + xB_t", "state [T,32]; a=sigmoid(A)", "A: 32 params; 256 B live"));
+  page = str_concat(page, u:svg_box(764, 80, 166, 64, "h1 = h0 + s C", "C: [32,16], residual", "C: 512 params"));
+  page = str_concat(page, u:svg_box(542, 160, 210, 64, "h2 = h1 + ffn(h1)", "rms_norm, 16->32 relu 32->16", str_concat(u:svg_num(p_ffn), " params")));
+  page = str_concat(page, u:svg_box(764, 160, 166, 64, "norm + head [T,52]", "rms_norm, linear 16->52", str_concat(u:svg_num(p_norm + p_head), " params")));
+  page = str_concat(page, u:svg_text(32, 258, "k", "learned decay a per state dimension (0 = forget at once, 1 = accumulate forever); trained from 0.9"));
+  page = str_concat(page, u:svg_heat(reshape(decay, [1, 32]), 32, 266, 28));
+  page = str_concat(page, u:svg_text(32, 318, "", str_concat(str_concat("min ", u:svg_num(u:svg_round(reduce(:min, decay), 3))), str_concat(str_concat("   mean ", u:svg_num(u:svg_round(mean(decay), 3))), str_concat("   max ", u:svg_num(u:svg_round(reduce(:max, decay), 3)))))));
+  page = str_concat(page, u:svg_text(32, 352, "k", "persistent sequence state at f64, per history length (D, derived from shapes):"));
+  page = str_concat(page, u:svg_row(32, 372, "history (tokens)", histories, "", ""));
+  page = str_concat(page, u:svg_row(32, 392, "attention (B)", kv_bytes, "2 x history x 16 x 8:", "a key and a value row per token"));
+  page = str_concat(page, u:svg_row(32, 412, "scan (B)", state_bytes, "32 x 8:", "one state, whatever the history"));
+  page = str_concat(page, u:svg_rect(30, 432, 900, 96, "panel"));
+  page = str_concat(page, u:svg_text(50, 458, "", "WHY: attention's working memory grows with the history; a state-space block carries the history in one vector that decays per"));
+  page = str_concat(page, u:svg_text(50, 478, "", "     dimension, so decode memory is constant. The question is what a 256-byte state can learn here, at matched parameters."));
+  page = str_concat(page, u:svg_text(50, 500, "", "HOW: lib/ssm.mlpl writes the scan as one repeat per position (traced by grad); u:body adds the residual; adam trains A, B, C with the rest."));
+  page = str_concat(page, u:svg_text(50, 520, "m", "Sequential by construction: no parallel scan; the microseconds per token are measured in the state-bytes diagram."));
+  str_concat(page, "</svg>")
+}
+
+def u:chip(x0, y0, wd, ht, opacity, label) {
+  "A state chip whose fill opacity is the share of a position that survives to the end of the window.";
+  str_concat(str_concat(str_concat(str_concat(str_concat(str_concat(str_concat("<rect x=\"", u:svg_num(x0)), "\" y=\""), u:svg_num(y0)), str_concat(str_concat("\" width=\"", u:svg_num(wd)), str_concat("\" height=\"", u:svg_num(ht)))), "\" class=\"heat\" fill-opacity=\""), str_concat(u:svg_num(u:svg_round(0.06 + 0.94 * opacity, 2)), "\"/>")), u:svg_text(x0 + 6, y0 + ht - 8, "s", label))
+}
+
+def u:window_svg() {
+  "Diagram: the state along one window as a fading chip per position (how much of each position survives in the final state), the state values, and the argmax prediction beside the target.";
+  page = u:svg_head("One window through the state-space block", "The example window 2+3=|5. through the trained SS01 block: the argmax next token at every position beside the target, a chip per position whose opacity is the share of that position still present in the last state (the mean decay raised to the distance), and the 32-value state at every position as a heat strip.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "ONE WINDOW -- the state carried along the window, decaying"));
+  page = str_concat(page, u:svg_text(32, 60, "m", str_concat("WHAT: window ", str_concat(example, ", positions 0..6; the state at position t holds a decayed sum of every earlier position's input."))));
+  page = str_concat(page, u:svg_text(40, 92, "k", "input"));
+  page = str_concat(page, u:svg_chars(str_slice(example, 0, 7), 200, 76, 30));
+  target = unwrap(u:domain_window(example, 7));
+  page = str_concat(page, u:svg_text(40, 132, "k", "target (next)"));
+  page = str_concat(page, u:svg_cells(target.y, 200, 116, 30, target.mask));
+  page = str_concat(page, u:svg_text(40, 172, "k", "argmax"));
+  page = str_concat(page, u:svg_cells(ex_pred, 200, 156, 30, eq(ex_pred, target.y) * target.mask));
+  page = str_concat(page, u:svg_text(40, 218, "k", "survives to t=6"));
+  i = 0;
+  while lt(i, 7) {
+    page = str_concat(page, u:chip(200 + i * 30, 200, 28, 28, take(ex_survival, 0, i), u:svg_num(u:svg_round(take(ex_survival, 0, i), 2))));
+    i = i + 1
+  };
+  page = str_concat(page, u:svg_text(440, 92, "k", "state s_t [7, 32] after each position (shade = |value| / max)"));
+  page = str_concat(page, u:svg_heat_plain(ex_states, 440, 100, 14, 18));
+  page = str_concat(page, u:svg_text(440, 240, "", str_concat("state norm per position: ", u:svg_vec(sqrt(reduce_add(ex_states * ex_states, 1)), 2))));
+  page = str_concat(page, u:svg_text(440, 262, "", str_concat("state at position 4 (the bar), first 6 of 32: ", u:svg_vec(u:domain_slice(take(ex_states, 0, 4), 0, 6), 2))));
+  page = str_concat(page, u:svg_rect(30, 300, 900, 220, "panel"));
+  page = str_concat(page, u:svg_text(50, 328, "", "WHY: a state-space block has no lookup back to an earlier position; whatever the answer needs must still be in the state when"));
+  page = str_concat(page, u:svg_text(50, 350, "", "     the bar arrives. The chips show how much of each position the learned decay keeps by the end of the window."));
+  page = str_concat(page, u:svg_text(50, 376, "", "HOW: ssm/state/example is u:ssm_states on the normalized embedding of this window; ssm/survival/example is mean(a^(6-t));"));
+  page = str_concat(page, u:svg_text(50, 398, "", "     ssm/logits/example-argmax is the head's argmax at every position; the live demo replays the same recorded values."));
+  page = str_concat(page, u:svg_text(50, 426, "m", "Highlighted cells are graded positions where the argmax equals the target. Ids are alphabet indices (u:domain_alphabet)."));
+  page = str_concat(page, u:svg_text(50, 448, "m", "Prediction cells are teacher-forced: each position sees the true prefix through the state."));
+  str_concat(page, "</svg>")
+}
+
+def u:log2(v) {
+  "Base-two logarithm.";
+  log(v) / log(2)
+}
+
+def u:bytes_svg() {
+  "Diagram: persistent state bytes against history length for attention (grows) and the scan (fixed), with the measured microseconds per token beside each point.";
+  page = u:svg_head("State bytes against history: attention against the scan", "Persistent sequence state at f64 for history lengths 16, 64, 256, and 1,024 tokens: attention keeps a key and a value row per token and grows linearly; the state-space scan keeps one 32-value state whatever the history. The table beside the curves gives the measured prefill microseconds per token of each block on the same fresh input, honest about the sequential scan's interpreter cost.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "STATE BYTES AGAINST HISTORY -- what sequence memory costs"));
+  page = str_concat(page, u:svg_text(32, 60, "m", "WHAT: bytes a decoder must keep per sequence (D, from shapes) and microseconds per token of prefill (M, this machine)."));
+  page = str_concat(page, "<line x1=\"80\" y1=\"320\" x2=\"440\" y2=\"320\" class=\"axis\"/><line x1=\"80\" y1=\"100\" x2=\"80\" y2=\"320\" class=\"axis\"/>");
+  xs = 100 + (u:log2(histories) - 4) * 50;
+  y_kv = 320 - (u:log2(kv_bytes) - 8) * 20;
+  y_st = 320 - (u:log2(state_bytes) - 8) * 20;
+  page = str_concat(page, u:svg_polyline(xs, y_kv, "l2"));
+  page = str_concat(page, u:svg_polyline(xs, y_st, "l3"));
+  i = 0;
+  while lt(i, 4) {
+    page = str_concat(page, u:svg_text(take(xs, 0, i) - 14, 336, "s", u:svg_num(take(histories, 0, i))));
+    page = str_concat(page, u:svg_text(take(xs, 0, i) - 20, take(y_kv, 0, i) - 8, "s", u:b(take(kv_bytes, 0, i))));
+    i = i + 1
+  };
+  page = str_concat(page, u:svg_text(take(xs, 0, 3) + 10, take(y_st, 0, 3) + 4, "s", "256 B"));
+  page = str_concat(page, u:svg_text(80, 92, "k", "bytes, log scale: pink = attention rows, blue = scan state"));
+  page = str_concat(page, u:svg_text(80, 352, "m", "history length in tokens (log scale)"));
+  page = str_concat(page, u:svg_text(520, 92, "k", "one fresh [history, 16] input, mean of three forwards"));
+  page = str_concat(page, str_concat(str_concat(u:svg_text(520, 116, "", "history"), u:svg_text(600, 116, "", "attn B")), str_concat(str_concat(u:svg_text(690, 116, "", "scan B"), u:svg_text(760, 116, "", "attn us/tok")), u:svg_text(860, 116, "", "scan us/tok"))));
+  i = 0;
+  while lt(i, 4) {
+    y = 140 + i * 22;
+    page = str_concat(page, str_concat(str_concat(u:svg_text(520, y, "", u:svg_num(take(histories, 0, i))), u:svg_text(600, y, "", u:b(take(kv_bytes, 0, i)))), str_concat(str_concat(u:svg_text(690, y, "", u:b(take(state_bytes, 0, i))), u:svg_text(760, y, "", u:svg_num(u:svg_round(take(measured.attention_us_per_token, 0, i), 1)))), u:svg_text(860, y, "", u:svg_num(u:svg_round(take(measured.scan_us_per_token, 0, i), 1))))));
+    i = i + 1
+  };
+  page = str_concat(page, u:svg_text(520, 240, "m", str_concat("us/tok are M: ", str_concat(measured.binary, ", fixtures/ssm/state-bytes-v0.json"))));
+  page = str_concat(page, u:svg_text(520, 262, "m", "bytes are D: 2 x history x 16 x 8 (attention), 32 x 8 (scan)"));
+  page = str_concat(page, u:svg_rect(30, 380, 900, 140, "panel"));
+  page = str_concat(page, u:svg_text(50, 408, "", "WHY: on a CPU with little RAM the memory that grows with the conversation is the key-value cache; a fixed state removes"));
+  page = str_concat(page, u:svg_text(50, 430, "", "     that growth. The price at this scale is a sequential scan: one interpreter step per position, so its microseconds per"));
+  page = str_concat(page, u:svg_text(50, 452, "", "     token do not fall with batching the way one matmul over the window does. Both numbers are stated, not one."));
+  page = str_concat(page, u:svg_text(50, 478, "", "HOW: u:kv_bytes and u:ssm_state_bytes in lib/ssm.mlpl; u:us_per_token times causal_attention against u:ssm_out on randn input."));
+  page = str_concat(page, u:svg_text(50, 502, "m", "Just ssm write re-measures and re-pins the fixture; check mode reads the pinned microseconds and re-derives the bytes."));
+  str_concat(page, "</svg>")
+}
+
+r1 = if writing {
+  write_atomic(str_concat(out_dir, "/ssm-structure.svg"), u:structure_svg())
+} else {
+  ok(0)
+};
+r2 = if writing {
+  write_atomic(str_concat(out_dir, "/ssm-window.svg"), u:window_svg())
+} else {
+  ok(0)
+};
+r3 = if writing {
+  write_atomic(str_concat(out_dir, "/ssm-bytes.svg"), u:bytes_svg())
+} else {
+  ok(0)
+};
+print("NUMERICAL CONTRACT -- the decay stays inside (0, 1) after training; the persistent state is 256 B at every history while attention's rows grow linearly (4096 to 262144 B); training loss ends below validation loss.");
+print("THE POINT -- A fixed-size state replaces the growing key-value cache; whether it learns this domain as well as attention is the row beside DN01, not an assumption.");
+print("BOUNDARY -- 90 training rows, one block, a sequential interpreter scan; microseconds per token are one machine's numbers, bytes are shape arithmetic.");
+contract = reduce_mul(gt(decay, 0)) * reduce_mul(lt(decay, 1)) * bytes_pinned * lt(final_train, final_val) * eq(take(kv_bytes, 0, 3), 262144);
+if contract * is_ok(r1) * is_ok(r2) * is_ok(r3) * is_ok(r_row) * is_ok(r_fix) {
+  ok("state-space block written")
+} else {
+  err("state-space block contract failed")
+}

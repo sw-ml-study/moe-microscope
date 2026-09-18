@@ -1,4 +1,4 @@
-number = 7
+number = 8
 slug = "hybrid-close"
 status = "pending"
 description = "Saga close for the state-space saga: recordings pinned for SS01, SS02, HA01, ..."

@@ -1,0 +1,51 @@
+#!/bin/sh
+# Run SS01 into a temporary directory; check (or write) its three diagrams, the pinned state-bytes fixture, and the deterministic columns of its results row.
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+mlpl=$("$repo_root/scripts/select-mlpl")
+mode=${1:-check}
+. "$repo_root/scripts/gate-cache"
+gate_cache_start "$mode" run-ssm-demo \
+    demos/ssm_block.mlpl assets/previews/ssm-structure.svg assets/previews/ssm-window.svg \
+    assets/previews/ssm-bytes.svg fixtures/ssm/state-bytes-v0.json \
+    "row:docs/reference/results.md:| SS01 |" conf:SS01
+tmp_rel="tmp/ssm-demo"
+mkdir -p "$repo_root/$tmp_rel" "$repo_root/fixtures/ssm"
+binary=$("$mlpl" --version 2>/dev/null | head -1 | tr -d '\n')
+
+"$mlpl" --source-dir "$repo_root" "$repo_root/demos/ssm_block.mlpl" -- "$tmp_rel" "$binary" "$mode"
+
+if [ "$mode" = "write" ]; then
+    cp "$repo_root/$tmp_rel/state-bytes-v0.json" "$repo_root/fixtures/ssm/state-bytes-v0.json"
+fi
+for name in ssm-structure ssm-window ssm-bytes; do
+    generated="$repo_root/$tmp_rel/$name.svg"
+    committed="$repo_root/assets/previews/$name.svg"
+    [ -s "$generated" ] || { echo "ssm demo did not write $name.svg" >&2; exit 1; }
+    if [ "$mode" = "write" ]; then
+        cp "$generated" "$committed"
+    elif ! cmp -s "$generated" "$committed"; then
+        echo "$name.svg preview is stale; run scripts/run-ssm-demo write" >&2
+        exit 1
+    fi
+done
+
+# The row's deterministic columns (everything except binary and ms/token) must match docs/reference/results.md.
+row=$(cat "$repo_root/$tmp_rel/results-row.md")
+key=$(printf '%s\n' "$row" | awk -F'|' '{ $4=""; $12=""; print }')
+if [ "$mode" = "write" ]; then
+    grep -q '^| SS01 |' "$repo_root/docs/reference/results.md" && sed -i '' '/^| SS01 |/d' "$repo_root/docs/reference/results.md"
+    printf '%s\n' "$row" >> "$repo_root/docs/reference/results.md"
+else
+    committed_key=$(grep '^| SS01 |' "$repo_root/docs/reference/results.md" | awk -F'|' '{ $4=""; $12=""; print }')
+    [ "$key" = "$committed_key" ] || {
+        echo "SS01 results row differs from docs/reference/results.md; run scripts/run-ssm-demo write" >&2
+        echo "generated: $key" >&2
+        echo "committed: $committed_key" >&2
+        exit 1
+    }
+fi
+rm -rf "$repo_root/$tmp_rel"
+gate_cache_record "$mode"
+echo "PASS state-space block contract, previews, fixture, and results row ($mode)"

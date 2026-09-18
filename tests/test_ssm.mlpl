@@ -1,0 +1,80 @@
+# State-space block contract: a zero decay forgets, a unit decay accumulates, gradients reach the decay, B, and C, the state-bytes accounting, and a short training run on one window.
+include "lib/ssm.mlpl";
+
+dm = 16;
+ds = 32;
+V = u:domain_vocab_size();
+ssm_a = param[32];
+ssm_a = fill([32], 2);
+ssm_B = param[16, 32];
+ssm_B = randn(11, [16, 32]) * 0.1;
+ssm_C = param[32, 16];
+ssm_C = randn(12, [32, 16]) * 0.1;
+ssm_emb = embed(V, dm, 0);
+ssm_head = linear(dm, V, 4);
+
+@test {name: "a zero decay forgets and a unit decay accumulates", tags: ["ssm", "scan"]}
+def u:test_scan_limits() {
+  "With decay 0 every state is only its own input; with decay 1 the state is the running sum.";
+  xB = reshape(range(12), [4, 3]);
+  u:assert_eq(u:ssm_scan(xB, fill([3], 0), 4, 3), xB, "zero decay keeps nothing")?;
+  u:assert_eq(u:ssm_scan(xB, fill([3], 1), 4, 3), [[0, 1, 2], [3, 5, 7], [9, 12, 15], [18, 22, 26]], "unit decay is a cumulative sum")?;
+  half = u:ssm_scan([[1, 1], [0, 0], [0, 0]], [0.5, 0.25], 3, 2);
+  u:assert_approx(reduce_add(abs(half - [[1, 1], [0.5, 0.25], [0.25, 0.0625]])), 0, 0.000000001, "a fractional decay fades geometrically")?;
+  u:assert_approx(u:ssm_decay(0), 0.5, 0.000000001, "logit 0 is decay one half")
+}
+
+@test {name: "gradients reach the decay logits, B, and C", tags: ["ssm", "grad"]}
+def u:test_gradients() {
+  "The loss depends on every part of the block.";
+  x = randn(3, [7, dm]);
+  ga = grad(reduce_add(u:ssm_out(x, ssm_a, ssm_B, ssm_C, 7, ds) * u:ssm_out(x, ssm_a, ssm_B, ssm_C, 7, ds)), ssm_a);
+  gb = grad(reduce_add(u:ssm_out(x, ssm_a, ssm_B, ssm_C, 7, ds) * u:ssm_out(x, ssm_a, ssm_B, ssm_C, 7, ds)), ssm_B);
+  gc = grad(reduce_add(u:ssm_out(x, ssm_a, ssm_B, ssm_C, 7, ds) * u:ssm_out(x, ssm_a, ssm_B, ssm_C, 7, ds)), ssm_C);
+  u:assert_gt(reduce_add(abs(ga)), 0, "decay gradient")?;
+  u:assert_gt(reduce_add(abs(gb)), 0, "B gradient")?;
+  u:assert_gt(reduce_add(abs(gc)), 0, "C gradient")?;
+  u:assert_shape(u:ssm_states(x, ssm_a, ssm_B, 7, ds), [7, ds], "states")?;
+  u:assert_shape(u:ssm_out(x, ssm_a, ssm_B, ssm_C, 7, ds), [7, dm], "output")
+}
+
+@test {name: "state bytes are fixed for the scan and grow with history for attention", tags: ["ssm", "bytes"]}
+def u:test_state_bytes() {
+  "The accounting the results column and the diagram use.";
+  u:assert_eq(u:ssm_state_bytes(32), 256, "32 f64 values")?;
+  u:assert_eq(u:kv_bytes(16, 16), 4096, "16 tokens of key and value rows")?;
+  u:assert_eq(u:kv_bytes(1024, 16), 262144, "1,024 tokens")?;
+  u:assert_eq(u:kv_bytes(64, 16) / u:kv_bytes(16, 16), 4, "linear in history")?;
+  u:assert_eq(u:ssm_params(16, 32), 1056, "decay logits plus two projections")?;
+  u:assert_approx(u:ssm_survival([0.5, 1], 2, 4), 0.625, 0.000000001, "mean of 0.25 and 1")
+}
+
+def u:ssm_loss(x1, y1, m1) {
+  "Masked next-token loss of embedding, the state block with a residual, and the head on one window.";
+  h0 = apply(ssm_emb, x1);
+  h1 = h0 + u:ssm_out(h0, ssm_a, ssm_B, ssm_C, 12, ds);
+  u:masked_ce(apply(ssm_head, h1), y1, m1, V)
+}
+
+@test {name: "a short training run lowers the masked loss and moves the decay", tags: ["ssm", "train"]}
+def u:test_training() {
+  "Forty Adam steps on one window reduce the loss; the decay logits are trained parameters.";
+  w = unwrap(u:domain_window("2+3=|5.", 12));
+  wx = w.x;
+  wy = w.y;
+  wm = w.mask;
+  before = u:ssm_loss(wx, wy, wm);
+  a_before = reduce_add(ssm_a);
+  k = 0;
+  while lt(k, 40) {
+    adam(u:ssm_loss(wx, wy, wm), [ssm_emb, ssm_head, ssm_a, ssm_B, ssm_C], 0.01, 0.9, 0.999, 0.00000001);
+    k = k + 1
+  };
+  after = u:ssm_loss(wx, wy, wm);
+  u:assert_gt(before - after, 0.1, "loss fell")?;
+  u:assert_gt(abs(reduce_add(ssm_a) - a_before), 0.000001, "decay logits moved")?;
+  d = u:ssm_decay(ssm_a);
+  u:assert_true(reduce_mul(gt(d, 0)) * reduce_mul(lt(d, 1)), "decay stays inside (0, 1)")
+}
+
+u:run_registered_tests()

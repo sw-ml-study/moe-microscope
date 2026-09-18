@@ -77,7 +77,11 @@ generic host, all producer-owned meaning:
 
 | Name | Shape | Meaning (producer-owned) |
 |---|---|---|
-| `recur/config`, `rm/config`, `engram/config`, `re/config` | `[6]` to `[11]` | widths, window, epochs, rows, and the lesson's knobs (R, slots, head_dim, form) |
+| `recur/config`, `rm/config`, `engram/config`, `re/config`, `ssm/config` | `[6]` to `[11]` | widths, window, epochs, rows, and the lesson's knobs (R, slots, head_dim, form, state width) |
+| `ssm/decay` (SS01) | `[32]` | the learned decay per state dimension, in 0 to 1; a vector series the renderer may show as a strip |
+| `ssm/state/example` (SS01) | `[7, 32]` | the 32-value state after each position of one window; a heatmap with numbered rows and columns |
+| `ssm/survival/example` (SS01) | `[7]` | the share of each position still present in the last state; the producer draws it as a fading chip, the generic host as a vector |
+| `ssm/kv-bytes`, `ssm/state-bytes` (SS01) | `[4]` | persistent state bytes at histories 16, 64, 256, 1,024 for attention and for the scan |
 | `recur/state/1..4`, `recur/argmax/1..4` | `[7, 16]`, `[7]` | the state and the head's argmax after each recurrence of one window |
 | `recur/loss/per-recurrence` | `[4]` | the trained R=4 model's held-out loss when stopped after 1..4 recurrences |
 | `rm/load`, `re/load` | `[R, 4]` | tokens per expert per recurrence (a matrix, rows numbered) |
@@ -124,7 +128,7 @@ tolerance-based "close enough" comparison of values: the recording is exact.
 
 1. The pinned recording parses, validates in the documented order, and
    matches the indexed hashes and counts.
-2. The existing selector lists DN01, MX01, MX02, RC01, RM01, EG01, and RE01
+2. The existing selector lists DN01, MX01, MX02, RC01, RM01, EG01, RE01, and SS01
    beside MM01, LR01, and KM01 without a new code path.
 3. Native model tests cover the nonconsecutive-step navigation and the
    six-observation frame.

@@ -107,13 +107,17 @@ gate_spec_lines() {
                         gate_hash_path "$_sl_src"
                     done
                     for _sl_lit in $(printf '%s\n' "$_sl_closure" | xargs grep -o -h -E '"(fixtures|docs|assets|catalog)/[^"]*"' 2>/dev/null | tr -d '"' | LC_ALL=C sort -u); do
-                        [ -e "$repo_root/$_sl_lit" ] && gate_hash_path "$repo_root/$_sl_lit"
+                        # A literal that names nothing yet (a fixture the write run creates) is skipped, not a failure under set -e.
+                        if [ -e "$repo_root/$_sl_lit" ]; then
+                            gate_hash_path "$repo_root/$_sl_lit"
+                        fi
                     done
                     ;;
                 *) gate_hash_path "$_sl_abs" ;;
             esac
             ;;
     esac
+    return 0
 }
 
 # Compute gate_key and gate_manifest for NAME over the given specs.
