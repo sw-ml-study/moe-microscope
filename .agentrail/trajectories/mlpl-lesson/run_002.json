@@ -1,0 +1,11 @@
+{
+  "task_type": "mlpl-lesson",
+  "state": {
+    "number": 4,
+    "step": "san01-no-ffn-docent"
+  },
+  "action": "Read sw-atlas plan section 11 and the research note; scratch probe first to size the result; TDD with tests/test_noffn.mlpl (model grad is not readable, so trained-movement assertions instead); one lesson with a variant argument, one process each; diagrams reviewed as PNG in headless Chrome and shortened where text overflowed; mlpl-fmt for canonical formatting; nohup+Monitor for the gate; named git add, commit, push.",
+  "result": "success",
+  "reward": 1,
+  "timestamp": "2026-09-18T12:20:06"
+}

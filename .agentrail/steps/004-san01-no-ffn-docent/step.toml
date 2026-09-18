@@ -1,9 +1,10 @@
 number = 4
 slug = "san01-no-ffn-docent"
-status = "in-progress"
+status = "completed"
 description = "SAN01: is no-FFN real? sw-atlas (../../software-wrighter-lab/sw-atlas/docs/pl..."
 role = "production"
 context_files = []
 created_at = "2026-09-18T10:50:59"
+completed_at = "2026-09-18T12:20:06"
 task_type = "mlpl-lesson"
-commits = []
+commits = ["7a819d520e67086b9e85896885d9aebc33752d72"]
