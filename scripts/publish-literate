@@ -1,0 +1,18 @@
+#!/bin/sh
+# Export docs/literate/moe-microscope.org to HTML with Emacs in batch mode (nothing is evaluated: the header says :eval no-export; no timestamp, so the output is stable). usage: publish-literate [OUT] (default learn/literate.html)
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+out=${1:-$repo_root/learn/literate.html}
+emacs=${EMACS:-}
+[ -n "$emacs" ] || ! command -v emacs >/dev/null 2>&1 || emacs=emacs
+[ -n "$emacs" ] || [ ! -x /Applications/Emacs.app/Contents/MacOS/Emacs ] || emacs=/Applications/Emacs.app/Contents/MacOS/Emacs
+[ -n "$emacs" ] || { echo "no Emacs found (set EMACS to its path)" >&2; exit 1; }
+work="$repo_root/tmp/publish-literate.$$"
+rm -rf "$work"; mkdir -p "$work"
+trap 'rm -rf "$work"' EXIT HUP INT TERM
+cp "$repo_root/docs/literate/moe-microscope.org" "$work/moe-microscope.org"
+"$emacs" --batch -l org --eval "(progn (setq org-export-time-stamp-file nil org-html-validation-link nil org-export-with-broken-links 'mark org-confirm-babel-evaluate nil) (find-file \"$work/moe-microscope.org\") (org-html-export-to-html))" >/dev/null 2>&1 || { echo "org-html-export-to-html failed" >&2; exit 1; }
+[ -s "$work/moe-microscope.html" ] || { echo "export wrote nothing" >&2; exit 1; }
+cp "$work/moe-microscope.html" "$out"
+echo "wrote $out ($(wc -c < "$out" | tr -d ' ') bytes)"

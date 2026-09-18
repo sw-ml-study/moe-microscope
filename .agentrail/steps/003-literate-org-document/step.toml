@@ -1,6 +1,6 @@
 number = 3
 slug = "literate-org-document"
-status = "pending"
+status = "in-progress"
 description = "Emacs org-mode literate, reproducible-research document for the microscope us..."
 role = "production"
 context_files = []

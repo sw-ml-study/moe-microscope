@@ -20,6 +20,7 @@ for path in AGENTS.md CLAUDE.md COPYRIGHT LICENSE README.md justfile mlplunit.co
     fixtures/recordings/moe-top1-run-v0.json fixtures/recordings/moe-top2-run-v0.json \
     scripts/make-recording-index scripts/run-emit-frame-loops scripts/build-local-serve \
     scripts/gate-cache scripts/check-gate-cache scripts/check-docs \
+    docs/literate/moe-microscope.org scripts/check-tangle scripts/publish-literate learn/literate.html \
     lib/ssm.mlpl tests/test_ssm.mlpl demos/ssm_block.mlpl scripts/run-ssm-demo fixtures/ssm/state-bytes-v0.json \
     assets/previews/ssm-structure.svg assets/previews/ssm-window.svg assets/previews/ssm-bytes.svg docs/experiments/SS01.md docs/concepts/state-space.md \
     demos/teacher.mlpl tests/test_teacher.mlpl docs/implementation/teacher-fixture.md fixtures/teacher/teacher-v0.json \

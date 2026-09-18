@@ -128,6 +128,14 @@ budget mode="check":
 benchmark mode="check":
     ./scripts/run-benchmark {{mode}}
 
+# Check the literate org document: tangle parity with lib/ and demos/, every primer block's recorded result, and the HTML export.
+literate:
+    ./scripts/check-tangle
+
+# Export docs/literate/moe-microscope.org to learn/literate.html with Emacs in batch mode (nothing is evaluated).
+literate-html:
+    ./scripts/publish-literate
+
 # Print the selected sw-MLPL executable.
 mlpl-path:
     ./scripts/select-mlpl

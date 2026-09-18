@@ -10,6 +10,10 @@ For modifying or reproducing the microscope.
 - [Teacher fixture schema](teacher-fixture.md): the soft-target export
   the distillation lessons consume
 
+The [literate reading](../literate/moe-microscope.org) tangles to the
+mechanism modules and the dense lesson byte for byte and is checked by
+`scripts/check-tangle`.
+
 Every lesson is an MLPL program under `demos/` built from `lib/` modules
 with native mlplunit tests under `tests/`; `just check` is the gate and
 `AGENTS.md` the process. The gate serves unchanged lessons from a content-keyed

@@ -1,0 +1,2578 @@
+#+title: The MoE microscope, read as a literate program
+#+subtitle: a runnable primer and a tangling reading of the model sources
+#+author: Michael A Wright
+#+startup: showall
+#+property: header-args:mlpl :results output :exports code :eval no-export
+#+property: header-args:emacs-lisp :eval no-export
+#+options: toc:2 num:t timestamp:nil
+
+* How to read and run this document
+
+This is the microscope's model, in the order a learner should meet it: a
+primer of small self-contained MLPL blocks you can run, each beside the
+number the corresponding lesson measured, and then the mechanism sources
+themselves with prose before every function. The source blocks carry a
+~:tangle~ target: tangling this file regenerates the committed library and
+lesson files byte for byte, and ~just check~ runs ~scripts/check-tangle~ to
+prove it, so the prose can never describe code that no longer exists. The
+same check runs every primer block and requires its printed result to
+match the one recorded here. The committed ~.mlpl~ files remain the source
+of truth; when they change, this document is edited to match.
+
+The measured numbers quoted beside the blocks are rows of the
+[[file:../reference/results.md][results table]] and findings of the
+[[file:../results/current-findings.md][current findings]]; each mechanism
+has a lesson report under [[file:../experiments/README.md][experiments]]
+with its diagrams.
+
+** Evaluating blocks
+
+The document never evaluates anything on export (~:eval no-export~ in the
+header), so =C-c C-e h o= produces HTML with no prompts. Evaluation is for
+reading interactively. To make =C-c C-c= work, evaluate this setup block
+once per Emacs session; it loads sw-MLPL's org-babel backend ~ob-mlpl~
+from the adjacent checkout and points it at whichever interpreter exists
+(GUI Emacs has a minimal PATH, so the full path matters):
+
+#+begin_src emacs-lisp :tangle no
+(let* ((here (file-name-directory (buffer-file-name)))
+       ;; The repository root is wherever AGENTS.md is, so this also works
+       ;; on a copy of the document.
+       (repo (or (locate-dominating-file here "AGENTS.md") (expand-file-name "../.." here)))
+       (sw-mlpl (expand-file-name "../sw-mlpl" repo))
+       (candidates (list (getenv "MLPL")
+                         (expand-file-name "target/release/mlpl-repl" sw-mlpl)
+                         (expand-file-name "target/debug/mlpl-repl" sw-mlpl)
+                         (executable-find "mlpl-repl")
+                         (expand-file-name "~/.local/softwarewrighter/bin/mlpl-repl"))))
+  (add-to-list 'load-path (expand-file-name "elisp" sw-mlpl))
+  (require 'ob-mlpl)
+  ;; Keep org-babel's scratch files inside the repository's ignored tmp/
+  ;; directory rather than /tmp.
+  (make-directory (expand-file-name "tmp" repo) t)
+  (setq temporary-file-directory (expand-file-name "tmp/" repo))
+  (setq org-babel-mlpl-command
+        (or (seq-find (lambda (p) (and p (file-executable-p p))) candidates)
+            (user-error "no mlpl-repl found; build ../sw-mlpl or set org-babel-mlpl-command")))
+  (setq org-confirm-babel-evaluate nil)
+  (message "ob-mlpl ready: %s" org-babel-mlpl-command))
+#+end_src
+
+Three things to know before pressing =C-c C-c= on a block:
+
+- A block runs in a fresh interpreter on a temporary file, so a block that
+  says ~include "../lib/dense.mlpl"~ cannot find its neighbour and has no
+  filesystem sandbox for fixtures. The source blocks in the reading are for
+  reading and tangling; the runnable ones are the self-contained primer
+  blocks, which use only builtins.
+- The interpreter prints the value of a script's last expression after the
+  printed lines, the way the REPL echoes a line. Each primer block ends
+  with the expression that is its takeaway, so the last line of every
+  result is the number to look at.
+- ~org-confirm-babel-evaluate~ controls the yes/no prompt. The setup block
+  sets it to ~nil~ (never ask) for the session; set it back to ~t~ to be
+  asked, or to a function to decide per block. =C-c C-v C-b= evaluates
+  every runnable block at once; blocks marked ~:eval no-export~ or
+  ~:eval never~ are skipped.
+
+** Publishing and regenerating
+
+~just literate~ runs the tangle and result check; ~just literate-html~
+exports this file with Emacs in batch mode (nothing is evaluated) to
+=learn/literate.html=, which the live-demo site publishes beside the
+replay and landscape pages; the same export is available interactively
+from =C-c C-e h o=. ~just tangle~ regenerates the sources from this file
+with ~org-babel-tangle~ and then runs the check.
+
+* The mechanisms, one runnable block each
+
+Each block below is self-contained (no ~include~, no fixture) and
+deterministic (every random draw carries its seed), so the recorded
+result is reproduced by the gate. The prose beside each block says what
+the corresponding lesson measured at microscope scale: 90 training
+windows, width 16, one block.
+
+** A window
+
+Every lesson trains on windows: a prompt, a bar, the answer, and a stop character, encoded by alphabet index and right-padded. The target ~y~ is the input shifted one position, and the mask keeps only the answer and stop positions, so the model is scored on what it must produce and never on the prompt. This block is ~u:domain_window~ written out with builtins; the domain library does the same with a 52-character alphabet whose index 0 is padding. The last line is the value of the final expression, which the interpreter echoes after the printed lines.
+
+#+begin_src mlpl :tangle no :exports both
+alphabet = "~ 0123456789+-*=>,[]():abcdefghijklmnopqrstuvwxyz_|.";
+text = "2+3=|5.";
+n = str_len(text);
+ids = fill([n], 0);
+i = 0;
+while lt(i, n) {
+  ids = scatter(ids, i, str_find(alphabet, str_slice(text, i, 1)));
+  i = i + 1
+};
+T = 8;
+padded = concat(ids, fill([T + 1 - n], 0));
+x = reshape(gather_rows(reshape(padded, [T + 1, 1]), range(T)), [T]);
+y = reshape(gather_rows(reshape(padded, [T + 1, 1]), range(T) + 1), [T]);
+positions = range(T) + 1;
+mask = gt(positions, str_find(text, "|")) * lt(positions, n);
+print("ids ", ids);
+print("x   ", x);
+print("y   ", y);
+print("mask", mask);
+#+end_src
+
+#+RESULTS:
+: ids  4 12 5 15 50 7 51
+: x    4 12 5 15 50 7 51 0
+: y    12 5 15 50 7 51 0 0
+: mask 0 0 0 0 1 1 0 0
+: 0 0 0 0 1 1 0 0
+
+In the lessons the window is 28 wide and there are 120 examples, 90 of them training rows (the domain microscope, DM01).
+
+** A dense block trained on one window
+
+The dense baseline is a residual attention block, a residual feed-forward block, and a head, built from the Model DSL and trained by ~adam~ on the masked loss. Forty steps on a single window drive the loss to almost nothing: the block can memorize a window, which is the whole story of DN01 at 90 windows.
+
+#+begin_src mlpl :tangle no :exports both
+V = 52;
+dm = 16;
+emb = embed(V, dm, 0);
+att = chain(rms_norm(dm), causal_attention(dm, 1, 1));
+ffn = chain(rms_norm(dm), linear(dm, 32, 2), relu_layer(), linear(32, dm, 3));
+head = linear(dm, V, 4);
+x = [4, 12, 5, 15, 50, 7, 51, 0];
+y = [12, 5, 15, 50, 7, 51, 0, 0];
+mask = [0, 0, 0, 0, 1, 1, 0, 0];
+pos = reshape(sinusoidal_encoding(8, dm), [8, dm]);
+def u:loss() {
+  "Masked next-token loss of one window through the dense block.";
+  h0 = apply(emb, x) + pos;
+  h1 = h0 + apply(att, h0);
+  h2 = h1 + apply(ffn, h1);
+  picked = reduce_add(one_hot(y, V) * log(softmax(apply(head, h2))), 1);
+  0 - reduce_add(picked * mask) / reduce_add(mask)
+}
+print("parameters", param_count(emb) + param_count(att) + param_count(ffn) + param_count(head));
+print("loss before", round(u:loss() * 1000) / 1000);
+k = 0;
+while lt(k, 40) {
+  adam(u:loss(), [emb, att, ffn, head], 0.01, 0.9, 0.999, 0.00000001);
+  k = k + 1
+};
+print("loss after 40 steps", round(u:loss() * 1000) / 1000);
+#+end_src
+
+#+RESULTS:
+: parameters 3812
+: loss before 14.471
+: loss after 40 steps 0.002
+: 0.002
+
+DN01's measured row: 3,812 parameters, validation loss 3.79, perplexity 44.2, training exact match 0.70 and held-out exact match 0 / 0 / 0 / 0.667 by family (arithmetic, sequence, mlpl, prose).
+
+** Router and top-1 gate
+
+Routing is four small operations: a linear layer gives a score per expert per token, softmax turns scores into probabilities, ~argmax~ and ~one_hot~ choose one expert per token as a constant mask, and the gate is the probability where the mask is one. The load per expert and the Switch balance term (exactly one when balanced) read off the mask; with random weights the routing is arbitrary but exact, which is what the MX01 routing microscope shows before any training.
+
+#+begin_src mlpl :tangle no :exports both
+h = randn(1, [6, 16]);
+Wr = randn(2, [16, 4]) * 0.5;
+logits = matmul(h, Wr);
+probs = softmax(logits);
+mask = one_hot(argmax(logits, 1), 4);
+gate = probs * mask;
+print("expert per token", argmax(logits, 1));
+print("gate", round(gate * 100) / 100);
+print("load per expert", reduce_add(mask, 0));
+print("balance", round(4 * reduce_add(reduce_add(mask, 0) / 6 * reduce_add(probs, 0) / 6) * 1000) / 1000);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+expert per token 0 3 0 0 0 2
+gate 1 0 0 0
+0 0 0 0.68
+0.99 0 0 0
+0.6 0 0 0
+0.66 0 0 0
+0 0 0.98 0
+load per expert 4 0 1 1
+balance 1.749
+1.749
+#+end_example
+
+MX01's trained router ends at entropy 0.62 nats, balance 1.17, and a specialization score of 0.61 without seeing a family label; MX02's top-2 map is flatter (0.42).
+
+** Sparse dispatch equals the dense-masked sum
+
+Training evaluates every expert and multiplies by the gate (dense-masked); inference evaluates only the rows each expert was chosen for (~compress~), scales them by their gate, and scatters them back with a one-hot selection matrix. The two paths agree to the bit, and the sparse path evaluated 6 expert rows instead of 24.
+
+#+begin_src mlpl :tangle no :exports both
+x = randn(1, [6, 16]);
+logits = matmul(x, randn(2, [16, 4]) * 0.5);
+mask = one_hot(argmax(logits, 1), 4);
+gate = softmax(logits) * mask;
+W = randn(3, [4, 16, 16]) * 0.3;
+dense = fill([6, 16], 0);
+sparse = fill([6, 16], 0);
+evals = 0;
+e = 0;
+while lt(e, 4) {
+  We = take(W, 0, e);
+  dense = dense + reshape(take(gate, 1, e), [6, 1]) * matmul(x, We);
+  col = take(mask, 1, e);
+  n_e = reduce_add(col);
+  sparse = if n_e {
+    rows = compress(col, x);
+    out = matmul(rows, We) * reshape(compress(col, take(gate, 1, e)), [n_e, 1]);
+    sparse + matmul(transpose(one_hot(compress(col, range(6)), 6)), out)
+  } else {
+    sparse
+  };
+  evals = evals + n_e;
+  e = e + 1
+};
+print("max |dense - sparse|", reduce(:max, abs(dense - sparse)));
+print("expert rows evaluated: dense-masked", 6 * 4, "sparse", evals);
+#+end_src
+
+#+RESULTS:
+: max |dense - sparse| 0
+: expert rows evaluated: dense-masked 24 sparse 6
+: 6
+
+SD01 asserts the same parity over 120 windows of the trained MX01: 3,360 expert row evaluations instead of 13,440, outputs equal, and slower in the interpreter because the bookkeeping is interpreted (finding 5).
+
+** Recurrence: one block, applied again
+
+Depth from reuse: the same block applied R times to its own output with residuals. The parameter count does not move with R; the state does. In the lessons, ~repeat R~ with a parameter-bound count traces through ~grad~, and deep supervision scores the head after every pass.
+
+#+begin_src mlpl :tangle no :exports both
+dm = 16;
+blk = chain(rms_norm(dm), linear(dm, 32, 2), relu_layer(), linear(32, dm, 3));
+h0 = randn(1, [7, dm]);
+def u:state(h, R) {
+  "The state after R residual applications of the one shared block.";
+  s = h;
+  repeat R {
+    s = s + apply(blk, s)
+  };
+  s
+}
+print("parameters", param_count(blk), "at every R");
+r = 1;
+while lt(r, 4) {
+  print("R =", r, " mean |change from h0| =", round(mean(abs(u:state(h0, r) - h0)) * 1000) / 1000);
+  r = r + 1
+};
+param_count(blk)
+#+end_src
+
+#+RESULTS:
+: parameters 1072 at every R
+: R = 1  mean |change from h0| = 3.076
+: R = 2  mean |change from h0| = 6.213
+: R = 3  mean |change from h0| = 10.37
+: 1072
+
+RC01 measured R=2 at validation loss 3.45 against 3.79 for R=1 at the same 3,812 parameters, and every model best when stopped after one pass; RM01's recurrent mixture at R=3 reached 3.42.
+
+** Engram addressing with the frozen hash
+
+Engram memory is addressed, not searched: the ~ngram_hash~ builtin maps each position's last two or three ids to a slot per order, and the table row at that slot is gathered, projected, gated, and added to the residual stream. Equal contexts map to equal rows, which is what makes the table a memory; different contexts sometimes share a row, which is a collision. In the second call the four-id context repeats, and the 3-gram rows at positions 2 and 3 return at positions 6 and 7.
+
+#+begin_src mlpl :tangle no :exports both
+ids = [4, 12, 5, 15, 50, 7, 51, 0];
+rows = reshape(ngram_hash(ids, [2, 3], 1, 16, 7), [8, 2]);
+print("2-gram rows", take(rows, 1, 0));
+print("3-gram rows", take(rows, 1, 1));
+again = [4, 12, 5, 15, 4, 12, 5, 15];
+rows2 = reshape(ngram_hash(again, [2, 3], 1, 16, 7), [8, 2]);
+print("repeated context, 3-gram rows", take(rows2, 1, 1));
+#+end_src
+
+#+RESULTS:
+: 2-gram rows 1 13 3 0 9 6 8 14
+: 3-gram rows 3 12 1 9 14 3 15 9
+: repeated context, 3-gram rows 3 12 1 9 10 5 1 9
+: 3 12 1 9 10 5 1 9
+
+EG01's from-scratch form equals the builtin to the bit; at 90 windows every table size from 16 to 1,024 slots raised validation loss (3.93 to 4.67 against 3.79).
+
+** The state-space scan
+
+SS01 replaces attention with a diagonal linear recurrence: the state at each position is the previous state scaled by a per-dimension decay plus the projected input, written as one ~repeat~ per position. With a unit impulse at position 0 the states are the decays raised to the distance, and the mean of those powers is the survival number the SS01 window diagram draws as a fading chip.
+
+#+begin_src mlpl :tangle no :exports both
+xB = [[1, 1, 1], [0, 0, 0], [0, 0, 0], [0, 0, 0]];
+decay = [0.5, 0.9, 1];
+h = take(xB, 0, 0);
+states = reshape(h, [1, 3]);
+t = 1;
+repeat 3 {
+  h = decay * h + take(xB, 0, t);
+  states = concat(states, reshape(h, [1, 3]), 0);
+  t = t + 1
+};
+print("states", states);
+print("survival of position 0 at position 3", pow(decay, 3), "mean", round(mean(pow(decay, 3)) * 1000) / 1000);
+#+end_src
+
+#+RESULTS:
+: states 1 1 1
+: 0.5 0.9 1
+: 0.25 0.81 1
+: 0.125 0.7290000000000001 1
+: survival of position 0 at position 3 0.125 0.7290000000000001 1 mean 0.618
+: 0.618
+
+SS01's trained decays span 0.26 to 0.98 (mean 0.76): about a third of the first position of a seven-token window survives to its end. The block keeps 256 bytes of state at any history where attention keeps 262,144 at 1,024 tokens, and reaches validation loss 4.56 against 3.79.
+
+* The sources, read in lesson order
+
+What follows is the committed source of the mechanism modules and of one
+whole lesson, split at function boundaries with prose before each. Every
+block tangles to the file named in its header (relative to this
+document), and the gate proves the concatenation equals the committed file
+byte for byte. Findings referred to by number (F3, F5, ...) are in the
+[[file:../reference/sw-mlpl-findings.md][sw-MLPL findings]]; the
+capability ledger is [[file:../reference/sw-mlpl-blockers.md][here]].
+
+* The synthetic domain: =lib/domain.mlpl=
+
+Four task families with exact oracles, a restricted alphabet, seeded generators, windows, and the held-out split. Everything a lesson trains on is a deterministic function of one mixture record, which is what lets the gate check every diagram and results row.
+
+** Module header
+
+The module comment is the first line of every tracked file; the style check requires it, and it is the one-line answer to what the module is for.
+
+#+begin_src mlpl :tangle ../../lib/domain.mlpl
+# Synthetic domain: restricted alphabet, four seeded task-family generators with oracles, mixture, windows, splits.
+#+end_src
+
+** =u:domain_alphabet=
+
+Fifty-two characters. The index of a character is its token id, so there is no tokenizer file: encoding is a string search and decoding a slice. Index 0, the tilde, is padding and never appears in a text.
+
+#+begin_src mlpl :tangle ../../lib/domain.mlpl
+def u:domain_alphabet() {
+  "The restricted byte-level alphabet; a character's index is its token id and index 0 is padding.";
+  "~ 0123456789+-*=>,[]():abcdefghijklmnopqrstuvwxyz_|."
+}
+#+end_src
+
+** =u:domain_vocab_size=
+
+The vocabulary is the alphabet length, 52, and the head's output width everywhere.
+
+#+begin_src mlpl :tangle ../../lib/domain.mlpl
+def u:domain_vocab_size() {
+  "Number of token ids, equal to the alphabet length.";
+  str_len(u:domain_alphabet())
+}
+#+end_src
+
+** =u:domain_tag_names=
+
+The four task families in tag order; every example carries its tag so accuracy can be reported per family.
+
+#+begin_src mlpl :tangle ../../lib/domain.mlpl
+def u:domain_tag_names() {
+  "Task-family names in tag order 0 to 3.";
+  ["arithmetic", "sequence", "mlpl", "prose"]
+}
+#+end_src
+
+** =u:domain_encode=
+
+Characters become ids one at a time with ~str_find~. A character outside the alphabet makes the whole result an ~err~, which is why callers write ~unwrap(u:domain_encode(...))~ on texts they built themselves and ~?~ on texts from a generator.
+
+#+begin_src mlpl :tangle ../../lib/domain.mlpl
+def u:domain_encode(s) {
+  "Map each character of s to its alphabet index; a character outside the alphabet returns err.";
+  n = str_len(s);
+  ids = fill([n], 0);
+  bad = 0;
+  i = 0;
+  while lt(i, n) {
+    id = str_find(u:domain_alphabet(), str_slice(s, i, 1));
+    ids = scatter(ids, i, id);
+    bad = bad + lt(id, 0);
+    i = i + 1
+  };
+  if bad {
+    err("domain_encode: character outside the restricted alphabet")
+  } else {
+    ok(ids)
+  }
+}
+#+end_src
+
+** =u:domain_decode=
+
+The inverse: ids back to characters by slicing the alphabet. Greedy decoding ends here.
+
+#+begin_src mlpl :tangle ../../lib/domain.mlpl
+def u:domain_decode(ids) {
+  "Map token ids back to their characters.";
+  n = reduce_mul(shape(ids));
+  out = "";
+  i = 0;
+  while lt(i, n) {
+    out = str_concat(out, str_slice(u:domain_alphabet(), take(ids, 0, i), 1));
+    i = i + 1
+  };
+  out
+}
+#+end_src
+
+** =u:domain_slice=
+
+There is no rank-one slice builtin, so a contiguous slice is a ~gather_rows~ over a one-column reshape. The pattern recurs throughout the sources.
+
+#+begin_src mlpl :tangle ../../lib/domain.mlpl
+def u:domain_slice(v, start, count) {
+  "Contiguous slice of a rank-one vector (rank-one gather spelled through gather_rows).";
+  n = reduce_mul(shape(v));
+  reshape(gather_rows(reshape(v, [n, 1]), start + range(count)), [count])
+}
+#+end_src
+
+** =u:domain_window=
+
+The training unit. A text is ~prompt|answer.~; the window ~x~ is the first ~T~ ids right-padded with zeros, ~y~ is the same sequence shifted one position (the next-token target), and ~mask~ is one exactly on the answer and stop targets after the bar. Only masked positions are scored, so the model is never trained to reproduce the prompt. The primer's first block builds one of these by hand.
+
+#+begin_src mlpl :tangle ../../lib/domain.mlpl
+def u:domain_window(text, T) {
+  "Encode prompt|answer. text into a right-padded window: x (first T ids), y (shifted T ids), mask (1 on answer targets).";
+  ids = u:domain_encode(text)?;
+  n = reduce_mul(shape(ids));
+  bar = str_find(text, "|");
+  if gt(n, T + 1) {
+    err("domain_window: text longer than the window")
+  } else {
+    padded = if lt(n, T + 1) {
+      concat(ids, fill([T + 1 - n], 0))
+    } else {
+      ids
+    };
+    positions = range(T) + 1;
+    ok({x: u:domain_slice(padded, 0, T), y: u:domain_slice(padded, 1, T), mask: gt(positions, bar) * lt(positions, n)})
+  }
+}
+#+end_src
+
+** =u:domain_text=
+
+How an example becomes a text: prompt, bar, answer, stop character.
+
+#+begin_src mlpl :tangle ../../lib/domain.mlpl
+def u:domain_text(example) {
+  "The training text of one example: prompt, bar, answer, stop.";
+  str_concat(str_concat(str_concat(example.prompt, "|"), example.answer), ".")
+}
+#+end_src
+
+** =u:arith_oracle=
+
+The arithmetic family has an exact answer for every prompt; the oracle is the definition of correct. Op 2 keeps products small by reducing both operands modulo 13.
+
+#+begin_src mlpl :tangle ../../lib/domain.mlpl
+def u:arith_oracle(a, b, op) {
+  "Exact answer for op 0 (a+b), 1 (larger minus smaller), 2 (small product).";
+  if eq(op, 0) {
+    a + b
+  } else {
+    if eq(op, 1) {
+      reduce(:max, [a, b]) - reduce(:min, [a, b])
+    } else {
+      mod(a, 13) * mod(b, 13)
+    }
+  }
+}
+#+end_src
+
+** =u:gen_arithmetic=
+
+One seeded arithmetic example. ~rand_ints~ with an explicit seed is what makes the whole corpus a function of the mixture record, and therefore a fixture the gate can check.
+
+#+begin_src mlpl :tangle ../../lib/domain.mlpl
+def u:gen_arithmetic(seed) {
+  "Small-integer arithmetic example, tag 0.";
+  r = rand_ints(3, 0, 100, seed);
+  a = take(r, 0, 0);
+  b = take(r, 0, 1);
+  op = mod(take(r, 0, 2), 3);
+  lhs = if eq(op, 0) {
+    str_concat(str_concat(to_string(a), "+"), to_string(b))
+  } else {
+    if eq(op, 1) {
+      str_concat(str_concat(to_string(reduce(:max, [a, b])), "-"), to_string(reduce(:min, [a, b])))
+    } else {
+      str_concat(str_concat(to_string(mod(a, 13)), "*"), to_string(mod(b, 13)))
+    }
+  };
+  {prompt: str_concat(lhs, "="), answer: to_string(u:arith_oracle(a, b, op)), tag: 0}
+}
+#+end_src
+
+** =u:digits_text=
+
+Space-separated digits, the surface form of the sequence family.
+
+#+begin_src mlpl :tangle ../../lib/domain.mlpl
+def u:digits_text(v) {
+  "Space-separated digits of a rank-one vector.";
+  n = reduce_mul(shape(v));
+  out = "";
+  i = 0;
+  while lt(i, n) {
+    out = if eq(i, 0) {
+      to_string(take(v, 0, i))
+    } else {
+      str_concat(str_concat(out, " "), to_string(take(v, 0, i)))
+    };
+    i = i + 1
+  };
+  out
+}
+#+end_src
+
+** =u:sequence_oracle=
+
+Reverse and sort are the two sequence transformations; ~grade_up~ gives the permutation that sorts.
+
+#+begin_src mlpl :tangle ../../lib/domain.mlpl
+def u:sequence_oracle(v, op) {
+  "Exact answer for op 0 (reverse) or 1 (ascending sort) of a digit vector.";
+  n = reduce_mul(shape(v));
+  order = if eq(op, 0) {
+    (n - 1) - range(n)
+  } else {
+    grade_up(v)
+  };
+  reshape(gather_rows(reshape(v, [n, 1]), order), [n])
+}
+#+end_src
+
+** =u:gen_sequence=
+
+One seeded sequence example of three to five digits.
+
+#+begin_src mlpl :tangle ../../lib/domain.mlpl
+def u:gen_sequence(seed) {
+  "Sequence transformation example (rev or sort of three to five digits), tag 1.";
+  r = rand_ints(7, 0, 10, seed);
+  n = 3 + mod(take(r, 0, 5), 3);
+  v = u:domain_slice(r, 0, n);
+  op = mod(take(r, 0, 6), 2);
+  name = if eq(op, 0) {
+    "rev "
+  } else {
+    "sort "
+  };
+  {prompt: str_concat(str_concat(name, u:digits_text(v)), "="), answer: u:digits_text(u:sequence_oracle(v, op)), tag: 1}
+}
+#+end_src
+
+** =u:mlpl_oracle=
+
+The MLPL family's answers come from the interpreter's own builtins, which is the point of the family: the language is its own oracle.
+
+#+begin_src mlpl :tangle ../../lib/domain.mlpl
+def u:mlpl_oracle(v, kind) {
+  "Exact answer computed by the interpreter's own builtin: 0 reduce_add, 1 reduce(:max), 2 reduce_mul.";
+  if eq(kind, 0) {
+    reduce_add(v)
+  } else {
+    if eq(kind, 1) {
+      reduce(:max, v)
+    } else {
+      reduce_mul(v)
+    }
+  }
+}
+#+end_src
+
+** =u:gen_mlpl=
+
+One seeded tiny-expression example such as ~reduce_add([1,2,3])=~ with the answer the builtin returns.
+
+#+begin_src mlpl :tangle ../../lib/domain.mlpl
+def u:gen_mlpl(seed) {
+  "Tiny MLPL expression example whose answer is produced by the builtin it names, tag 2.";
+  r = rand_ints(4, 1, 10, seed);
+  v = u:domain_slice(r, 0, 3);
+  kind = mod(take(r, 0, 3), 3);
+  head = if eq(kind, 0) {
+    "reduce_add(["
+  } else {
+    if eq(kind, 1) {
+      "reduce(:max,["
+    } else {
+      "reduce_mul(["
+    }
+  };
+  body = str_join(str_split(u:digits_text(v), " "), ",");
+  {prompt: str_concat(str_concat(head, body), "])="), answer: to_string(u:mlpl_oracle(v, kind)), tag: 2}
+}
+#+end_src
+
+** =u:prose_place=
+
+Each animal always ends up in the same place. That fixed local pattern is why prose is the one family a 90-window model generalizes on (finding 1), and the seam Engram was meant to fill.
+
+#+begin_src mlpl :tangle ../../lib/domain.mlpl
+def u:prose_place(animal) {
+  "The place each animal always ends up on; a fixed local pattern for Engram to memorize.";
+  unwrap(list_get(["mat", "rug", "nest", "log"], animal))
+}
+#+end_src
+
+** =u:gen_prose=
+
+One seeded prose example: an animal, a verb, and the animal's place.
+
+#+begin_src mlpl :tangle ../../lib/domain.mlpl
+def u:gen_prose(seed) {
+  "Short templated prose example, tag 3.";
+  r = rand_ints(2, 0, 4, seed);
+  animal = take(r, 0, 0);
+  verb = take(r, 0, 1);
+  a = unwrap(list_get(["cat", "dog", "bird", "frog"], animal));
+  w = unwrap(list_get(["sat", "ran", "hid", "sang"], verb));
+  {prompt: str_concat(str_concat(str_concat(str_concat("the ", a), " "), w), " on the "), answer: u:prose_place(animal), tag: 3}
+}
+#+end_src
+
+** =u:domain_example=
+
+Dispatch by tag. The nested ~if~ chain is the language's way of writing a four-way choice.
+
+#+begin_src mlpl :tangle ../../lib/domain.mlpl
+def u:domain_example(tag, seed) {
+  "Dispatch one example of the given task family.";
+  if eq(tag, 0) { u:gen_arithmetic(seed) } else {
+    if eq(tag, 1) { u:gen_sequence(seed) } else {
+      if eq(tag, 2) { u:gen_mlpl(seed) } else { u:gen_prose(seed) }
+    }
+  }
+}
+#+end_src
+
+** =u:domain_mixture_path=
+
+Where the mixture record lives when a filesystem sandbox exists.
+
+#+begin_src mlpl :tangle ../../lib/domain.mlpl
+def u:domain_mixture_path() {
+  "Location of the fixed mixture fixture.";
+  "fixtures/domain/mixture-v0.json"
+}
+#+end_src
+
+** =u:domain_mixture_v0=
+
+The same record inline. The connect-mode surface that captures recordings has no filesystem (finding F16), so the lesson must be able to rebuild its data from source alone; a test pins the inline record equal to the JSON fixture.
+
+#+begin_src mlpl :tangle ../../lib/domain.mlpl
+def u:domain_mixture_v0() {
+  "The version-zero mixture as an inline record, for surfaces without a filesystem sandbox (finding F16); tests pin it equal to the JSON fixture.";
+  {seed: 0, total: 120, window: 28, train_fraction: 0.75, ratios: {arithmetic: 0.35, sequence: 0.3, mlpl: 0.25, prose: 0.1}, version: 0}
+}
+#+end_src
+
+** =u:domain_load_mixture=
+
+Read the fixture if there is a sandbox, else fall back to the inline record. This is why every recording is reproducible over ~mlpl-serve~.
+
+#+begin_src mlpl :tangle ../../lib/domain.mlpl
+def u:domain_load_mixture(path) {
+  "Read the mixture fixture record from JSON, falling back to the inline version-zero record when no sandbox exists.";
+  text = read_text(path);
+  if text {
+    parse_json(unwrap(text))
+  } else {
+    ok(u:domain_mixture_v0())
+  }
+}
+#+end_src
+
+** =u:domain_counts=
+
+Ratios become counts; the last family absorbs rounding so the total is exact (120 at microscope scale: 42, 36, 30, 12).
+
+#+begin_src mlpl :tangle ../../lib/domain.mlpl
+def u:domain_counts(mixture) {
+  "Example count per task family; the last family absorbs rounding so the total is exact.";
+  c0 = round(mixture.ratios.arithmetic * mixture.total);
+  c1 = round(mixture.ratios.sequence * mixture.total);
+  c2 = round(mixture.ratios.mlpl * mixture.total);
+  [c0, c1, c2, mixture.total - (c0 + c1 + c2)]
+}
+#+end_src
+
+** =u:domain_join=
+
+Strings are accumulated with a separator and split once at the end, because string lists cannot be appended to in place.
+
+#+begin_src mlpl :tangle ../../lib/domain.mlpl
+def u:domain_join(acc, s, first) {
+  "Accumulate strings separated by semicolons.";
+  if first {
+    s
+  } else {
+    str_concat(str_concat(acc, ";"), s)
+  }
+}
+#+end_src
+
+** =u:domain_build=
+
+The whole corpus in family order, deterministic in the mixture's seed. Prompts, answers, texts, and tags come back together so the evaluation harness can score by family.
+
+#+begin_src mlpl :tangle ../../lib/domain.mlpl
+def u:domain_build(mixture) {
+  "Generate the whole mixture deterministically: prompts, answers, texts, and tags in family order.";
+  counts = u:domain_counts(mixture);
+  prompts = "";
+  answers = "";
+  texts = "";
+  tags = fill([mixture.total], 0);
+  k = 0;
+  tag = 0;
+  while lt(tag, 4) {
+    j = 0;
+    while lt(j, take(counts, 0, tag)) {
+      ex = u:domain_example(tag, mixture.seed * 100000 + tag * 10000 + j);
+      prompts = u:domain_join(prompts, ex.prompt, eq(k, 0));
+      answers = u:domain_join(answers, ex.answer, eq(k, 0));
+      texts = u:domain_join(texts, u:domain_text(ex), eq(k, 0));
+      tags = scatter(tags, k, tag);
+      k = k + 1;
+      j = j + 1
+    };
+    tag = tag + 1
+  };
+  {prompts: str_split(prompts, ";"), answers: str_split(answers, ";"), texts: str_split(texts, ";"), tags: tags, count: k}
+}
+#+end_src
+
+** =u:domain_windows=
+
+Every text stacked into ~[N, T]~ matrices of ids, targets, and masks. The ~?~ propagates a window error out of the loop.
+
+#+begin_src mlpl :tangle ../../lib/domain.mlpl
+def u:domain_windows(texts, T) {
+  "Stack every text into x, y, mask matrices of shape [N, T].";
+  n = list_len(texts);
+  first = u:domain_window(unwrap(list_get(texts, 0)), T)?;
+  x = reshape(first.x, [1, T]);
+  y = reshape(first.y, [1, T]);
+  mask = reshape(first.mask, [1, T]);
+  i = 1;
+  while lt(i, n) {
+    w = u:domain_window(unwrap(list_get(texts, i)), T)?;
+    x = concat(x, reshape(w.x, [1, T]), 0);
+    y = concat(y, reshape(w.y, [1, T]), 0);
+    mask = concat(mask, reshape(w.mask, [1, T]), 0);
+    i = i + 1
+  };
+  ok({x: x, y: y, mask: mask})
+}
+#+end_src
+
+** =u:domain_split=
+
+The held-out split: seeded uniform keys ranked with ~grade_up~; the first ~round(fraction * n)~ rows train. With fraction 0.75 that is 90 training and 30 validation rows, the same for every lesson.
+
+#+begin_src mlpl :tangle ../../lib/domain.mlpl
+def u:domain_split(n, train_fraction, seed) {
+  "Deterministic held-out split: rank seeded uniform keys, first round(fraction * n) are training rows.";
+  keys = random(seed, [n]);
+  order = grade_up(keys);
+  k = round(train_fraction * n);
+  {keys: keys, order: order, train: u:domain_slice(order, 0, k), val: u:domain_slice(order, k, n - k)}
+}
+#+end_src
+
+* Exact-match evaluation: =lib/evaluate.mlpl=
+
+Three functions turn predictions into the per-family accuracy every results row reports.
+
+** Module header
+
+Quality is exact match against an oracle, never a similarity score.
+
+#+begin_src mlpl :tangle ../../lib/evaluate.mlpl
+# Exact-match evaluation: per-example hits and per-task-family accuracy.
+#+end_src
+
+** =u:exact_match=
+
+One or zero per example: the greedy answer string equals the oracle's string.
+
+#+begin_src mlpl :tangle ../../lib/evaluate.mlpl
+def u:exact_match(preds, answers) {
+  "One or zero per example: prediction string equals the answer string exactly.";
+  n = list_len(answers);
+  hits = fill([n], 0);
+  i = 0;
+  while lt(i, n) {
+    hits = scatter(hits, i, str_eq(unwrap(list_get(preds, i)), unwrap(list_get(answers, i))));
+    i = i + 1
+  };
+  hits
+}
+#+end_src
+
+** =u:tag_accuracy=
+
+Hit rate over one family, zero when the family is absent from the indexed rows.
+
+#+begin_src mlpl :tangle ../../lib/evaluate.mlpl
+def u:tag_accuracy(hits, tags, tag) {
+  "Mean hit rate over examples carrying tag; zero when the tag is absent.";
+  mask = eq(tags, tag);
+  count = reduce_add(mask);
+  if count {
+    reduce_add(hits * mask) / count
+  } else {
+    0
+  }
+}
+#+end_src
+
+** =u:accuracy_by_tag=
+
+The record every lesson reports and every results row carries: arithmetic, sequence, mlpl, prose, and overall.
+
+#+begin_src mlpl :tangle ../../lib/evaluate.mlpl
+def u:accuracy_by_tag(hits, tags) {
+  "Per-family and overall exact-match accuracy as a record.";
+  {arithmetic: u:tag_accuracy(hits, tags, 0), sequence: u:tag_accuracy(hits, tags, 1), mlpl: u:tag_accuracy(hits, tags, 2), prose: u:tag_accuracy(hits, tags, 3), overall: mean(hits)}
+}
+#+end_src
+
+* Dense helpers: =lib/dense.mlpl=
+
+The masked loss, greedy decoding, the evaluation harness, and the teacher export, shared by every language-model lesson.
+
+** Module header
+
+The dense helpers are shared by every lesson that trains a language model: the masked loss, greedy decoding, prompt evaluation, and the teacher export. ~include~ splices a neighbour in, resolved relative to this file.
+
+#+begin_src mlpl :tangle ../../lib/dense.mlpl
+# Dense-lesson helpers: chunked flattening, masked next-token loss, greedy decoding, and prompt evaluation.
+include "domain.mlpl";
+include "evaluate.mlpl";
+#+end_src
+
+** =u:rows=
+
+A contiguous row slice of a matrix, again through ~gather_rows~.
+
+#+begin_src mlpl :tangle ../../lib/dense.mlpl
+def u:rows(M, start, count) {
+  "Contiguous row slice of a rank-two matrix.";
+  gather_rows(M, start + range(count))
+}
+#+end_src
+
+** =u:flat_chunk=
+
+Rows of a chunk flattened into one sequence; used by the earliest experiments and kept for the tests that pin it.
+
+#+begin_src mlpl :tangle ../../lib/dense.mlpl
+def u:flat_chunk(M, chunk, size) {
+  "Rows chunk*size .. chunk*size+size of M flattened into one rank-one sequence.";
+  reshape(u:rows(M, chunk * size, size), [size * reduce_mul(shape(take(M, 0, 0)))])
+}
+#+end_src
+
+** =u:positions=
+
+Sinusoidal positions of the requested length and width. The block that adds them is the only place the dense model knows where a token is; the state-space block of SS01 keeps them for a controlled comparison even though a scan is positional by construction.
+
+#+begin_src mlpl :tangle ../../lib/dense.mlpl
+def u:positions(length, width) {
+  "Unlabeled sinusoidal position table (label stripping dates from finding F10, now resolved upstream; kept for readability).";
+  reshape(sinusoidal_encoding(length, width), [length, width])
+}
+#+end_src
+
+** =u:masked_ce=
+
+The loss. ~one_hot(targets)~ picks each position's log-probability, the mask keeps the answer and stop positions, and the mean is over masked positions only. The vocabulary size is an argument because shape arithmetic is not traced through ~grad~ (finding F11).
+
+#+begin_src mlpl :tangle ../../lib/dense.mlpl
+def u:masked_ce(logits, targets, mask, vocab) {
+  "Mean negative log-likelihood over masked positions only; equals cross_entropy when the mask is all ones (vocab is explicit: size arithmetic is not traced, F11).";
+  picked = reduce_add(one_hot(targets, vocab) * log(softmax(logits)), 1);
+  0 - reduce_add(picked * mask) / reduce_add(mask)
+}
+#+end_src
+
+** =u:stop_id=
+
+The id of the stop character, where greedy decoding ends.
+
+#+begin_src mlpl :tangle ../../lib/dense.mlpl
+def u:stop_id() {
+  "Token id of the stop character.";
+  str_find(u:domain_alphabet(), ".")
+}
+#+end_src
+
+** =u:greedy=
+
+Greedy decoding with a forward-function reference: append the argmax of the last row until the stop id or the budget. ~call(forward, seq)~ is how the lessons pass a model to a helper without models being function arguments (finding F7: models are globals, functions are references).
+
+#+begin_src mlpl :tangle ../../lib/dense.mlpl
+def u:greedy(forward, prompt_ids, max_new) {
+  "Greedy decode with a forward-function reference until the stop id or max_new tokens; returns new ids only.";
+  seq = prompt_ids;
+  out = fill([0], 0);
+  k = 0;
+  while lt(k, max_new) {
+    nxt = argmax(last_row(call(forward, seq)));
+    seq = concat(seq, nxt);
+    out = concat(out, nxt);
+    k = if eq(nxt, u:stop_id()) {
+      max_new
+    } else {
+      k + 1
+    }
+  };
+  out
+}
+#+end_src
+
+** =u:answer_text=
+
+Decode and drop a trailing stop character.
+
+#+begin_src mlpl :tangle ../../lib/dense.mlpl
+def u:answer_text(ids) {
+  "Decode generated ids and drop the trailing stop character if present.";
+  text = u:domain_decode(ids);
+  n = str_len(text);
+  if n {
+    if str_eq(str_slice(text, n - 1, 1), ".") {
+      str_slice(text, 0, n - 1)
+    } else {
+      text
+    }
+  } else {
+    text
+  }
+}
+#+end_src
+
+** =u:predict_prompts=
+
+Greedy answers for the indexed prompts, accumulated as one separator-joined string and split at the end.
+
+#+begin_src mlpl :tangle ../../lib/dense.mlpl
+def u:predict_prompts(forward, prompts, index, max_new) {
+  "Greedy answers for the prompts at the given row indices, as a string list.";
+  n = reduce_mul(shape(index));
+  acc = "";
+  i = 0;
+  while lt(i, n) {
+    prompt = str_concat(unwrap(list_get(prompts, take(index, 0, i))), "|");
+    text = u:answer_text(u:greedy(forward, unwrap(u:domain_encode(prompt)), max_new));
+    acc = if eq(i, 0) {
+      text
+    } else {
+      str_concat(str_concat(acc, ";"), text)
+    };
+    i = i + 1
+  };
+  str_split(acc, ";")
+}
+#+end_src
+
+** =u:select_list=
+
+The strings at the given indices, the same accumulate-and-split idiom.
+
+#+begin_src mlpl :tangle ../../lib/dense.mlpl
+def u:select_list(items, index) {
+  "The strings at the given indices, as a string list.";
+  n = reduce_mul(shape(index));
+  acc = "";
+  i = 0;
+  while lt(i, n) {
+    item = unwrap(list_get(items, take(index, 0, i)));
+    acc = if eq(i, 0) {
+      item
+    } else {
+      str_concat(str_concat(acc, ";"), item)
+    };
+    i = i + 1
+  };
+  str_split(acc, ";")
+}
+#+end_src
+
+** =u:evaluate_prompts=
+
+The evaluation harness: predictions, oracle answers, hits, and per-family accuracy over one index set. The lessons call it once on the validation rows and once on the training rows, which is how memorization (training exact match 0.7 to 0.99) is told apart from generalization (held-out exact match near zero except prose).
+
+#+begin_src mlpl :tangle ../../lib/dense.mlpl
+def u:evaluate_prompts(forward, d, index, max_new) {
+  "Per-family and overall exact-match accuracy of greedy answers over the indexed examples.";
+  preds = u:predict_prompts(forward, d.prompts, index, max_new);
+  answers = u:select_list(d.answers, index);
+  hits = u:exact_match(preds, answers);
+  tags = reshape(gather_rows(reshape(d.tags, [d.count, 1]), index), [reduce_mul(shape(index))]);
+  {accuracy: u:accuracy_by_tag(hits, tags), hits: hits, preds: preds}
+}
+#+end_src
+
+** =u:set_loss=
+
+The masked loss over a whole row set, weighted by target count so a row with more answer characters counts more. Eager only: it loops over rows and calls the forward reference.
+
+#+begin_src mlpl :tangle ../../lib/dense.mlpl
+def u:set_loss(forward, X, Y, M, rows, vocab) {
+  "Masked next-token loss averaged over every answer target in the first rows of X, using a forward-function reference (eager only).";
+  total = 0;
+  count = 0;
+  i = 0;
+  while lt(i, rows) {
+    mrow = take(M, 0, i);
+    total = total + u:masked_ce(call(forward, take(X, 0, i)), take(Y, 0, i), mrow, vocab) * reduce_add(mrow);
+    count = count + reduce_add(mrow);
+    i = i + 1
+  };
+  total / count
+}
+#+end_src
+
+** =u:topk_export=
+
+The teacher export of TE01: at every masked position, the top-k ids and log-probabilities, as parallel flat vectors that serialize to the fixture schema.
+
+#+begin_src mlpl :tangle ../../lib/dense.mlpl
+def u:topk_export(forward, X, Y, M, rows, k, vocab) {
+  "Top-k next-token log-probabilities at every masked position of the first rows: parallel flat vectors rows, positions, targets, topk_ids, topk_logprobs, and count.";
+  out_rows = fill([0], 0);
+  out_pos = fill([0], 0);
+  out_tgt = fill([0], 0);
+  out_ids = fill([0], 0);
+  out_lp = fill([0], 0);
+  i = 0;
+  while lt(i, rows) {
+    lp = log(softmax(call(forward, take(X, 0, i))));
+    yrow = take(Y, 0, i);
+    mrow = take(M, 0, i);
+    j = 0;
+    while lt(j, reduce_mul(shape(mrow))) {
+      if take(mrow, 0, j) {
+        row_lp = take(lp, 0, j);
+        top = argtop_k(row_lp, k);
+        out_rows = concat(out_rows, i);
+        out_pos = concat(out_pos, j);
+        out_tgt = concat(out_tgt, take(yrow, 0, j));
+        out_ids = concat(out_ids, top);
+        out_lp = concat(out_lp, reshape(gather_rows(reshape(row_lp, [vocab, 1]), top), [k]))
+      } else {
+        0
+      };
+      j = j + 1
+    };
+    i = i + 1
+  };
+  {rows: out_rows, positions: out_pos, targets: out_tgt, topk_ids: out_ids, topk_logprobs: out_lp, count: reduce_mul(shape(out_rows)), top_k: k}
+}
+#+end_src
+
+** =u:topk_agreement=
+
+How often the exported top-1 id is the target; the teacher fixture's sanity number.
+
+#+begin_src mlpl :tangle ../../lib/dense.mlpl
+def u:topk_agreement(export) {
+  "Fraction of exported positions whose top-1 id equals the target.";
+  ids = reshape(export.topk_ids, [export.count, export.top_k]);
+  mean(eq(reshape(gather_rows(reshape(ids, [export.count * export.top_k, 1]), range(export.count) * export.top_k), [export.count]), export.targets))
+}
+#+end_src
+
+** =u:pad_to=
+
+Right-pad ids to a full window for forwards that only accept the training length (the mixture blocks, whose gate columns are literal-length constants, finding F20).
+
+#+begin_src mlpl :tangle ../../lib/dense.mlpl
+def u:pad_to(ids, T) {
+  "Right-pad a rank-one id vector with zeros to length T.";
+  n = reduce_mul(shape(ids));
+  if lt(n, T) {
+    concat(ids, fill([T - n], 0))
+  } else {
+    ids
+  }
+}
+#+end_src
+
+** =u:greedy_padded=
+
+Greedy decoding for those fixed-length forwards: pad, run, read the row at the sequence end, stop at the stop id, the budget, or the window edge.
+
+#+begin_src mlpl :tangle ../../lib/dense.mlpl
+def u:greedy_padded(forward, prompt_ids, max_new, T) {
+  "Greedy decode for a forward that only accepts full T-length windows: pad, run, read the row at the sequence end; stops at the stop id, max_new, or the window edge.";
+  seq = prompt_ids;
+  out = fill([0], 0);
+  k = 0;
+  while lt(k, max_new) {
+    n = reduce_mul(shape(seq));
+    nxt = if lt(n, T) {
+      argmax(take(call(forward, u:pad_to(seq, T)), 0, n - 1))
+    } else { u:stop_id() };
+    seq = concat(seq, nxt);
+    out = concat(out, nxt);
+    k = if eq(nxt, u:stop_id()) {
+      max_new
+    } else {
+      k + 1
+    }
+  };
+  out
+}
+#+end_src
+
+** =u:evaluate_prompts_padded=
+
+The padded twin of the evaluation harness.
+
+#+begin_src mlpl :tangle ../../lib/dense.mlpl
+def u:evaluate_prompts_padded(forward, d, index, max_new, T) {
+  "Per-family and overall exact-match accuracy of padded greedy answers over the indexed examples.";
+  n = reduce_mul(shape(index));
+  acc = "";
+  i = 0;
+  while lt(i, n) {
+    prompt = str_concat(unwrap(list_get(d.prompts, take(index, 0, i))), "|");
+    text = u:answer_text(u:greedy_padded(forward, unwrap(u:domain_encode(prompt)), max_new, T));
+    acc = if eq(i, 0) {
+      text
+    } else {
+      str_concat(str_concat(acc, ";"), text)
+    };
+    i = i + 1
+  };
+  preds = str_split(acc, ";");
+  answers = u:select_list(d.answers, index);
+  hits = u:exact_match(preds, answers);
+  tags = reshape(gather_rows(reshape(d.tags, [d.count, 1]), index), [n]);
+  {accuracy: u:accuracy_by_tag(hits, tags), hits: hits, preds: preds}
+}
+#+end_src
+
+* A whole lesson: =demos/dense_baseline.mlpl= (DN01)
+
+The dense baseline is the pattern every later lesson follows: train once at top level, emit observations, draw diagrams from the same values, write the row, state the contract. Its measured row is validation loss 3.79, perplexity 44.2, held-out exact match 0 / 0 / 0 / 0.667 by family, training exact match 0.70, 3,812 parameters.
+
+** Module header
+
+A lesson is a script: it trains one model in one process, emits observations, draws its diagrams from the same values, and writes its results row. DN01 is the smallest and the pattern for the rest. The header comment names the lesson; the includes bring the domain, the observation names, the SVG helpers, and the results writer.
+
+#+begin_src mlpl :tangle ../../demos/dense_baseline.mlpl
+# DN01 dense baseline: one transformer block trained per example on the synthetic domain, with recorded observations, diagrams, and the memory/speed/quality triple.
+include "../lib/dense.mlpl";
+include "../lib/observe.mlpl";
+include "../lib/svg.mlpl";
+include "../lib/results.mlpl";
+#+end_src
+
+** Lesson body, part 1
+
+Every lesson opens by printing what it shows and the shapes involved, so a transcript reads as a report.
+
+#+begin_src mlpl :tangle ../../demos/dense_baseline.mlpl
+print("WHAT THIS SHOWS -- A dense 3.8K-parameter transformer trained on 90 examples memorizes them but generalizes only where a local pattern exists (prose).");
+print("SHAPES -- ids:[T], embedding:[T,16], attention:[T,16], logits:[T,52]; T=28 window, 120 examples, 90 train / 30 validation.");
+#+end_src
+
+** Lesson body, part 2
+
+Arguments are the output directory (empty when the lesson runs over the recording server, which has no filesystem) and the interpreter's version string for the results row. Then the fixed configuration: width 16, hidden 32, 300 epochs, learning rate 0.003, and the domain's windows and split. ~emit_frame~ with a literal name (finding F8) records the configuration as frame 0 and returns the value unchanged.
+
+#+begin_src mlpl :tangle ../../demos/dense_baseline.mlpl
+out_dir = if list_len(args()) {
+  unwrap(list_get(args(), 0))
+} else {
+  ""
+};
+binary = if gt(list_len(args()), 1) {
+  unwrap(list_get(args(), 1))
+} else {
+  "unknown"
+};
+writing = str_len(out_dir);
+m = unwrap(u:domain_load_mixture(u:domain_mixture_path()));
+d = u:domain_build(m);
+w = unwrap(u:domain_windows(d.texts, m.window));
+s = u:domain_split(d.count, m.train_fraction, m.seed);
+V = u:domain_vocab_size();
+T = m.window;
+dm = 16;
+hidden = 32;
+epochs = 300;
+lr = 0.003;
+every = 25;
+ntrain = reduce_mul(shape(s.train));
+nval = reduce_mul(shape(s.val));
+train_x = gather_rows(w.x, s.train);
+train_y = gather_rows(w.y, s.train);
+train_m = gather_rows(w.mask, s.train);
+val_x = gather_rows(w.x, s.val);
+val_y = gather_rows(w.y, s.val);
+val_m = gather_rows(w.mask, s.val);
+posT = u:positions(T, dm);
+config = emit_frame("dense/config", 0, [dm, hidden, T, epochs, ntrain, nval]);
+#+end_src
+
+** Lesson body, part 3
+
+The five sub-models are globals: the embedding, a norm-then-attention chain, a norm-then-FFN chain, the final norm, and the head. The integer after each constructor is its parameter-naming id; ~adam~ keeps state by parameter name, which is why one training run per process is the rule (finding F22).
+
+#+begin_src mlpl :tangle ../../demos/dense_baseline.mlpl
+emb = embed(V, dm, 0);
+att = chain(rms_norm(dm), causal_attention(dm, 1, 1));
+ffn = chain(rms_norm(dm), linear(dm, hidden, 2), relu_layer(), linear(hidden, dm, 3));
+norm = rms_norm(dm);
+head = linear(dm, V, 4);
+#+end_src
+
+** =u:body=
+
+The block written out with explicit residuals rather than the ~residual~ combinator, so ~attention_weights~ can still reach the attention sub-model afterwards (finding F13).
+
+#+begin_src mlpl :tangle ../../demos/dense_baseline.mlpl
+def u:body(h0) {
+  "Explicit residual block (attention, then FFN), final norm, and the vocabulary head.";
+  h1 = h0 + apply(att, h0);
+  h2 = h1 + apply(ffn, h1);
+  apply(head, apply(norm, h2))
+}
+#+end_src
+
+** =u:forward=
+
+Logits for a sequence of any length: embedding plus positions through the body. Eager decoding uses this; training uses ~u:body~ directly with the precomputed full-window positions.
+
+#+begin_src mlpl :tangle ../../demos/dense_baseline.mlpl
+def u:forward(x1) {
+  "Logits for one sequence: embedding plus positions 0..n-1 through the body.";
+  u:body(apply(emb, x1) + u:positions(reduce_mul(shape(x1)), dm))
+}
+#+end_src
+
+** Lesson body, part 6
+
+Parameter accounting is explicit arithmetic over ~param_count~: 3,812 in total, of which one embedding row per token is read, so 2,996 active parameters per token.
+
+#+begin_src mlpl :tangle ../../demos/dense_baseline.mlpl
+p_emb = param_count(emb);
+p_att = param_count(att);
+p_ffn = param_count(ffn);
+p_norm = param_count(norm);
+p_head = param_count(head);
+params = p_emb + p_att + p_ffn + p_norm + p_head;
+active = params - p_emb + dm;
+print("MODEL -- params", params, "of which embedding", p_emb, "attention", p_att, "ffn", p_ffn, "head", p_head, "; active per token", active);
+#+end_src
+
+** Lesson body, part 7
+
+The training loop at top level: one Adam step per training window per epoch, 27,000 steps in all, and every 25 epochs the masked loss on all training and validation rows emitted as a frame. The recording is these thirteen frames.
+
+#+begin_src mlpl :tangle ../../demos/dense_baseline.mlpl
+curve_e = fill([0], 0);
+curve_t = fill([0], 0);
+curve_v = fill([0], 0);
+t0 = clock_ms();
+train_ms = 0;
+e = 0;
+while lt(e, epochs) {
+  ts = clock_ms();
+  i = 0;
+  while lt(i, ntrain) {
+    x1 = take(train_x, 0, i);
+    y1 = take(train_y, 0, i);
+    m1 = take(train_m, 0, i);
+    adam(u:masked_ce(u:body(apply(emb, x1) + posT), y1, m1, V), [emb, att, ffn, norm, head], lr, 0.9, 0.999, 0.00000001);
+    i = i + 1
+  };
+  train_ms = train_ms + (clock_ms() - ts);
+  e = e + 1;
+  if eq(mod(e, every), 0) {
+    tl = emit_frame("dense/loss/train", e, u:set_loss(:u:forward, train_x, train_y, train_m, ntrain, V));
+    vl = emit_frame("dense/loss/val", e, u:set_loss(:u:forward, val_x, val_y, val_m, nval, V));
+    curve_e = concat(curve_e, e);
+    curve_t = concat(curve_t, tl);
+    curve_v = concat(curve_v, vl);
+    print("epoch", e, "train loss", u:svg_round(tl, 4), "val loss", u:svg_round(vl, 4))
+  } else {
+    0
+  }
+};
+steps = epochs * ntrain;
+ms_per_step = train_ms / steps;
+ms_per_token = train_ms / (steps * T);
+#+end_src
+
+** Lesson body, part 8
+
+After training, exact match by family on the validation and on the training rows, both emitted, and the final losses read back off the curves.
+
+#+begin_src mlpl :tangle ../../demos/dense_baseline.mlpl
+td = clock_ms();
+rv = u:evaluate_prompts(:u:forward, d, s.val, 12);
+decode_ms = clock_ms() - td;
+rt = u:evaluate_prompts(:u:forward, d, s.train, 12);
+val_acc = emit_frame("dense/accuracy/val", epochs, [rv.accuracy.arithmetic, rv.accuracy.sequence, rv.accuracy.mlpl, rv.accuracy.prose, rv.accuracy.overall]);
+train_acc = emit_frame("dense/accuracy/train", epochs, [rt.accuracy.arithmetic, rt.accuracy.sequence, rt.accuracy.mlpl, rt.accuracy.prose, rt.accuracy.overall]);
+final_val = take(curve_v, 0, reduce_mul(shape(curve_v)) - 1);
+final_train = take(curve_t, 0, reduce_mul(shape(curve_t)) - 1);
+ppl = exp(final_val);
+gen_tokens = reduce_add(u:exact_match(rv.preds, rv.preds)) * 0 + nval * 4;
+#+end_src
+
+** Lesson body, part 9
+
+The example window ~2+3=|5.~ is pushed through the trained model for the diagrams: its argmax predictions and its attention weights, plus one decoded validation prompt and one decoded prose prompt.
+
+#+begin_src mlpl :tangle ../../demos/dense_baseline.mlpl
+example = "2+3=|5.";
+ex_ids = unwrap(u:domain_encode(example));
+ex_logits = u:forward(ex_ids);
+ex_pred = emit_frame("dense/logits/example-argmax", epochs, argmax(ex_logits, 1));
+ex_att = emit_frame("dense/attention/example", epochs, attention_weights(att, apply(emb, ex_ids) + u:positions(7, dm)));
+val_prompt = unwrap(list_get(d.prompts, take(s.val, 0, 0)));
+val_answer = unwrap(list_get(d.answers, take(s.val, 0, 0)));
+val_pred = unwrap(list_get(rv.preds, 0));
+prose_index = compress(eq(reshape(gather_rows(reshape(d.tags, [d.count, 1]), s.val), [nval]), 3), s.val);
+prose_prompt = unwrap(list_get(d.prompts, take(prose_index, 0, 0)));
+prose_answer = unwrap(list_get(d.answers, take(prose_index, 0, 0)));
+prose_pred = u:answer_text(u:greedy(:u:forward, unwrap(u:domain_encode(str_concat(prose_prompt, "|"))), 12));
+#+end_src
+
+** Lesson body, part 10
+
+The results row: lesson id, configuration string, binary, parameter counts, counted costs, the machine-dependent milliseconds per token, the losses, and per-family accuracy. The DN01 row also states the persistent state attention keeps at 16 and 1,024 tokens of history, the column SS01 introduced. The gate compares every column except the binary and the timing with the committed table.
+
+#+begin_src mlpl :tangle ../../demos/dense_baseline.mlpl
+row = {lesson: "DN01", config: "dense d16 h32 1head T28 120ex 300ep lr0.003", binary: binary, params: params, active_params: active, expert_evals: 1, bytes_per_token: active * 8, ms_per_token: u:svg_round(ms_per_token, 4), val_loss: u:svg_round(final_val, 4), ppl: u:svg_round(ppl, 2), arith_acc: u:svg_round(rv.accuracy.arithmetic, 3), seq_acc: u:svg_round(rv.accuracy.sequence, 3), mlpl_acc: u:svg_round(rv.accuracy.mlpl, 3), prose_acc: u:svg_round(rv.accuracy.prose, 3), state_bytes: str_concat(str_concat(u:svg_num(2 * 16 * dm * 8), " / "), u:svg_num(2 * 1024 * dm * 8))};
+r_row = if writing {
+  write_atomic(str_concat(out_dir, "/results-row.md"), str_concat(u:results_row(row), "\n"))
+} else {
+  ok(0)
+};
+print("MEMORY -- params", params, "active/token", active, "bytes/token (f64)", active * 8);
+print("SPEED -- ms/step", u:svg_round(ms_per_step, 3), "ms/token", u:svg_round(ms_per_token, 4), "greedy decode ms for", nval, "prompts", u:svg_round(decode_ms, 1), "(", binary, ")");
+print("QUALITY -- val loss", u:svg_round(final_val, 4), "ppl", u:svg_round(ppl, 2), "val acc [arith seq mlpl prose all]", val_acc, "train acc", train_acc);
+#+end_src
+
+** =u:pred_text=
+
+Predicted ids as characters for the diagram.
+
+#+begin_src mlpl :tangle ../../demos/dense_baseline.mlpl
+def u:pred_text(pred_ids) {
+  "Characters for a vector of predicted ids.";
+  u:domain_decode(pred_ids)
+}
+#+end_src
+
+** =u:model_svg=
+
+The data-structure diagram: the window's path through the stages with real shapes and parameter counts, the example's ids, the argmax beside the target, and the what/why/how panel. Every number in it is a value computed above.
+
+#+begin_src mlpl :tangle ../../demos/dense_baseline.mlpl
+def u:model_svg() {
+  "Diagram: one token window's path through embedding, positions, attention, FFN, norm, head, and loss, with real shapes and parameter counts.";
+  page = u:svg_head("DN01 dense model transformation", "The example 2+3=|5. flows through the embedding, positional addition, a residual attention block, a residual feed-forward block, a final norm, and the vocabulary head; each stage shows its shape and parameter count and the final row shows the argmax prediction beside the target.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "DN01 DENSE BASELINE -- one window through the model"));
+  page = str_concat(page, u:svg_text(32, 60, "m", str_concat(str_concat("WHAT: ", u:svg_num(params)), " parameters, all read for every token (dense) except the unread embedding rows")));
+  page = str_concat(page, u:svg_box(32, 80, 130, 64, "ids [T]", "52-symbol alphabet", "0 params"));
+  page = str_concat(page, u:svg_box(180, 80, 150, 64, "embed [T,16]", "row lookup by id", str_concat(u:svg_num(p_emb), " params")));
+  page = str_concat(page, u:svg_box(348, 80, 150, 64, "+ positions", "sinusoidal, unlabeled", "0 params"));
+  page = str_concat(page, u:svg_box(516, 80, 200, 64, "h1 = h0 + att(h0)", "rms_norm, causal attention", str_concat(u:svg_num(p_att), " params")));
+  page = str_concat(page, u:svg_box(734, 80, 196, 64, "h2 = h1 + ffn(h1)", "rms_norm, 16->32 relu 32->16", str_concat(u:svg_num(p_ffn), " params")));
+  page = str_concat(page, u:svg_box(516, 160, 200, 64, "norm + head", "rms_norm, linear 16->52", str_concat(u:svg_num(p_norm + p_head), " params")));
+  page = str_concat(page, u:svg_box(734, 160, 196, 64, "logits [T,52]", "masked cross-entropy on", "answer and stop targets"));
+  page = str_concat(page, u:svg_text(32, 258, "k", str_concat("example  ", example)));
+  page = str_concat(page, u:svg_chars(example, 260, 241, 30));
+  page = str_concat(page, u:svg_text(32, 298, "k", "ids"));
+  page = str_concat(page, u:svg_cells(ex_ids, 260, 281, 30, fill([7], 0)));
+  page = str_concat(page, u:svg_text(32, 338, "k", "argmax prediction"));
+  page = str_concat(page, u:svg_chars(u:pred_text(ex_pred), 260, 321, 30));
+  page = str_concat(page, u:svg_text(32, 378, "k", "target (next char)"));
+  page = str_concat(page, u:svg_chars(str_concat(str_slice(example, 1, 6), "~"), 260, 361, 30));
+  page = str_concat(page, u:svg_rect(30, 400, 900, 120, "panel"));
+  page = str_concat(page, u:svg_text(50, 428, "", "WHY: a dense block spends every parameter on every token; it is the reference that MoE, recurrence, and Engram must beat."));
+  page = str_concat(page, u:svg_text(50, 453, "", "WHY: the residual is written by hand (h1 = h0 + att(h0)) so attention_weights can still reach the attention sub-model (F13)."));
+  page = str_concat(page, u:svg_text(50, 478, "", "HOW: u:body applies the att, ffn, norm, head globals; u:masked_ce scores answer and stop targets; adam updates all five."));
+  page = str_concat(page, u:svg_text(50, 503, "m", "Prediction cells are teacher-forced: each position sees the true prefix; only positions after the bar are scored."));
+  str_concat(page, "</svg>")
+}
+#+end_src
+
+** =u:bars=
+
+Accuracy bars for the run diagram.
+
+#+begin_src mlpl :tangle ../../demos/dense_baseline.mlpl
+def u:bars(vals, x0, y0, wd, cls) {
+  "Vertical bars for accuracy values in [0, 1], 100 px tall at most.";
+  n = reduce_mul(shape(vals));
+  out = "";
+  i = 0;
+  while lt(i, n) {
+    h = round(take(vals, 0, i) * 100);
+    out = str_concat(out, u:svg_rect(x0 + i * 80, y0 + 100 - h, wd, h + 1, cls));
+    out = str_concat(out, u:svg_text(x0 + i * 80, y0 + 100 - h - 4, "s", u:svg_num(u:svg_round(take(vals, 0, i), 2))));
+    i = i + 1
+  };
+  out
+}
+#+end_src
+
+** =u:run_svg=
+
+The transformation diagram: the two loss curves, the accuracy bars for training and validation rows, the attention heatmap of the example, and two decodes. Its values are the emitted observations, so the diagram and the recording cannot disagree.
+
+#+begin_src mlpl :tangle ../../demos/dense_baseline.mlpl
+def u:run_svg() {
+  "Diagram: training and validation loss over epochs, per-family accuracy, the attention map of one example, and one validation decode.";
+  page = u:svg_head("DN01 training run", "Training loss falls toward zero while validation loss rises after the first checkpoints, the per-family accuracy bars show memorization on training rows and prose-only generalization on validation rows, and the attention heatmap and a decoded validation prompt show the trained model at work.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "DN01 RUN -- loss, accuracy, attention, decode"));
+  page = str_concat(page, u:svg_text(32, 60, "m", str_concat(str_concat(str_concat("WHAT: ", u:svg_num(steps)), " one-example Adam steps, "), str_concat(str_concat(u:svg_num(epochs), " epochs; every "), str_concat(u:svg_num(every), " epochs masked loss is measured on all train and validation rows")))));
+  n = reduce_mul(shape(curve_e));
+  top = reduce(:max, concat(curve_t, curve_v));
+  xs = 60 + (curve_e / epochs) * 360;
+  yt = 300 - (curve_t / top) * 200;
+  yv = 300 - (curve_v / top) * 200;
+  page = str_concat(page, str_concat("<line x1=\"60\" y1=\"300\" x2=\"420\" y2=\"300\" class=\"axis\"/><line x1=\"60\" y1=\"100\" x2=\"60\" y2=\"300\" class=\"axis\"/>", ""));
+  page = str_concat(page, u:svg_polyline(xs, yt, "l1"));
+  page = str_concat(page, u:svg_polyline(xs, yv, "l2"));
+  page = str_concat(page, u:svg_text(60, 92, "k", str_concat("masked loss (nats); top of axis = ", u:svg_num(u:svg_round(top, 3)))));
+  page = str_concat(page, u:svg_text(60, 318, "m", str_concat(str_concat("epoch 0 .. ", u:svg_num(epochs)), "   gold = train, pink = validation")));
+  page = str_concat(page, u:svg_text(300, 318, "l1", ""));
+  page = str_concat(page, u:svg_text(60, 336, "", str_concat(str_concat("final train ", u:svg_num(u:svg_round(final_train, 4))), str_concat("   final val ", str_concat(u:svg_num(u:svg_round(final_val, 4)), str_concat("   ppl ", u:svg_num(u:svg_round(ppl, 2))))))));
+  page = str_concat(page, u:svg_text(480, 92, "k", "exact-match accuracy: blue = train rows, pink = validation rows"));
+  page = str_concat(page, u:bars(train_acc, 480, 100, 30, "tr"));
+  page = str_concat(page, u:bars(val_acc, 514, 100, 30, "va"));
+  page = str_concat(page, str_concat(str_concat(u:svg_text(480, 218, "s", "arith"), u:svg_text(560, 218, "s", "seq")), str_concat(str_concat(u:svg_text(640, 218, "s", "mlpl"), u:svg_text(720, 218, "s", "prose")), u:svg_text(800, 218, "s", "overall"))));
+  page = str_concat(page, u:svg_text(480, 250, "k", str_concat("attention weights for ", example)));
+  page = str_concat(page, u:svg_heat(ex_att, 480, 258, 26));
+  page = str_concat(page, u:svg_text(680, 275, "", "rows attend to columns;"));
+  page = str_concat(page, u:svg_text(680, 293, "", "causal: nothing right of"));
+  page = str_concat(page, u:svg_text(680, 311, "", "the diagonal is nonzero"));
+  page = str_concat(page, u:svg_text(680, 345, "k", "validation decode"));
+  page = str_concat(page, u:svg_text(680, 365, "", str_concat(str_concat(val_prompt, "| -> "), str_concat(val_pred, str_concat("  (", str_concat(val_answer, ")"))))));
+  page = str_concat(page, u:svg_text(680, 385, "", str_concat(str_concat(prose_prompt, "| -> "), str_concat(prose_pred, str_concat("  (", str_concat(prose_answer, ")"))))));
+  page = str_concat(page, u:svg_text(680, 405, "m", "(expected answer in parentheses)"));
+  page = str_concat(page, u:svg_rect(30, 452, 900, 76, "panel"));
+  page = str_concat(page, u:svg_text(50, 476, "", "WHY: rising validation loss with falling training loss is memorization; arithmetic, sequence, mlpl need rules 90 rows lack."));
+  page = str_concat(page, u:svg_text(50, 498, "", "HOW: every value here is an emitted observation (dense/loss/*, dense/accuracy/*, dense/attention/example) or a results cell."));
+  page = str_concat(page, u:svg_text(50, 518, "m", "Prose generalizes because its answer is a local pattern (animal -> place): the seam Engram will later fill without a network."));
+  str_concat(page, "</svg>")
+}
+#+end_src
+
+** Lesson body, part 15
+
+The diagrams are written only when an output directory was given; then the numerical contract is stated and checked, and the script's value is ~ok~ or ~err~. The gate script compares the written files with the committed previews byte for byte.
+
+#+begin_src mlpl :tangle ../../demos/dense_baseline.mlpl
+r1 = if writing {
+  write_atomic(str_concat(out_dir, "/dense-model.svg"), u:model_svg())
+} else {
+  ok(0)
+};
+r2 = if writing {
+  write_atomic(str_concat(out_dir, "/dense-run.svg"), u:run_svg())
+} else {
+  ok(0)
+};
+print("NUMERICAL CONTRACT -- training loss ends below 0.3 while validation loss ends above 1.0; validation prose accuracy is at least 0.5; every other validation family is below 0.5.");
+print("THE POINT -- Dense capacity memorizes; only locally patterned answers survive to held-out rows.");
+print("BOUNDARY -- 90 training rows and one 16-wide block; this is the reference row for every later mechanism, not a claim about transformers in general.");
+contract = lt(final_train, 0.3) * gt(final_val, 1) * gt(rv.accuracy.prose, 0.49) * lt(rv.accuracy.arithmetic, 0.5) * lt(rv.accuracy.sequence, 0.5) * lt(rv.accuracy.mlpl, 0.5);
+if contract * is_ok(r1) * is_ok(r2) * is_ok(r_row) {
+  ok("dense baseline written")
+} else {
+  err("dense baseline contract failed")
+}
+#+end_src
+
+* Routing, gates, and dispatch: =lib/moe.mlpl=
+
+The mixture of experts from scratch: logits, probabilities, top-1 and top-2 masks, Switch gates, the balance term, sparse dispatch and its exact scatter back, the specialization score, and the low-rank delta experts. Measured: MX01 (four experts, top-1) matches the dense loss at 1.86 times the parameters and 1.02 times the active parameters per token; SD01 evaluates 3,360 instead of 13,440 expert rows with outputs equal to the bit; MX02 top-2 costs twice the expert work for worse loss and the first held-out MLPL answers.
+
+** Module header
+
+Routing is the subject of the repository, so it is written from scratch: every intermediate value has a name and a shape.
+
+#+begin_src mlpl :tangle ../../lib/moe.mlpl
+# Mixture-of-experts routing written out: router logits, probabilities, top-k masks, Switch-style gates, dispatch tables, load, entropy, and the balance loss.
+#+end_src
+
+** =u:router_logits=
+
+One linear layer over the hidden state gives a score per expert per token.
+
+#+begin_src mlpl :tangle ../../lib/moe.mlpl
+def u:router_logits(h, Wr, br) {
+  "Router scores [T, E]: one linear layer over the hidden state.";
+  matmul(h, Wr) + br
+}
+#+end_src
+
+** =u:router_probs=
+
+Softmax over experts, per token.
+
+#+begin_src mlpl :tangle ../../lib/moe.mlpl
+def u:router_probs(logits) {
+  "Router probabilities [T, E]: softmax over experts for each token.";
+  softmax(logits)
+}
+#+end_src
+
+** =u:top1_mask=
+
+The selection: a one-hot of each token's best expert. ~argmax~ and ~one_hot~ are not differentiable, so the mask is a constant on the tape (finding F5); the gradient reaches the router through the gate, not through the choice.
+
+#+begin_src mlpl :tangle ../../lib/moe.mlpl
+def u:top1_mask(logits, E) {
+  "One-hot [T, E] selecting each token's highest-scoring expert; a stop-gradient constant on the tape.";
+  one_hot(argmax(logits, 1), E)
+}
+#+end_src
+
+** =u:topk_mask=
+
+The general top-k selection, built eagerly row by row with ~argtop_k~; the traced lessons use the top-1 and top-2 forms below.
+
+#+begin_src mlpl :tangle ../../lib/moe.mlpl
+def u:topk_mask(logits, k, E) {
+  "0/1 [T, E] selecting each token's k highest-scoring experts, built eagerly row by row.";
+  T = reduce_mul(shape(take(logits, 1, 0)));
+  mask = fill([0, E], 0);
+  t = 0;
+  while lt(t, T) {
+    row = reduce_add(one_hot(argtop_k(take(logits, 0, t), k), E), 0);
+    mask = concat(mask, reshape(row, [1, E]), 0);
+    t = t + 1
+  };
+  mask
+}
+#+end_src
+
+** =u:switch_gate=
+
+Switch-style gating: the selected expert's probability, zero elsewhere. Because the probability is on the tape, the router receives a gradient from every token's loss.
+
+#+begin_src mlpl :tangle ../../lib/moe.mlpl
+def u:switch_gate(logits, E) {
+  "Switch-style gate [T, E]: the selected expert's probability, zero elsewhere, so the router receives a gradient.";
+  u:router_probs(logits) * u:top1_mask(logits, E)
+}
+#+end_src
+
+** =u:renormalized_gate=
+
+Top-k combine: the kept probabilities renormalized to sum to one per token.
+
+#+begin_src mlpl :tangle ../../lib/moe.mlpl
+def u:renormalized_gate(probs, mask) {
+  "Gate [T, E] whose selected entries are renormalized to sum to one per token (top-k combine).";
+  kept = probs * mask;
+  kept / reduce_add(kept, 1)
+}
+#+end_src
+
+** =u:gate_column=
+
+One expert's gate as a ~[T, 1]~ factor.
+
+#+begin_src mlpl :tangle ../../lib/moe.mlpl
+def u:gate_column(gate, e, T) {
+  "Column e of a gate as a [T, 1] factor to scale one expert's output.";
+  reshape(take(gate, 1, e), [T, 1])
+}
+#+end_src
+
+** =u:expert_load=
+
+Tokens per expert. MX01 records it every checkpoint (~moe/load~).
+
+#+begin_src mlpl :tangle ../../lib/moe.mlpl
+def u:expert_load(mask) {
+  "Tokens routed to each expert, [E].";
+  reduce_add(mask, 0)
+}
+#+end_src
+
+** =u:router_entropy=
+
+Mean per-token entropy of the router distribution: ~log(E)~ when indifferent, zero when certain. MX01 ends at 0.62 nats with four experts (~log 4~ is 1.39).
+
+#+begin_src mlpl :tangle ../../lib/moe.mlpl
+def u:router_entropy(probs) {
+  "Mean per-token entropy of the router distribution in nats; log(E) means indifferent, zero means certain.";
+  0 - mean(reduce_add(probs * log(probs + 0.000000000001), 1))
+}
+#+end_src
+
+** =u:balance_loss=
+
+The Switch load-balance term: routed fraction times mean probability, summed over experts and scaled by E; exactly one when perfectly balanced. It is what keeps the four experts in use (MX01 balance 1.17).
+
+#+begin_src mlpl :tangle ../../lib/moe.mlpl
+def u:balance_loss(probs, mask, E, T) {
+  "Switch load-balance term: E times the sum over experts of routed fraction times mean probability; equals one when perfectly balanced (T is explicit: size arithmetic is not traced, F12).";
+  fraction = reduce_add(mask, 0) / T;
+  importance = reduce_add(probs, 0) / T;
+  E * reduce_add(fraction * importance)
+}
+#+end_src
+
+** =u:dispatch_rows=
+
+Sparse dispatch begins here: ~compress~ keeps the rows whose mask entry is one, in token order.
+
+#+begin_src mlpl :tangle ../../lib/moe.mlpl
+def u:dispatch_rows(x, mask_col) {
+  "The rows of x [T, d] routed to one expert: those whose mask column entry is one, in token order.";
+  compress(mask_col, x)
+}
+#+end_src
+
+** =u:dispatch_gate=
+
+The gate values of those rows, shaped to scale the expert's output.
+
+#+begin_src mlpl :tangle ../../lib/moe.mlpl
+def u:dispatch_gate(gate_col, mask_col) {
+  "The gate values of the routed rows as a [n_e, 1] factor.";
+  kept = compress(mask_col, gate_col);
+  reshape(kept, [reduce_mul(shape(kept)), 1])
+}
+#+end_src
+
+** =u:place_rows=
+
+Scatter back: a one-hot selection matrix transposed and multiplied puts each expert's rows at their token positions with zeros elsewhere. Summing the placed outputs over experts equals the dense-masked sum exactly; SD01 asserts it to the bit, and the primer's dispatch block reproduces it.
+
+#+begin_src mlpl :tangle ../../lib/moe.mlpl
+def u:place_rows(rows, mask_col, T) {
+  "Scatter an expert's [n_e, d] outputs back to their token positions in a [T, d] array (zeros elsewhere) with a one-hot selection matrix.";
+  positions = compress(mask_col, range(T));
+  matmul(transpose(one_hot(positions, T)), rows)
+}
+#+end_src
+
+** =u:dispatch_cost=
+
+Parameters touched per token under sparse dispatch against dense-masked evaluation; the counted cost that distinguishes the two paths in the results table.
+
+#+begin_src mlpl :tangle ../../lib/moe.mlpl
+def u:dispatch_cost(mask, p_expert, p_shared) {
+  "Parameters touched per token under sparse dispatch versus dense-masked evaluation: {sparse, dense, evals_sparse, evals_dense}.";
+  T = reduce_mul(shape(take(mask, 1, 0)));
+  E = reduce_mul(shape(take(mask, 0, 0)));
+  k = reduce_add(mask) / T;
+  {sparse: p_shared + k * p_expert, dense: p_shared + E * p_expert, evals_sparse: k, evals_dense: E}
+}
+#+end_src
+
+** =u:top2_mask=
+
+Top-2 as two argmax passes: the second pass masks the first choice with a huge negative offset. Two constant one-hots, so it traces like the top-1 mask.
+
+#+begin_src mlpl :tangle ../../lib/moe.mlpl
+def u:top2_mask(logits, E) {
+  "0/1 [T, E] selecting each token's two highest-scoring experts, built from two argmax passes so it traces as a constant on the tape.";
+  first = one_hot(argmax(logits, 1), E);
+  second = one_hot(argmax(logits - first * 1000000000, 1), E);
+  first + second
+}
+#+end_src
+
+** =u:top2_gate=
+
+The two kept probabilities renormalized per token. Row sums replicate by a matmul with a ones matrix passed in by the caller, because a reshape with a computed shape is not traced (finding F11).
+
+#+begin_src mlpl :tangle ../../lib/moe.mlpl
+def u:top2_gate(logits, E, ones_ee) {
+  "Top-2 gate [T, E]: the two selected probabilities renormalized per token; ones_ee is a constant [E, E] ones matrix passed in so row sums replicate by matmul (nested shape arguments are not traced, F11).";
+  probs = u:router_probs(logits);
+  kept = probs * u:top2_mask(logits, E);
+  kept / matmul(kept, ones_ee)
+}
+#+end_src
+
+** =u:row_normalize=
+
+Each row divided by its total; empty rows stay zero.
+
+#+begin_src mlpl :tangle ../../lib/moe.mlpl
+def u:row_normalize(counts) {
+  "Each row of a count matrix divided by its row total (rows with no counts become zero).";
+  totals = reduce_add(counts, 1);
+  counts / reshape(totals + eq(totals, 0), [reduce_mul(shape(totals)), 1])
+}
+#+end_src
+
+** =u:specialization_score=
+
+Mean over families of the largest expert share: 0.25 with four experts when routing ignores the family, 1 when each family owns an expert. MX01 scores 0.61 without ever seeing a family label.
+
+#+begin_src mlpl :tangle ../../lib/moe.mlpl
+def u:specialization_score(counts) {
+  "Mean over families of the largest expert share of that family's tokens; 1/E when routing ignores the family, 1 when each family uses one expert.";
+  shares = u:row_normalize(counts);
+  n = reduce_mul(shape(take(shares, 1, 0)));
+  total = 0;
+  i = 0;
+  while lt(i, n) {
+    total = total + reduce(:max, take(shares, 0, i));
+    i = i + 1
+  };
+  total / n
+}
+#+end_src
+
+** =u:delta_expand=
+
+LD01's low-rank delta experts: a constant one-hot that repeats each expert's gate ~r~ times so one ~[T, E]~ gate scales a ~[T, E*r]~ product.
+
+#+begin_src mlpl :tangle ../../lib/moe.mlpl
+def u:delta_expand(E, r) {
+  "Constant block one-hot [E, E*r] that repeats each expert's gate value r times, so a [T, E] gate becomes a [T, E*r] factor by matmul.";
+  transpose(one_hot(floor(range(E * r) / r), E))
+}
+#+end_src
+
+** =u:delta_out=
+
+All sixteen deltas in two matmuls: ~x A_all~ scaled per column by the expanded gate, then ~B_all~. Exact for any E and k, and no per-expert loop.
+
+#+begin_src mlpl :tangle ../../lib/moe.mlpl
+def u:delta_out(x, A_all, B_all, gate, expand) {
+  "Gated sum over low-rank delta experts in two matmuls: (x @ A_all) scaled per column by the expanded gate, then @ B_all; exact for any E and k.";
+  matmul(matmul(x, A_all) * matmul(gate, expand), B_all)
+}
+#+end_src
+
+** =u:delta_params=
+
+Parameters of one rank-r delta over width d: 128 at rank 4 and width 16, against 1,072 for a full expert.
+
+#+begin_src mlpl :tangle ../../lib/moe.mlpl
+def u:delta_params(d, r) {
+  "Trainable parameters of one rank-r delta expert over width d.";
+  2 * d * r
+}
+#+end_src
+
+** =u:router_macs=
+
+Multiply-adds spent choosing experts per token, recorded as a counted cost in the LD01 row.
+
+#+begin_src mlpl :tangle ../../lib/moe.mlpl
+def u:router_macs(d, E) {
+  "Multiply-adds per token spent choosing experts: one d-by-E matmul row plus the bias adds.";
+  d * E + E
+}
+#+end_src
+
+* Recurrence: =lib/recur.mlpl=
+
+One shared block applied R times with deep supervision, then the same for the mixture block and for the composed block with Engram. Measured: RC01 at R=2 reaches 3.45 against 3.79 at the same 3,812 parameters; RM01 at R=3 reaches 3.42, the lowest 120-example loss in the table, with 38 to 46 percent of tokens changing expert between passes; RE01, all three sparsities, memorizes best (training loss 0.006) and generalizes worst (4.76).
+
+** Module header
+
+Recurrence is the same block applied again to its own output. The functions read the block's sub-models as the caller's globals (~recur_att~, ~recur_ffn~, ...), because a model cannot be a function argument (finding F7) and reusing the same global value shares the weights (finding F3).
+
+#+begin_src mlpl :tangle ../../lib/recur.mlpl
+# Recurrence: one shared transformer block applied R times to the same token state, with deep supervision (the head scored after every recurrence), so that depth comes from reuse rather than from new parameters.
+include "dense.mlpl";
+include "moe.mlpl";
+include "engram.mlpl";
+#+end_src
+
+** =u:recur_step=
+
+One recurrence of the dense block: attention with a residual, then the FFN with a residual.
+
+#+begin_src mlpl :tangle ../../lib/recur.mlpl
+def u:recur_step(h) {
+  "One recurrence of the shared block: attention with a residual, then the feed-forward network with a residual (recur_att and recur_ffn are the caller's global models; reusing the same values shares the weights, finding F3).";
+  h1 = h + apply(recur_att, h);
+  h1 + apply(recur_ffn, h1)
+}
+#+end_src
+
+** =u:recur_state=
+
+The state after R recurrences. ~repeat R~ with a parameter-bound count traces through ~grad~ (finding F15); the primer's recurrence block shows the parameter count not moving with R.
+
+#+begin_src mlpl :tangle ../../lib/recur.mlpl
+def u:recur_state(h0, R) {
+  "The token state after R recurrences of the shared block (repeat with a parameter-bound count traces, finding F15).";
+  h = h0;
+  repeat R {
+    h = u:recur_step(h)
+  };
+  h
+}
+#+end_src
+
+** =u:recur_logits=
+
+The head applied to a state through the final norm.
+
+#+begin_src mlpl :tangle ../../lib/recur.mlpl
+def u:recur_logits(h) {
+  "Vocabulary logits of a state through the caller's global recur_norm and recur_head.";
+  apply(recur_head, apply(recur_norm, h))
+}
+#+end_src
+
+** =u:recur_loss=
+
+Deep supervision: the head is scored after every recurrence and the losses averaged, so each pass is rewarded for improving the answer. RC01's finding is that this regularized the block rather than building a converging loop: every model scored best when stopped after one pass.
+
+#+begin_src mlpl :tangle ../../lib/recur.mlpl
+def u:recur_loss(h0, y, mask, V, R) {
+  "Deep supervision: the mean over recurrences of the masked next-token loss of the head applied to each intermediate state, so every recurrence is rewarded for improving the answer.";
+  h = h0;
+  total = 0;
+  repeat R {
+    h = u:recur_step(h);
+    total = total + u:masked_ce(u:recur_logits(h), y, mask, V)
+  };
+  total / R
+}
+#+end_src
+
+** =u:recur_active_params=
+
+Parameters touched per token: the shared block R times plus one embedding row, the norm, and the head; 2,996 at R=1 rising by 2,176 per extra recurrence.
+
+#+begin_src mlpl :tangle ../../lib/recur.mlpl
+def u:recur_active_params(p_att, p_ffn, p_norm, p_head, dm, R) {
+  "Parameters touched per token: one embedding row, the shared block R times, the final norm, and the head.";
+  dm + R * (p_att + p_ffn) + p_norm + p_head
+}
+#+end_src
+
+** =u:rm_moe=
+
+RM01's mixture block: the MX01 experts written as four literal gate columns (finding F20) over the caller's window length.
+
+#+begin_src mlpl :tangle ../../lib/recur.mlpl
+def u:rm_moe(h1) {
+  "Dense-masked mixture of four experts over the caller's global recur_pre, recur_router, and recur_ex0..3 (the MX01 block with literal gate columns, finding F20; the window length is the caller's global rm_T, so evaluation pads prompts to it).";
+  x = apply(recur_pre, h1);
+  gate = u:switch_gate(apply(recur_router, x), 4);
+  reshape(take(gate, 1, 0), [rm_T, 1]) * apply(recur_ex0, x) + reshape(take(gate, 1, 1), [rm_T, 1]) * apply(recur_ex1, x) + reshape(take(gate, 1, 2), [rm_T, 1]) * apply(recur_ex2, x) + reshape(take(gate, 1, 3), [rm_T, 1]) * apply(recur_ex3, x)
+}
+#+end_src
+
+** =u:rm_step=
+
+One recurrence of the mixture block; the router runs again at every pass.
+
+#+begin_src mlpl :tangle ../../lib/recur.mlpl
+def u:rm_step(h) {
+  "One recurrence of the mixture block: attention with a residual, then the routed mixture with a residual; every recurrence re-routes.";
+  h1 = h + apply(recur_att, h);
+  h1 + u:rm_moe(h1)
+}
+#+end_src
+
+** =u:rm_state=
+
+The state after R recurrences of the mixture block.
+
+#+begin_src mlpl :tangle ../../lib/recur.mlpl
+def u:rm_state(h0, R) {
+  "The token state after R recurrences of the mixture block.";
+  h = h0;
+  repeat R {
+    h = u:rm_step(h)
+  };
+  h
+}
+#+end_src
+
+** =u:rm_balance=
+
+The balance term of the decision the next recurrence would make, so the balance loss applies at every pass.
+
+#+begin_src mlpl :tangle ../../lib/recur.mlpl
+def u:rm_balance(h) {
+  "The Switch balance term of the routing decision the next recurrence would make from state h.";
+  h1 = h + apply(recur_att, h);
+  logits = apply(recur_router, apply(recur_pre, h1));
+  u:balance_loss(u:router_probs(logits), u:top1_mask(logits, 4), 4, rm_T)
+}
+#+end_src
+
+** =u:rm_loss=
+
+Deep supervision over the recurrent mixture plus the mean balance term scaled by alpha.
+
+#+begin_src mlpl :tangle ../../lib/recur.mlpl
+def u:rm_loss(h0, y, mask, V, R, alpha) {
+  "Deep supervision over the recurrent mixture: the mean over recurrences of the masked loss at each state plus alpha times the balance term of each recurrence's routing.";
+  h = h0;
+  total = 0;
+  bal = 0;
+  repeat R {
+    bal = bal + u:rm_balance(h);
+    h = u:rm_step(h);
+    total = total + u:masked_ce(u:recur_logits(h), y, mask, V)
+  };
+  total / R + alpha * bal / R
+}
+#+end_src
+
+** =u:rm_route=
+
+Which expert each token would take from a given state; the strip in the RM01 diagrams.
+
+#+begin_src mlpl :tangle ../../lib/recur.mlpl
+def u:rm_route(h) {
+  "Expert index per token [T] of the routing decision made from state h.";
+  h1 = h + apply(recur_att, h);
+  argmax(apply(recur_router, apply(recur_pre, h1)), 1)
+}
+#+end_src
+
+** =u:rm_change_share=
+
+The share of masked tokens whose expert differs between consecutive passes: 38 to 46 percent in RM01, routing over reasoning time.
+
+#+begin_src mlpl :tangle ../../lib/recur.mlpl
+def u:rm_change_share(h0, mask, R) {
+  "Share of masked tokens whose expert differs between consecutive recurrences (zero when R is 1).";
+  h = h0;
+  prev = u:rm_route(h);
+  changes = 0;
+  r = 1;
+  while lt(r, R) {
+    h = u:rm_step(h);
+    cur = u:rm_route(h);
+    changes = changes + reduce_add((1 - eq(cur, prev)) * mask);
+    prev = cur;
+    r = r + 1
+  };
+  changes / (reduce_add(mask) * (R - 1) + eq(R, 1))
+}
+#+end_src
+
+** =u:re_step=
+
+RE01 composes all three sparsities: attention, the Engram layer (its table and projections are globals too), then the routed mixture, per recurrence.
+
+#+begin_src mlpl :tangle ../../lib/recur.mlpl
+def u:re_step(h, rows) {
+  "One recurrence of the composed block: attention with a residual, the Engram layer (the caller's globals eg_mem, eg_Wv, eg_bv, eg_Wg, eg_bg; rows are the window's table rows), then the routed mixture with a residual; every recurrence re-routes and re-gates.";
+  h1 = h + apply(recur_att, h);
+  h1e = u:engram_apply(h1, rows, eg_mem, eg_Wv, eg_bv, eg_Wg, eg_bg);
+  h1e + u:rm_moe(h1e)
+}
+#+end_src
+
+** =u:re_state=
+
+The state after R recurrences of the composed block.
+
+#+begin_src mlpl :tangle ../../lib/recur.mlpl
+def u:re_state(h0, R, rows) {
+  "The token state after R recurrences of the composed block.";
+  h = h0;
+  repeat R {
+    h = u:re_step(h, rows)
+  };
+  h
+}
+#+end_src
+
+** =u:re_balance=
+
+The balance term of the composed block's next routing decision.
+
+#+begin_src mlpl :tangle ../../lib/recur.mlpl
+def u:re_balance(h, rows) {
+  "The Switch balance term of the routing decision the next recurrence would make from state h (after attention and the Engram layer).";
+  h1 = h + apply(recur_att, h);
+  h1e = u:engram_apply(h1, rows, eg_mem, eg_Wv, eg_bv, eg_Wg, eg_bg);
+  logits = apply(recur_router, apply(recur_pre, h1e));
+  u:balance_loss(u:router_probs(logits), u:top1_mask(logits, 4), 4, rm_T)
+}
+#+end_src
+
+** =u:re_loss=
+
+Deep supervision over the composed block with the balance term.
+
+#+begin_src mlpl :tangle ../../lib/recur.mlpl
+def u:re_loss(h0, y, mask, V, R, alpha, rows) {
+  "Deep supervision over the composed block: the mean over recurrences of the masked loss at each state plus alpha times the balance term of each recurrence's routing.";
+  h = h0;
+  total = 0;
+  bal = 0;
+  repeat R {
+    bal = bal + u:re_balance(h, rows);
+    h = u:re_step(h, rows);
+    total = total + u:masked_ce(u:recur_logits(h), y, mask, V)
+  };
+  total / R + alpha * bal / R
+}
+#+end_src
+
+** =u:re_route=
+
+The expert per token of the composed block's decision.
+
+#+begin_src mlpl :tangle ../../lib/recur.mlpl
+def u:re_route(h, rows) {
+  "Expert index per token [T] of the routing decision made from state h through the Engram layer.";
+  h1 = h + apply(recur_att, h);
+  h1e = u:engram_apply(h1, rows, eg_mem, eg_Wv, eg_bv, eg_Wg, eg_bg);
+  argmax(apply(recur_router, apply(recur_pre, h1e)), 1)
+}
+#+end_src
+
+** =u:re_gate=
+
+The Engram gate matrix the composed block would apply from a state; the RE01 window diagram draws it per recurrence.
+
+#+begin_src mlpl :tangle ../../lib/recur.mlpl
+def u:re_gate(h, rows) {
+  "The Engram gate matrix [T, dm] of the decision made from state h.";
+  h1 = h + apply(recur_att, h);
+  r = u:engram_retrieve(eg_mem, rows);
+  v = u:engram_value(r, eg_Wv, eg_bv);
+  u:engram_gate(h1, v, eg_Wg, eg_bg)
+}
+#+end_src
+
+** =u:re_change_share=
+
+The change-of-expert share for the composed block.
+
+#+begin_src mlpl :tangle ../../lib/recur.mlpl
+def u:re_change_share(h0, mask, R, rows) {
+  "Share of masked tokens whose expert differs between consecutive recurrences (zero when R is 1).";
+  h = h0;
+  prev = u:re_route(h, rows);
+  changes = 0;
+  r = 1;
+  while lt(r, R) {
+    h = u:re_step(h, rows);
+    cur = u:re_route(h, rows);
+    changes = changes + reduce_add((1 - eq(cur, prev)) * mask);
+    prev = cur;
+    r = r + 1
+  };
+  changes / (reduce_add(mask) * (R - 1) + eq(R, 1))
+}
+#+end_src
+
+* Engram from scratch: =lib/engram.mlpl=
+
+Hashed n-gram addressing, a gathered table, a value projection, and a concat gate, equal to the sw-MLPL builtin to the bit. Measured (EG01): at 90 training windows every table size from 16 to 1,024 slots lowers training loss and raises validation loss (3.93 to 4.67 against 3.79); memory here is memorization capacity.
+
+** Module header
+
+Engram written out so the hashing, the gather, and the gate can each be watched, with the same shapes and initialization as the sw-MLPL ~engram~ builtin so the two forms are compared exactly; EG01 asserts parity to the bit in outputs and gradients.
+
+#+begin_src mlpl :tangle ../../lib/engram.mlpl
+# Engram from scratch: n-gram addressing through the frozen ngram_hash contract, gather_rows retrieval from one flattened table, a value projection, and a concat gate into the residual stream; the same shapes and initialization as the sw-MLPL engram builtin so the two forms can be compared exactly.
+include "dense.mlpl";
+#+end_src
+
+** =u:engram_offsets=
+
+The table is one flattened matrix; each (order, head) region starts at its region index times the slot count, the builtin's rule.
+
+#+begin_src mlpl :tangle ../../lib/engram.mlpl
+def u:engram_offsets(orders, heads, slots) {
+  "Row offset of each (order, head) region in the one flattened table, as a [1, orders * heads] row: region index times slots (the builtin's head_offset rule).";
+  reshape(range(orders * heads) * slots, [1, orders * heads])
+}
+#+end_src
+
+** =u:engram_rows=
+
+Addressing: the frozen ~ngram_hash~ contract gives a local slot per position, order, and head, and the region offset makes it a global row. Constants: no gradient flows through an address. The primer's Engram block calls the same builtin.
+
+#+begin_src mlpl :tangle ../../lib/engram.mlpl
+def u:engram_rows(ids, order_list, orders, heads, slots, seed) {
+  "Global table rows addressed by a window: the frozen rolling hash (local slot per position, order, and head) plus the region offset; shape [T, orders * heads]. Constants: no gradient flows through them.";
+  n = reduce_mul(shape(ids));
+  reshape(ngram_hash(ids, order_list, heads, slots, seed), [n, orders * heads]) + u:engram_offsets(orders, heads, slots)
+}
+#+end_src
+
+** =u:engram_retrieve=
+
+Retrieval: ~gather_rows~ over the table, flattened per position. It is differentiable with respect to the table (scatter-add backward, finding F4), which is how the table trains; the output shape uses the caller's globals because a reshape bound to parameters loses its gradient inside ~grad~ (finding F23).
+
+#+begin_src mlpl :tangle ../../lib/engram.mlpl
+def u:engram_retrieve(table, rows) {
+  "The addressed rows of the table gathered and flattened per position into [eg_T, eg_width] (the caller's globals: window length and orders * heads * head_dim; reshape dims bound to parameters lose the gradient inside grad, finding F23); differentiable with respect to the table (scatter-add backward, finding F4 resolved).";
+  reshape(gather_rows(table, rows), [eg_T, eg_width])
+}
+#+end_src
+
+** =u:engram_value=
+
+The retrieved memory projected into the hidden width.
+
+#+begin_src mlpl :tangle ../../lib/engram.mlpl
+def u:engram_value(r, Wv, bv) {
+  "The value projection of the retrieved memory into the hidden width.";
+  matmul(r, Wv) + bv
+}
+#+end_src
+
+** =u:engram_gate=
+
+The concat gate: a sigmoid over the hidden state and the value decides per position and dimension how much memory joins the residual stream. EG01's gate means run 0.5 to 0.74.
+
+#+begin_src mlpl :tangle ../../lib/engram.mlpl
+def u:engram_gate(h, v, Wg, bg) {
+  "The concat gate: a sigmoid over [h | v] that decides per position and dimension how much retrieved memory joins the residual stream.";
+  sigmoid(matmul(concat(h, v, 1), Wg) + bg)
+}
+#+end_src
+
+** =u:engram_apply=
+
+The whole forward in one line: retrieve, project, gate, add. Exactly ~apply_engram~.
+
+#+begin_src mlpl :tangle ../../lib/engram.mlpl
+def u:engram_apply(h, rows, table, Wv, bv, Wg, bg) {
+  "The whole Engram forward: retrieve, project, gate, and add to the hidden state (exactly the builtin apply_engram; eg_T and eg_width are the caller's globals).";
+  r = u:engram_retrieve(table, rows);
+  v = u:engram_value(r, Wv, bv);
+  h + u:engram_gate(h, v, Wg, bg) * v
+}
+#+end_src
+
+** =u:engram_init=
+
+The builtin's near-identity start: a zero table, small projections, and a gate bias of minus two so the memory path starts about twelve percent open.
+
+#+begin_src mlpl :tangle ../../lib/engram.mlpl
+def u:engram_init(orders, heads, slots, head_dim, hidden, seed) {
+  "Initial values with the builtin's near-identity rule: a zero table [orders * heads * slots, head_dim], value projection randn(seed + 1) scaled by 0.01, zero value bias, gate weight randn(seed + 2) scaled by 0.01, and gate bias -2 (the gate starts about 0.12 open on a zero value path).";
+  width = orders * heads * head_dim;
+  {table: fill([orders * heads * slots, head_dim], 0), Wv: randn(seed + 1, [width, hidden]) * 0.01, bv: fill([1, hidden], 0), Wg: randn(seed + 2, [2 * hidden, hidden]) * 0.01, bg: fill([1, hidden], 0 - 2), width: width, rows: orders * heads * slots}
+}
+#+end_src
+
+** =u:engram_params=
+
+Parameter counts: the table (slots times orders times heads times width) and everything else.
+
+#+begin_src mlpl :tangle ../../lib/engram.mlpl
+def u:engram_params(orders, heads, slots, head_dim, hidden) {
+  "Parameter counts: the table and the projection and gate parameters, as a record with table, other, and total.";
+  table = orders * heads * slots * head_dim;
+  other = orders * heads * head_dim * hidden + hidden + 2 * hidden * hidden + hidden;
+  {table: table, other: other, total: table + other}
+}
+#+end_src
+
+** =u:engram_shift=
+
+Ids shifted right by k with the pad id in front, the windowing the hash uses.
+
+#+begin_src mlpl :tangle ../../lib/engram.mlpl
+def u:engram_shift(ids, k) {
+  "The ids shifted right by k positions with the builtin's pad id 0 filling the start.";
+  n = reduce_mul(shape(ids));
+  if k {
+    concat(fill([k], 0), u:domain_slice(ids, 0, n - k))
+  } else {
+    ids
+  }
+}
+#+end_src
+
+** =u:engram_contexts=
+
+The n-gram context of every position as a matrix, one column per lag.
+
+#+begin_src mlpl :tangle ../../lib/engram.mlpl
+def u:engram_contexts(ids, order) {
+  "The n-gram context of every position as a [T, order] matrix: column k is the id k positions back (pad 0 before the start), the same windowing the hash uses.";
+  n = reduce_mul(shape(ids));
+  out = reshape(ids, [n, 1]);
+  k = 1;
+  while lt(k, order) {
+    out = concat(out, reshape(u:engram_shift(ids, k), [n, 1]), 1);
+    k = k + 1
+  };
+  out
+}
+#+end_src
+
+** =u:engram_collisions=
+
+Collisions per region: distinct contexts minus the distinct rows they landed on; a repeated context is repetition, not a collision. Matches ~engram_stats~.
+
+#+begin_src mlpl :tangle ../../lib/engram.mlpl
+def u:engram_collisions(contexts, rows_col) {
+  "Collisions of one (order, head) region: distinct contexts minus distinct rows they were hashed to (a repeated context is repetition, not a collision), matching engram_stats.";
+  n = reduce_mul(shape(rows_col));
+  dc = reduce_mul(shape(take(dedupe_rows(contexts).rows, 1, 0)));
+  dr = reduce_mul(shape(take(dedupe_rows(reshape(rows_col, [n, 1])).rows, 1, 0)));
+  dc - dr
+}
+#+end_src
+
+** =u:engram_nonzero_rows=
+
+How many table rows were ever written; the EG01 sweep records it per table size.
+
+#+begin_src mlpl :tangle ../../lib/engram.mlpl
+def u:engram_nonzero_rows(table) {
+  "How many table rows hold any nonzero value.";
+  reduce_add(gt(reduce_add(abs(table), 1), 0))
+}
+#+end_src
+
+** =u:engram_bytes=
+
+Table bytes at a given value width: 32,768 for 256 slots of 8 f64 values over two orders.
+
+#+begin_src mlpl :tangle ../../lib/engram.mlpl
+def u:engram_bytes(rows, head_dim, bytes_per_value) {
+  "Table bytes at a given value width.";
+  rows * head_dim * bytes_per_value
+}
+#+end_src
+
+* The state-space block: =lib/ssm.mlpl=
+
+A diagonal linear scan with a learned decay in place of attention. Measured (SS01): 256 bytes of sequence state at any history against attention's 262,144 at 1,024 tokens; validation loss 4.56 against 3.79; training exact match 0.99 against 0.70; the sequential scan two to eight times slower per token in the interpreter.
+
+** Module header
+
+The state-space block of SS01: a diagonal linear recurrence in place of attention, so the sequence history lives in one fixed-size state.
+
+#+begin_src mlpl :tangle ../../lib/ssm.mlpl
+# State-space block: a diagonal linear recurrence written out (s_t = decay * s_(t-1) + x_t B, y_t = s_t C) with a learned decay held in 0 to 1 by a sigmoid, so the sequence history lives in one fixed-size state instead of attention's growing key-value cache.
+include "dense.mlpl";
+#+end_src
+
+** =u:ssm_decay=
+
+The decay per state dimension is a sigmoid of a learned logit, so training can only slide it between forgetting (0) and accumulating (1). SS01's trained decays span 0.26 to 0.98.
+
+#+begin_src mlpl :tangle ../../lib/ssm.mlpl
+def u:ssm_decay(a_logit) {
+  "Per-dimension decay in (0, 1): sigmoid of the raw learned logit, so training can only slide it between forgetting and accumulating.";
+  sigmoid(a_logit)
+}
+#+end_src
+
+** =u:ssm_scan=
+
+The scan: one ~repeat~ per position, sequential by construction. The count traces through ~grad~ (finding F15) and the state width is an argument because shape arithmetic is not (finding F11). The primer's last block is this function on a toy input.
+
+#+begin_src mlpl :tangle ../../lib/ssm.mlpl
+def u:ssm_scan(xB, decay, n, ds) {
+  "The scan over n positions of the projected input xB [n, ds]: s_t = decay * s_(t-1) + xB_t, stacked as [n, ds]; sequential by construction (one repeat per position; the count traces through grad, finding F15; ds is passed because shape arithmetic is not traced, F11).";
+  h = take(xB, 0, 0);
+  out = reshape(h, [1, ds]);
+  t = 1;
+  steps = n - 1;
+  repeat steps {
+    h = decay * h + take(xB, 0, t);
+    out = concat(out, reshape(h, [1, ds]), 0);
+    t = t + 1
+  };
+  out
+}
+#+end_src
+
+** =u:ssm_states=
+
+The state at every position: project the input by B, then scan.
+
+#+begin_src mlpl :tangle ../../lib/ssm.mlpl
+def u:ssm_states(x, a_logit, B, n, ds) {
+  "The state at every position [n, ds] of an input x [n, dm]: project by B, then scan with the sigmoid decay.";
+  u:ssm_scan(matmul(x, B), u:ssm_decay(a_logit), n, ds)
+}
+#+end_src
+
+** =u:ssm_out=
+
+The block output: every state read through C; the caller adds the residual.
+
+#+begin_src mlpl :tangle ../../lib/ssm.mlpl
+def u:ssm_out(x, a_logit, B, C, n, ds) {
+  "The block output [n, dm]: every position's state read through C; the caller adds the residual.";
+  matmul(u:ssm_states(x, a_logit, B, n, ds), C)
+}
+#+end_src
+
+** =u:ssm_params=
+
+Decay logits plus the two projections: 1,056 at widths 16 and 32, against 1,024 for the attention block it replaces.
+
+#+begin_src mlpl :tangle ../../lib/ssm.mlpl
+def u:ssm_params(dm, ds) {
+  "Trainable parameters of the block: the decay logits, B [dm, ds], and C [ds, dm].";
+  ds + dm * ds + ds * dm
+}
+#+end_src
+
+** =u:ssm_state_bytes=
+
+The persistent state: 32 f64 values, 256 bytes, whatever the history.
+
+#+begin_src mlpl :tangle ../../lib/ssm.mlpl
+def u:ssm_state_bytes(ds) {
+  "Persistent sequence state at f64: one vector of ds values, whatever the history length.";
+  ds * 8
+}
+#+end_src
+
+** =u:kv_bytes=
+
+What one-head attention keeps instead: a key and a value row per token of history, 262,144 bytes at 1,024 tokens. These two functions are the results table's last column.
+
+#+begin_src mlpl :tangle ../../lib/ssm.mlpl
+def u:kv_bytes(history, dm) {
+  "Persistent sequence state a one-head, one-layer causal attention keeps at f64: a key and a value row per token of history.";
+  2 * history * dm * 8
+}
+#+end_src
+
+** =u:ssm_survival=
+
+How much of one position is still in the state at a later one: the mean decay raised to the distance. The SS01 window diagram draws it as a fading chip per position.
+
+#+begin_src mlpl :tangle ../../lib/ssm.mlpl
+def u:ssm_survival(decay, from_pos, to_pos) {
+  "Mean over dimensions of the share of position from_pos's contribution still present in the state at to_pos: decay^(to_pos - from_pos), averaged.";
+  mean(pow(decay, to_pos - from_pos))
+}
+#+end_src
+
+* Observation names: =lib/observe.mlpl=
+
+How observation names are spelled, and nothing more.
+
+** Module header
+
+The observation facade is deliberately thin: ~emit_frame~ needs a literal name (finding F8), so the helpers only agree on how names are spelled.
+
+#+begin_src mlpl :tangle ../../lib/observe.mlpl
+# Observation naming helpers; emit_frame itself must be called with a literal name (finding F8).
+#+end_src
+
+** =u:observe_path=
+
+Names are slash-joined: mechanism prefix, then leaf.
+
+#+begin_src mlpl :tangle ../../lib/observe.mlpl
+def u:observe_path(prefix, leaf) {
+  "Join a mechanism prefix and a leaf into one stable slash-separated observation name.";
+  str_concat(str_concat(prefix, "/"), leaf)
+}
+#+end_src
+
+** =u:observe_prefixes=
+
+The documented prefixes a generic host groups observations under; ~ssm~ joined the list with SS01.
+
+#+begin_src mlpl :tangle ../../lib/observe.mlpl
+def u:observe_prefixes() {
+  "The mechanism prefixes lessons group observations under in a generic host.";
+  ["data", "dense", "recur", "moe", "engram", "distill", "quant", "cache", "hybrid", "packed", "ssm"]
+}
+#+end_src
+
+** =u:observe_prefix_known=
+
+Whether a prefix is documented; tests use it to keep the list honest.
+
+#+begin_src mlpl :tangle ../../lib/observe.mlpl
+def u:observe_prefix_known(prefix) {
+  "Return 1 when prefix is one of the documented mechanism prefixes, else 0.";
+  known = u:observe_prefixes();
+  hits = 0;
+  i = 0;
+  while lt(i, list_len(known)) {
+    hits = hits + str_eq(unwrap(list_get(known, i)), prefix);
+    i = i + 1
+  };
+  hits
+}
+#+end_src
+
+* The results table: =lib/results.mlpl=
+
+The writer and reader of the one table every claim cites.
+
+** Module header
+
+One fixed-column row per lesson run. Column order is frozen so the ablation matrix reads straight down; the writer and the reader below agree on it.
+
+#+begin_src mlpl :tangle ../../lib/results.mlpl
+# Results-table writer: one fixed-column markdown row per lesson run, appended to docs/reference/results.md (the last column, persistent state bytes at 16 and 1,024 tokens of history, is a text cell).
+#+end_src
+
+** =u:results_columns=
+
+The twenty-three columns in table order; the last is the persistent-state text cell.
+
+#+begin_src mlpl :tangle ../../lib/results.mlpl
+def u:results_columns() {
+  "Record keys of the fixed results columns, in table order.";
+  ["lesson", "config", "binary", "params", "active_params", "bytes_per_expert", "packed_bytes", "expert_evals", "bytes_per_token", "cache_hit_rate", "ms_per_token", "val_loss", "ppl", "arith_acc", "seq_acc", "mlpl_acc", "prose_acc", "kl", "router_entropy", "balance", "specialization", "gate_mean", "state_bytes"]
+}
+#+end_src
+
+** =u:results_cell=
+
+A cell as text: strings verbatim, numbers through ~to_string~, a dash when the lesson did not measure it.
+
+#+begin_src mlpl :tangle ../../lib/results.mlpl
+def u:results_cell(row, key) {
+  "One cell as text: strings verbatim, numbers via to_string, missing values as a dash.";
+  if has_field(row, key) {
+    v = unwrap(record_get(row, key));
+    if str_eq(type_of(v), "string") {
+      v
+    } else {
+      to_string(v)
+    }
+  } else {
+    "-"
+  }
+}
+#+end_src
+
+** =u:results_row=
+
+The formatted row. The gate compares every column except the binary and the timing with the committed table.
+
+#+begin_src mlpl :tangle ../../lib/results.mlpl
+def u:results_row(row) {
+  "Format a record as one markdown table row with every fixed column.";
+  keys = u:results_columns();
+  out = "|";
+  i = 0;
+  while lt(i, list_len(keys)) {
+    out = str_concat(str_concat(str_concat(out, " "), u:results_cell(row, unwrap(list_get(keys, i)))), " |");
+    i = i + 1
+  };
+  out
+}
+#+end_src
+
+** =u:results_append=
+
+Append a row to the table file.
+
+#+begin_src mlpl :tangle ../../lib/results.mlpl
+def u:results_append(path, row) {
+  "Append one formatted row plus newline to the results file.";
+  append_bytes(path, tokenize_bytes(str_concat(u:results_row(row), "\n")))
+}
+#+end_src
+
+** =u:str_trim=
+
+Trim spaces, for reading cells back.
+
+#+begin_src mlpl :tangle ../../lib/results.mlpl
+def u:str_trim(s) {
+  "Strip leading and trailing spaces.";
+  n = str_len(s);
+  a = 0;
+  while lt(a, n) * str_eq(str_slice(s, a, 1), " ") {
+    a = a + 1
+  };
+  b = n;
+  while gt(b, a) * str_eq(str_slice(s, b - 1, 1), " ") {
+    b = b - 1
+  };
+  str_slice(s, a, b - a)
+}
+#+end_src
+
+** =u:results_cell_number=
+
+A cell as a number; a dash reads as minus one.
+
+#+begin_src mlpl :tangle ../../lib/results.mlpl
+def u:results_cell_number(cells, i) {
+  "The i-th cell of a split results row as a number, or -1 for a dash.";
+  c = u:str_trim(unwrap(list_get(cells, i)));
+  if str_eq(c, "-") {
+    0 - 1
+  } else {
+    unwrap(to_number(c))
+  }
+}
+#+end_src
+
+** =u:results_lookup=
+
+Read a lesson's numeric columns back from the committed table. The resource budget (RB01) and the ablation diagram (RE01) are drawn from rows this way, so a diagram can never disagree with the table.
+
+#+begin_src mlpl :tangle ../../lib/results.mlpl
+def u:results_lookup(path, lesson) {
+  "Read the committed results table and return the numeric columns of one lesson's row (first match) as a record; err when absent.";
+  lines = str_split(read_text(path)?, "\n");
+  prefix = str_concat(str_concat("| ", lesson), " |");
+  found = "";
+  i = 0;
+  while lt(i, list_len(lines)) {
+    line = unwrap(list_get(lines, i));
+    found = if str_eq(found, "") * gt(str_len(line), str_len(prefix)) {
+      if str_eq(str_slice(line, 0, str_len(prefix)), prefix) {
+        line
+      } else {
+        found
+      }
+    } else {
+      found
+    };
+    i = i + 1
+  };
+  if str_eq(found, "") {
+    err(str_concat("results row not found: ", lesson))
+  } else {
+    c = str_split(found, "|");
+    ok({params: u:results_cell_number(c, 4), active_params: u:results_cell_number(c, 5), bytes_per_expert: u:results_cell_number(c, 6), expert_evals: u:results_cell_number(c, 8), bytes_per_token: u:results_cell_number(c, 9), val_loss: u:results_cell_number(c, 12), ppl: u:results_cell_number(c, 13), arith_acc: u:results_cell_number(c, 14), seq_acc: u:results_cell_number(c, 15), mlpl_acc: u:results_cell_number(c, 16), prose_acc: u:results_cell_number(c, 17), ms_per_token: u:results_cell_number(c, 11), router_entropy: u:results_cell_number(c, 19), balance: u:results_cell_number(c, 20), specialization: u:results_cell_number(c, 21), gate_mean: u:results_cell_number(c, 22)})
+  }
+}
+#+end_src
+
+* Colophon
+
+Written for the sw-ML study; distributed under the MIT License (see
+=LICENSE= and =COPYRIGHT= in the repository root). The org-babel backend is
+=../sw-mlpl/elisp/ob-mlpl.el=; the peer literate documents it follows are
+=../sw-mlpl/examples/literate/*.org= and =../demo-coding-agent/docs/mlplcode.org=.

@@ -38,6 +38,9 @@ the same hierarchy as a navigation layer. Three reader journeys:
 
 ## I want to modify or reproduce it
 
+- [Literate reading](literate/moe-microscope.org): the mechanism sources
+  with prose before every function, a runnable primer, and a tangle the
+  gate checks (published as HTML beside the live demo)
 - [Implementation](implementation/README.md): recordings and the generic
   host handoff, sibling work orders, the teacher fixture schema
 - [Reference](reference/README.md): results table, capability ledger,

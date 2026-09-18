@@ -1,0 +1,100 @@
+#!/bin/sh
+# Gate check for docs/literate/moe-microscope.org: (1) every :tangle block, concatenated in document order with one blank line between blocks of the same target, must equal the committed file byte for byte (awk tangle, the rule org-babel-tangle applies; cross-checked with org-babel-tangle when Emacs is available); (2) every runnable primer block (:tangle no :exports both) must print exactly the #+RESULTS: recorded beneath it; (3) when Emacs is available, learn/literate.html must equal a fresh batch export.
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+org="$repo_root/docs/literate/moe-microscope.org"
+mlpl=$("$repo_root/scripts/select-mlpl")
+work="$repo_root/tmp/tangle.$$"
+rm -rf "$work"; mkdir -p "$work/awk" "$work/run"
+trap 'rm -rf "$work"' EXIT HUP INT TERM
+
+awk -v out="$work/awk" '
+/^#\+begin_src / {
+    target = ""
+    for (i = 2; i <= NF; i++) if ($i == ":tangle") target = $(i + 1)
+    if (target != "" && target != "no") {
+        sub(/^\.\.\/\.\.\//, "", target)
+        file = out "/" target
+        dir = file; sub(/\/[^\/]*$/, "", dir)
+        system("mkdir -p \"" dir "\"")
+        if (file in seen) printf "\n" >> file
+        seen[file] = 1
+        inblock = 1
+        next
+    }
+}
+/^#\+end_src/ { inblock = 0; next }
+inblock { print >> file }
+' "$org"
+
+status=0
+count=0
+for tangled in $(cd "$work/awk" && find . -type f | sort); do
+    rel=${tangled#./}
+    count=$((count + 1))
+    if ! cmp -s "$work/awk/$rel" "$repo_root/$rel"; then
+        echo "tangle drift: docs/literate/moe-microscope.org does not reproduce $rel" >&2
+        diff "$repo_root/$rel" "$work/awk/$rel" | head -20 >&2
+        status=1
+    fi
+done
+[ "$count" -gt 0 ] || { echo "no tangle targets found in the literate document" >&2; exit 1; }
+
+# The primer blocks: run each in a fresh interpreter and compare with the recorded result.
+python3 - "$org" "$mlpl" "$work/run" <<'PY' || status=1
+import re, subprocess, sys, pathlib
+org, mlpl, work = sys.argv[1], sys.argv[2], pathlib.Path(sys.argv[3])
+text = pathlib.Path(org).read_text()
+blocks = re.findall(r"#\+begin_src mlpl :tangle no :exports both\n(.*?)\n#\+end_src\n\n#\+RESULTS:\n(.*?)\n\n", text, re.S)
+if not blocks:
+    print("no runnable primer blocks found", file=sys.stderr); sys.exit(1)
+bad = 0
+for i, (body, result) in enumerate(blocks, 1):
+    if result.startswith("#+begin_example"):
+        expected = result.split("\n")[1:-1]
+    else:
+        expected = [l[2:] if l.startswith(": ") else l[1:] for l in result.split("\n")]
+    path = work / f"primer-{i}.mlpl"
+    path.write_text(body + "\n")
+    run = subprocess.run([mlpl, str(path)], capture_output=True, text=True, timeout=600)
+    got = run.stdout.rstrip("\n").split("\n")
+    if run.returncode != 0 or got != expected:
+        bad += 1
+        print(f"primer block {i} does not reproduce its recorded result", file=sys.stderr)
+        print("expected:", "\n".join(expected), sep="\n", file=sys.stderr)
+        print("got:", run.stdout + run.stderr, sep="\n", file=sys.stderr)
+print(f"literate: {len(blocks)} primer blocks reproduce their recorded results" if not bad else f"literate: {bad} primer blocks drifted")
+sys.exit(1 if bad else 0)
+PY
+
+emacs=${EMACS:-}
+[ -n "$emacs" ] || ! command -v emacs >/dev/null 2>&1 || emacs=emacs
+[ -n "$emacs" ] || [ ! -x /Applications/Emacs.app/Contents/MacOS/Emacs ] || emacs=/Applications/Emacs.app/Contents/MacOS/Emacs
+if [ -n "$emacs" ]; then
+    mkdir -p "$work/emacs/docs/literate"
+    cp "$org" "$work/emacs/docs/literate/moe-microscope.org"
+    for tangled in $(cd "$work/awk" && find . -type f | sort); do
+        mkdir -p "$work/emacs/$(dirname "${tangled#./}")"
+    done
+    if "$emacs" --batch -l org --eval "(progn (add-to-list 'org-babel-tangle-lang-exts '(\"mlpl\" . \"mlpl\")) (org-babel-tangle-file \"$work/emacs/docs/literate/moe-microscope.org\"))" >/dev/null 2>&1; then
+        for tangled in $(cd "$work/awk" && find . -type f | sort); do
+            rel=${tangled#./}
+            cmp -s "$work/emacs/$rel" "$repo_root/$rel" || { echo "org-babel-tangle differs from the committed $rel" >&2; status=1; }
+        done
+        echo "tangle: $count files reproduced by awk and by org-babel-tangle"
+    else
+        echo "tangle: $count files reproduced by awk; org-babel-tangle failed to run" >&2
+        status=1
+    fi
+    # Org's HTML export numbers headline anchors with random org1234abc ids, so the comparison masks them.
+    "$repo_root/scripts/publish-literate" "$work/literate.html" >/dev/null
+    sed -E 's/org[0-9a-f]{7}/orgID/g' "$work/literate.html" > "$work/fresh.html"
+    sed -E 's/org[0-9a-f]{7}/orgID/g' "$repo_root/learn/literate.html" > "$work/committed.html"
+    cmp -s "$work/fresh.html" "$work/committed.html" || { echo "learn/literate.html is stale; run just literate-html" >&2; status=1; }
+    [ "$status" -eq 0 ] && echo "literate: learn/literate.html matches a fresh batch export"
+else
+    echo "tangle: $count files reproduced by awk (no Emacs found to cross-check the tangle or the HTML export)"
+fi
+[ "$status" -eq 0 ] && echo "PASS literate document: tangle parity, primer results, and export"
+exit "$status"

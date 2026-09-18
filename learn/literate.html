@@ -1,0 +1,3827 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>The MoE microscope, read as a literate program</title>
+<meta name="author" content="Michael A Wright" />
+<meta name="generator" content="Org Mode" />
+<style type="text/css">
+  #content { max-width: 60em; margin: auto; }
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #e6e6e6;
+    border-radius: 3px;
+    background-color: #f2f2f2;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: auto;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    top: -8px;
+    right: 12px;
+    padding: 3px;
+    color: #555;
+    background-color: #f2f2f299;
+  }
+  pre.src:hover:before { display: inline; margin-top: 14px;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-authinfo::before { content: 'Authinfo'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { }
+</style>
+</head>
+<body>
+<div id="content" class="content">
+<h1 class="title">The MoE microscope, read as a literate program
+<br />
+<span class="subtitle">a runnable primer and a tangling reading of the model sources</span>
+</h1>
+<div id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#org312a7e7">1. How to read and run this document</a>
+<ul>
+<li><a href="#orgbbfbfd8">1.1. Evaluating blocks</a></li>
+<li><a href="#org79d3871">1.2. Publishing and regenerating</a></li>
+</ul>
+</li>
+<li><a href="#org3c355de">2. The mechanisms, one runnable block each</a>
+<ul>
+<li><a href="#org9cf0a76">2.1. A window</a></li>
+<li><a href="#org62c6056">2.2. A dense block trained on one window</a></li>
+<li><a href="#org083f275">2.3. Router and top-1 gate</a></li>
+<li><a href="#org6d25fb2">2.4. Sparse dispatch equals the dense-masked sum</a></li>
+<li><a href="#orgbc39eae">2.5. Recurrence: one block, applied again</a></li>
+<li><a href="#orgb67617b">2.6. Engram addressing with the frozen hash</a></li>
+<li><a href="#orgebdebaf">2.7. The state-space scan</a></li>
+</ul>
+</li>
+<li><a href="#org59ee162">3. The sources, read in lesson order</a></li>
+<li><a href="#org0f982cd">4. The synthetic domain: <code>lib/domain.mlpl</code></a>
+<ul>
+<li><a href="#org05b49e6">4.1. Module header</a></li>
+<li><a href="#org1ee107d">4.2. <code>u:domain_alphabet</code></a></li>
+<li><a href="#org994b702">4.3. <code>u:domain_vocab_size</code></a></li>
+<li><a href="#org5b3d98c">4.4. <code>u:domain_tag_names</code></a></li>
+<li><a href="#orga1b5a93">4.5. <code>u:domain_encode</code></a></li>
+<li><a href="#orga2d48eb">4.6. <code>u:domain_decode</code></a></li>
+<li><a href="#orge3e76c1">4.7. <code>u:domain_slice</code></a></li>
+<li><a href="#orgda1bc55">4.8. <code>u:domain_window</code></a></li>
+<li><a href="#orgb729fc1">4.9. <code>u:domain_text</code></a></li>
+<li><a href="#org40a489c">4.10. <code>u:arith_oracle</code></a></li>
+<li><a href="#org2bb063b">4.11. <code>u:gen_arithmetic</code></a></li>
+<li><a href="#orgdc0443f">4.12. <code>u:digits_text</code></a></li>
+<li><a href="#org4ce5d5d">4.13. <code>u:sequence_oracle</code></a></li>
+<li><a href="#org25bf202">4.14. <code>u:gen_sequence</code></a></li>
+<li><a href="#org2f921f8">4.15. <code>u:mlpl_oracle</code></a></li>
+<li><a href="#orgbc51ced">4.16. <code>u:gen_mlpl</code></a></li>
+<li><a href="#org224e7d9">4.17. <code>u:prose_place</code></a></li>
+<li><a href="#orgddb3c15">4.18. <code>u:gen_prose</code></a></li>
+<li><a href="#orgc1cea0f">4.19. <code>u:domain_example</code></a></li>
+<li><a href="#orgfa02356">4.20. <code>u:domain_mixture_path</code></a></li>
+<li><a href="#org8ee28f4">4.21. <code>u:domain_mixture_v0</code></a></li>
+<li><a href="#org1e0a98f">4.22. <code>u:domain_load_mixture</code></a></li>
+<li><a href="#org0cd3728">4.23. <code>u:domain_counts</code></a></li>
+<li><a href="#org664235a">4.24. <code>u:domain_join</code></a></li>
+<li><a href="#orgde41c30">4.25. <code>u:domain_build</code></a></li>
+<li><a href="#orgcdc18c4">4.26. <code>u:domain_windows</code></a></li>
+<li><a href="#org5b6564d">4.27. <code>u:domain_split</code></a></li>
+</ul>
+</li>
+<li><a href="#org93f452a">5. Exact-match evaluation: <code>lib/evaluate.mlpl</code></a>
+<ul>
+<li><a href="#org3d0fd06">5.1. Module header</a></li>
+<li><a href="#org356948c">5.2. <code>u:exact_match</code></a></li>
+<li><a href="#org164c234">5.3. <code>u:tag_accuracy</code></a></li>
+<li><a href="#orgb79f713">5.4. <code>u:accuracy_by_tag</code></a></li>
+</ul>
+</li>
+<li><a href="#orgf18cc88">6. Dense helpers: <code>lib/dense.mlpl</code></a>
+<ul>
+<li><a href="#org5a9e478">6.1. Module header</a></li>
+<li><a href="#orga1745a3">6.2. <code>u:rows</code></a></li>
+<li><a href="#orgb1dc19e">6.3. <code>u:flat_chunk</code></a></li>
+<li><a href="#orgac51e14">6.4. <code>u:positions</code></a></li>
+<li><a href="#org2e16288">6.5. <code>u:masked_ce</code></a></li>
+<li><a href="#org52aff6a">6.6. <code>u:stop_id</code></a></li>
+<li><a href="#org11b8f23">6.7. <code>u:greedy</code></a></li>
+<li><a href="#orgbb16f90">6.8. <code>u:answer_text</code></a></li>
+<li><a href="#org35fac63">6.9. <code>u:predict_prompts</code></a></li>
+<li><a href="#org4e279f1">6.10. <code>u:select_list</code></a></li>
+<li><a href="#org7d24256">6.11. <code>u:evaluate_prompts</code></a></li>
+<li><a href="#org0ffccc9">6.12. <code>u:set_loss</code></a></li>
+<li><a href="#org22bb21f">6.13. <code>u:topk_export</code></a></li>
+<li><a href="#orgc96a949">6.14. <code>u:topk_agreement</code></a></li>
+<li><a href="#org098b43b">6.15. <code>u:pad_to</code></a></li>
+<li><a href="#org8e36c4e">6.16. <code>u:greedy_padded</code></a></li>
+<li><a href="#org984492c">6.17. <code>u:evaluate_prompts_padded</code></a></li>
+</ul>
+</li>
+<li><a href="#org23df1a8">7. A whole lesson: <code>demos/dense_baseline.mlpl</code> (DN01)</a>
+<ul>
+<li><a href="#org5a5162e">7.1. Module header</a></li>
+<li><a href="#org831d0a0">7.2. Lesson body, part 1</a></li>
+<li><a href="#org7f95989">7.3. Lesson body, part 2</a></li>
+<li><a href="#orgd0e76bc">7.4. Lesson body, part 3</a></li>
+<li><a href="#orge60516c">7.5. <code>u:body</code></a></li>
+<li><a href="#org66a5d80">7.6. <code>u:forward</code></a></li>
+<li><a href="#orgaf34d19">7.7. Lesson body, part 6</a></li>
+<li><a href="#org59d39d5">7.8. Lesson body, part 7</a></li>
+<li><a href="#org07e47a4">7.9. Lesson body, part 8</a></li>
+<li><a href="#org6a0cc20">7.10. Lesson body, part 9</a></li>
+<li><a href="#org2ba6270">7.11. Lesson body, part 10</a></li>
+<li><a href="#org95fd2e4">7.12. <code>u:pred_text</code></a></li>
+<li><a href="#org6a830dd">7.13. <code>u:model_svg</code></a></li>
+<li><a href="#org13efa7d">7.14. <code>u:bars</code></a></li>
+<li><a href="#org50f2a41">7.15. <code>u:run_svg</code></a></li>
+<li><a href="#org8bd631c">7.16. Lesson body, part 15</a></li>
+</ul>
+</li>
+<li><a href="#org07aea78">8. Routing, gates, and dispatch: <code>lib/moe.mlpl</code></a>
+<ul>
+<li><a href="#org8a3e1bc">8.1. Module header</a></li>
+<li><a href="#orgc48e509">8.2. <code>u:router_logits</code></a></li>
+<li><a href="#org8e2e098">8.3. <code>u:router_probs</code></a></li>
+<li><a href="#org677a8ac">8.4. <code>u:top1_mask</code></a></li>
+<li><a href="#org3d7e930">8.5. <code>u:topk_mask</code></a></li>
+<li><a href="#org29b0f09">8.6. <code>u:switch_gate</code></a></li>
+<li><a href="#orgb4540e2">8.7. <code>u:renormalized_gate</code></a></li>
+<li><a href="#orgbdd5596">8.8. <code>u:gate_column</code></a></li>
+<li><a href="#org0331c25">8.9. <code>u:expert_load</code></a></li>
+<li><a href="#org032272a">8.10. <code>u:router_entropy</code></a></li>
+<li><a href="#orgdc28504">8.11. <code>u:balance_loss</code></a></li>
+<li><a href="#orgf86cb62">8.12. <code>u:dispatch_rows</code></a></li>
+<li><a href="#orgce797b4">8.13. <code>u:dispatch_gate</code></a></li>
+<li><a href="#orgde7f32d">8.14. <code>u:place_rows</code></a></li>
+<li><a href="#org5e17716">8.15. <code>u:dispatch_cost</code></a></li>
+<li><a href="#orgc8a8294">8.16. <code>u:top2_mask</code></a></li>
+<li><a href="#org5726397">8.17. <code>u:top2_gate</code></a></li>
+<li><a href="#org1a7845e">8.18. <code>u:row_normalize</code></a></li>
+<li><a href="#org27bbb4f">8.19. <code>u:specialization_score</code></a></li>
+<li><a href="#org8d2ebe4">8.20. <code>u:delta_expand</code></a></li>
+<li><a href="#org0502f9d">8.21. <code>u:delta_out</code></a></li>
+<li><a href="#org92900d1">8.22. <code>u:delta_params</code></a></li>
+<li><a href="#orgd9a12fa">8.23. <code>u:router_macs</code></a></li>
+</ul>
+</li>
+<li><a href="#orgd840a77">9. Recurrence: <code>lib/recur.mlpl</code></a>
+<ul>
+<li><a href="#orgb0b4cdf">9.1. Module header</a></li>
+<li><a href="#orgf22470a">9.2. <code>u:recur_step</code></a></li>
+<li><a href="#org3a6cbc9">9.3. <code>u:recur_state</code></a></li>
+<li><a href="#org591d497">9.4. <code>u:recur_logits</code></a></li>
+<li><a href="#org525fa9b">9.5. <code>u:recur_loss</code></a></li>
+<li><a href="#org2f696be">9.6. <code>u:recur_active_params</code></a></li>
+<li><a href="#org333daed">9.7. <code>u:rm_moe</code></a></li>
+<li><a href="#org704e1ef">9.8. <code>u:rm_step</code></a></li>
+<li><a href="#orgf86739f">9.9. <code>u:rm_state</code></a></li>
+<li><a href="#orgd3b1db3">9.10. <code>u:rm_balance</code></a></li>
+<li><a href="#org40ec379">9.11. <code>u:rm_loss</code></a></li>
+<li><a href="#org147f365">9.12. <code>u:rm_route</code></a></li>
+<li><a href="#org92ed40f">9.13. <code>u:rm_change_share</code></a></li>
+<li><a href="#orgd7934dc">9.14. <code>u:re_step</code></a></li>
+<li><a href="#org87e0212">9.15. <code>u:re_state</code></a></li>
+<li><a href="#org237cf12">9.16. <code>u:re_balance</code></a></li>
+<li><a href="#org7b4c732">9.17. <code>u:re_loss</code></a></li>
+<li><a href="#orgb073f84">9.18. <code>u:re_route</code></a></li>
+<li><a href="#orgd2794a0">9.19. <code>u:re_gate</code></a></li>
+<li><a href="#orgc1d4611">9.20. <code>u:re_change_share</code></a></li>
+</ul>
+</li>
+<li><a href="#orgcb2dfeb">10. Engram from scratch: <code>lib/engram.mlpl</code></a>
+<ul>
+<li><a href="#org242d64d">10.1. Module header</a></li>
+<li><a href="#org43abc70">10.2. <code>u:engram_offsets</code></a></li>
+<li><a href="#orge3ed886">10.3. <code>u:engram_rows</code></a></li>
+<li><a href="#org7f784f5">10.4. <code>u:engram_retrieve</code></a></li>
+<li><a href="#org171dc03">10.5. <code>u:engram_value</code></a></li>
+<li><a href="#org05aad0a">10.6. <code>u:engram_gate</code></a></li>
+<li><a href="#org98b799b">10.7. <code>u:engram_apply</code></a></li>
+<li><a href="#org83f1274">10.8. <code>u:engram_init</code></a></li>
+<li><a href="#orgb4d748d">10.9. <code>u:engram_params</code></a></li>
+<li><a href="#orgff3fa1f">10.10. <code>u:engram_shift</code></a></li>
+<li><a href="#org7ecca2f">10.11. <code>u:engram_contexts</code></a></li>
+<li><a href="#org8d9eda1">10.12. <code>u:engram_collisions</code></a></li>
+<li><a href="#orga36972c">10.13. <code>u:engram_nonzero_rows</code></a></li>
+<li><a href="#orgb660aaa">10.14. <code>u:engram_bytes</code></a></li>
+</ul>
+</li>
+<li><a href="#orgb7a78cf">11. The state-space block: <code>lib/ssm.mlpl</code></a>
+<ul>
+<li><a href="#org04d60ac">11.1. Module header</a></li>
+<li><a href="#org308c56e">11.2. <code>u:ssm_decay</code></a></li>
+<li><a href="#org30960ca">11.3. <code>u:ssm_scan</code></a></li>
+<li><a href="#org2d54b74">11.4. <code>u:ssm_states</code></a></li>
+<li><a href="#org48cf344">11.5. <code>u:ssm_out</code></a></li>
+<li><a href="#org646ab84">11.6. <code>u:ssm_params</code></a></li>
+<li><a href="#orge7e5296">11.7. <code>u:ssm_state_bytes</code></a></li>
+<li><a href="#org62b2d7d">11.8. <code>u:kv_bytes</code></a></li>
+<li><a href="#orga1ccc69">11.9. <code>u:ssm_survival</code></a></li>
+</ul>
+</li>
+<li><a href="#orgb711ac1">12. Observation names: <code>lib/observe.mlpl</code></a>
+<ul>
+<li><a href="#orgdb00beb">12.1. Module header</a></li>
+<li><a href="#org1e12906">12.2. <code>u:observe_path</code></a></li>
+<li><a href="#orgf0ea826">12.3. <code>u:observe_prefixes</code></a></li>
+<li><a href="#org92b6b9d">12.4. <code>u:observe_prefix_known</code></a></li>
+</ul>
+</li>
+<li><a href="#orga738d40">13. The results table: <code>lib/results.mlpl</code></a>
+<ul>
+<li><a href="#org146b7f8">13.1. Module header</a></li>
+<li><a href="#org04e82be">13.2. <code>u:results_columns</code></a></li>
+<li><a href="#orge939fd9">13.3. <code>u:results_cell</code></a></li>
+<li><a href="#orgdbf6c8b">13.4. <code>u:results_row</code></a></li>
+<li><a href="#org02b4f2c">13.5. <code>u:results_append</code></a></li>
+<li><a href="#orgabf5a13">13.6. <code>u:str_trim</code></a></li>
+<li><a href="#orgcf7ea0e">13.7. <code>u:results_cell_number</code></a></li>
+<li><a href="#org635369c">13.8. <code>u:results_lookup</code></a></li>
+</ul>
+</li>
+<li><a href="#orgbeee707">14. Colophon</a></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org312a7e7" class="outline-2">
+<h2 id="org312a7e7"><span class="section-number-2">1.</span> How to read and run this document</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+This is the microscope's model, in the order a learner should meet it: a
+primer of small self-contained MLPL blocks you can run, each beside the
+number the corresponding lesson measured, and then the mechanism sources
+themselves with prose before every function. The source blocks carry a
+<code>:tangle</code> target: tangling this file regenerates the committed library and
+lesson files byte for byte, and <code>just check</code> runs <code>scripts/check-tangle</code> to
+prove it, so the prose can never describe code that no longer exists. The
+same check runs every primer block and requires its printed result to
+match the one recorded here. The committed <code>.mlpl</code> files remain the source
+of truth; when they change, this document is edited to match.
+</p>
+
+<p>
+The measured numbers quoted beside the blocks are rows of the
+<a href="../reference/results.md">results table</a> and findings of the
+<a href="../results/current-findings.md">current findings</a>; each mechanism
+has a lesson report under <a href="../experiments/README.md">experiments</a>
+with its diagrams.
+</p>
+</div>
+<div id="outline-container-orgbbfbfd8" class="outline-3">
+<h3 id="orgbbfbfd8"><span class="section-number-3">1.1.</span> Evaluating blocks</h3>
+<div class="outline-text-3" id="text-1-1">
+<p>
+The document never evaluates anything on export (<code>:eval no-export</code> in the
+header), so <code>C-c C-e h o</code> produces HTML with no prompts. Evaluation is for
+reading interactively. To make <code>C-c C-c</code> work, evaluate this setup block
+once per Emacs session; it loads sw-MLPL's org-babel backend <code>ob-mlpl</code>
+from the adjacent checkout and points it at whichever interpreter exists
+(GUI Emacs has a minimal PATH, so the full path matters):
+</p>
+
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(let* ((here (file-name-directory (buffer-file-name)))
+       ;; The repository root is wherever AGENTS.md is, so this also works
+       ;; on a copy of the document.
+       (repo (or (locate-dominating-file here "AGENTS.md") (expand-file-name "../.." here)))
+       (sw-mlpl (expand-file-name "../sw-mlpl" repo))
+       (candidates (list (getenv "MLPL")
+                         (expand-file-name "target/release/mlpl-repl" sw-mlpl)
+                         (expand-file-name "target/debug/mlpl-repl" sw-mlpl)
+                         (executable-find "mlpl-repl")
+                         (expand-file-name "~/.local/softwarewrighter/bin/mlpl-repl"))))
+  (add-to-list 'load-path (expand-file-name "elisp" sw-mlpl))
+  (require 'ob-mlpl)
+  ;; Keep org-babel's scratch files inside the repository's ignored tmp/
+  ;; directory rather than /tmp.
+  (make-directory (expand-file-name "tmp" repo) t)
+  (setq temporary-file-directory (expand-file-name "tmp/" repo))
+  (setq org-babel-mlpl-command
+        (or (seq-find (lambda (p) (and p (file-executable-p p))) candidates)
+            (user-error "no mlpl-repl found; build ../sw-mlpl or set org-babel-mlpl-command")))
+  (setq org-confirm-babel-evaluate nil)
+  (message "ob-mlpl ready: %s" org-babel-mlpl-command))
+</pre>
+</div>
+
+<p>
+Three things to know before pressing <code>C-c C-c</code> on a block:
+</p>
+
+<ul class="org-ul">
+<li>A block runs in a fresh interpreter on a temporary file, so a block that
+says <code>include "../lib/dense.mlpl"</code> cannot find its neighbour and has no
+filesystem sandbox for fixtures. The source blocks in the reading are for
+reading and tangling; the runnable ones are the self-contained primer
+blocks, which use only builtins.</li>
+<li>The interpreter prints the value of a script's last expression after the
+printed lines, the way the REPL echoes a line. Each primer block ends
+with the expression that is its takeaway, so the last line of every
+result is the number to look at.</li>
+<li><code>org-confirm-babel-evaluate</code> controls the yes/no prompt. The setup block
+sets it to <code>nil</code> (never ask) for the session; set it back to <code>t</code> to be
+asked, or to a function to decide per block. <code>C-c C-v C-b</code> evaluates
+every runnable block at once; blocks marked <code>:eval no-export</code> or
+<code>:eval never</code> are skipped.</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org79d3871" class="outline-3">
+<h3 id="org79d3871"><span class="section-number-3">1.2.</span> Publishing and regenerating</h3>
+<div class="outline-text-3" id="text-1-2">
+<p>
+<code>just literate</code> runs the tangle and result check; <code>just literate-html</code>
+exports this file with Emacs in batch mode (nothing is evaluated) to
+<code>learn/literate.html</code>, which the live-demo site publishes beside the
+replay and landscape pages; the same export is available interactively
+from <code>C-c C-e h o</code>. <code>just tangle</code> regenerates the sources from this file
+with <code>org-babel-tangle</code> and then runs the check.
+</p>
+</div>
+</div>
+</div>
+<div id="outline-container-org3c355de" class="outline-2">
+<h2 id="org3c355de"><span class="section-number-2">2.</span> The mechanisms, one runnable block each</h2>
+<div class="outline-text-2" id="text-2">
+<p>
+Each block below is self-contained (no <code>include</code>, no fixture) and
+deterministic (every random draw carries its seed), so the recorded
+result is reproduced by the gate. The prose beside each block says what
+the corresponding lesson measured at microscope scale: 90 training
+windows, width 16, one block.
+</p>
+</div>
+<div id="outline-container-org9cf0a76" class="outline-3">
+<h3 id="org9cf0a76"><span class="section-number-3">2.1.</span> A window</h3>
+<div class="outline-text-3" id="text-2-1">
+<p>
+Every lesson trains on windows: a prompt, a bar, the answer, and a stop character, encoded by alphabet index and right-padded. The target <code>y</code> is the input shifted one position, and the mask keeps only the answer and stop positions, so the model is scored on what it must produce and never on the prompt. This block is <code>u:domain_window</code> written out with builtins; the domain library does the same with a 52-character alphabet whose index 0 is padding. The last line is the value of the final expression, which the interpreter echoes after the printed lines.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">alphabet = "~ 0123456789+-*=&gt;,[]():abcdefghijklmnopqrstuvwxyz_|.";
+text = "2+3=|5.";
+n = str_len(text);
+ids = fill([n], 0);
+i = 0;
+while lt(i, n) {
+  ids = scatter(ids, i, str_find(alphabet, str_slice(text, i, 1)));
+  i = i + 1
+};
+T = 8;
+padded = concat(ids, fill([T + 1 - n], 0));
+x = reshape(gather_rows(reshape(padded, [T + 1, 1]), range(T)), [T]);
+y = reshape(gather_rows(reshape(padded, [T + 1, 1]), range(T) + 1), [T]);
+positions = range(T) + 1;
+mask = gt(positions, str_find(text, "|")) * lt(positions, n);
+print("ids ", ids);
+print("x   ", x);
+print("y   ", y);
+print("mask", mask);
+</pre>
+</div>
+
+<pre class="example">
+ids  4 12 5 15 50 7 51
+x    4 12 5 15 50 7 51 0
+y    12 5 15 50 7 51 0 0
+mask 0 0 0 0 1 1 0 0
+0 0 0 0 1 1 0 0
+</pre>
+
+
+<p>
+In the lessons the window is 28 wide and there are 120 examples, 90 of them training rows (the domain microscope, DM01).
+</p>
+</div>
+</div>
+<div id="outline-container-org62c6056" class="outline-3">
+<h3 id="org62c6056"><span class="section-number-3">2.2.</span> A dense block trained on one window</h3>
+<div class="outline-text-3" id="text-2-2">
+<p>
+The dense baseline is a residual attention block, a residual feed-forward block, and a head, built from the Model DSL and trained by <code>adam</code> on the masked loss. Forty steps on a single window drive the loss to almost nothing: the block can memorize a window, which is the whole story of DN01 at 90 windows.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">V = 52;
+dm = 16;
+emb = embed(V, dm, 0);
+att = chain(rms_norm(dm), causal_attention(dm, 1, 1));
+ffn = chain(rms_norm(dm), linear(dm, 32, 2), relu_layer(), linear(32, dm, 3));
+head = linear(dm, V, 4);
+x = [4, 12, 5, 15, 50, 7, 51, 0];
+y = [12, 5, 15, 50, 7, 51, 0, 0];
+mask = [0, 0, 0, 0, 1, 1, 0, 0];
+pos = reshape(sinusoidal_encoding(8, dm), [8, dm]);
+def u:loss() {
+  "Masked next-token loss of one window through the dense block.";
+  h0 = apply(emb, x) + pos;
+  h1 = h0 + apply(att, h0);
+  h2 = h1 + apply(ffn, h1);
+  picked = reduce_add(one_hot(y, V) * log(softmax(apply(head, h2))), 1);
+  0 - reduce_add(picked * mask) / reduce_add(mask)
+}
+print("parameters", param_count(emb) + param_count(att) + param_count(ffn) + param_count(head));
+print("loss before", round(u:loss() * 1000) / 1000);
+k = 0;
+while lt(k, 40) {
+  adam(u:loss(), [emb, att, ffn, head], 0.01, 0.9, 0.999, 0.00000001);
+  k = k + 1
+};
+print("loss after 40 steps", round(u:loss() * 1000) / 1000);
+</pre>
+</div>
+
+<pre class="example">
+parameters 3812
+loss before 14.471
+loss after 40 steps 0.002
+0.002
+</pre>
+
+
+<p>
+DN01's measured row: 3,812 parameters, validation loss 3.79, perplexity 44.2, training exact match 0.70 and held-out exact match 0 / 0 / 0 / 0.667 by family (arithmetic, sequence, mlpl, prose).
+</p>
+</div>
+</div>
+<div id="outline-container-org083f275" class="outline-3">
+<h3 id="org083f275"><span class="section-number-3">2.3.</span> Router and top-1 gate</h3>
+<div class="outline-text-3" id="text-2-3">
+<p>
+Routing is four small operations: a linear layer gives a score per expert per token, softmax turns scores into probabilities, <code>argmax</code> and <code>one_hot</code> choose one expert per token as a constant mask, and the gate is the probability where the mask is one. The load per expert and the Switch balance term (exactly one when balanced) read off the mask; with random weights the routing is arbitrary but exact, which is what the MX01 routing microscope shows before any training.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">h = randn(1, [6, 16]);
+Wr = randn(2, [16, 4]) * 0.5;
+logits = matmul(h, Wr);
+probs = softmax(logits);
+mask = one_hot(argmax(logits, 1), 4);
+gate = probs * mask;
+print("expert per token", argmax(logits, 1));
+print("gate", round(gate * 100) / 100);
+print("load per expert", reduce_add(mask, 0));
+print("balance", round(4 * reduce_add(reduce_add(mask, 0) / 6 * reduce_add(probs, 0) / 6) * 1000) / 1000);
+</pre>
+</div>
+
+<pre class="example" id="org929bb6f">
+expert per token 0 3 0 0 0 2
+gate 1 0 0 0
+0 0 0 0.68
+0.99 0 0 0
+0.6 0 0 0
+0.66 0 0 0
+0 0 0.98 0
+load per expert 4 0 1 1
+balance 1.749
+1.749
+</pre>
+
+<p>
+MX01's trained router ends at entropy 0.62 nats, balance 1.17, and a specialization score of 0.61 without seeing a family label; MX02's top-2 map is flatter (0.42).
+</p>
+</div>
+</div>
+<div id="outline-container-org6d25fb2" class="outline-3">
+<h3 id="org6d25fb2"><span class="section-number-3">2.4.</span> Sparse dispatch equals the dense-masked sum</h3>
+<div class="outline-text-3" id="text-2-4">
+<p>
+Training evaluates every expert and multiplies by the gate (dense-masked); inference evaluates only the rows each expert was chosen for (<code>compress</code>), scales them by their gate, and scatters them back with a one-hot selection matrix. The two paths agree to the bit, and the sparse path evaluated 6 expert rows instead of 24.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">x = randn(1, [6, 16]);
+logits = matmul(x, randn(2, [16, 4]) * 0.5);
+mask = one_hot(argmax(logits, 1), 4);
+gate = softmax(logits) * mask;
+W = randn(3, [4, 16, 16]) * 0.3;
+dense = fill([6, 16], 0);
+sparse = fill([6, 16], 0);
+evals = 0;
+e = 0;
+while lt(e, 4) {
+  We = take(W, 0, e);
+  dense = dense + reshape(take(gate, 1, e), [6, 1]) * matmul(x, We);
+  col = take(mask, 1, e);
+  n_e = reduce_add(col);
+  sparse = if n_e {
+    rows = compress(col, x);
+    out = matmul(rows, We) * reshape(compress(col, take(gate, 1, e)), [n_e, 1]);
+    sparse + matmul(transpose(one_hot(compress(col, range(6)), 6)), out)
+  } else {
+    sparse
+  };
+  evals = evals + n_e;
+  e = e + 1
+};
+print("max |dense - sparse|", reduce(:max, abs(dense - sparse)));
+print("expert rows evaluated: dense-masked", 6 * 4, "sparse", evals);
+</pre>
+</div>
+
+<pre class="example">
+max |dense - sparse| 0
+expert rows evaluated: dense-masked 24 sparse 6
+6
+</pre>
+
+
+<p>
+SD01 asserts the same parity over 120 windows of the trained MX01: 3,360 expert row evaluations instead of 13,440, outputs equal, and slower in the interpreter because the bookkeeping is interpreted (finding 5).
+</p>
+</div>
+</div>
+<div id="outline-container-orgbc39eae" class="outline-3">
+<h3 id="orgbc39eae"><span class="section-number-3">2.5.</span> Recurrence: one block, applied again</h3>
+<div class="outline-text-3" id="text-2-5">
+<p>
+Depth from reuse: the same block applied R times to its own output with residuals. The parameter count does not move with R; the state does. In the lessons, <code>repeat R</code> with a parameter-bound count traces through <code>grad</code>, and deep supervision scores the head after every pass.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">dm = 16;
+blk = chain(rms_norm(dm), linear(dm, 32, 2), relu_layer(), linear(32, dm, 3));
+h0 = randn(1, [7, dm]);
+def u:state(h, R) {
+  "The state after R residual applications of the one shared block.";
+  s = h;
+  repeat R {
+    s = s + apply(blk, s)
+  };
+  s
+}
+print("parameters", param_count(blk), "at every R");
+r = 1;
+while lt(r, 4) {
+  print("R =", r, " mean |change from h0| =", round(mean(abs(u:state(h0, r) - h0)) * 1000) / 1000);
+  r = r + 1
+};
+param_count(blk)
+</pre>
+</div>
+
+<pre class="example">
+parameters 1072 at every R
+R = 1  mean |change from h0| = 3.076
+R = 2  mean |change from h0| = 6.213
+R = 3  mean |change from h0| = 10.37
+1072
+</pre>
+
+
+<p>
+RC01 measured R=2 at validation loss 3.45 against 3.79 for R=1 at the same 3,812 parameters, and every model best when stopped after one pass; RM01's recurrent mixture at R=3 reached 3.42.
+</p>
+</div>
+</div>
+<div id="outline-container-orgb67617b" class="outline-3">
+<h3 id="orgb67617b"><span class="section-number-3">2.6.</span> Engram addressing with the frozen hash</h3>
+<div class="outline-text-3" id="text-2-6">
+<p>
+Engram memory is addressed, not searched: the <code>ngram_hash</code> builtin maps each position's last two or three ids to a slot per order, and the table row at that slot is gathered, projected, gated, and added to the residual stream. Equal contexts map to equal rows, which is what makes the table a memory; different contexts sometimes share a row, which is a collision. In the second call the four-id context repeats, and the 3-gram rows at positions 2 and 3 return at positions 6 and 7.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">ids = [4, 12, 5, 15, 50, 7, 51, 0];
+rows = reshape(ngram_hash(ids, [2, 3], 1, 16, 7), [8, 2]);
+print("2-gram rows", take(rows, 1, 0));
+print("3-gram rows", take(rows, 1, 1));
+again = [4, 12, 5, 15, 4, 12, 5, 15];
+rows2 = reshape(ngram_hash(again, [2, 3], 1, 16, 7), [8, 2]);
+print("repeated context, 3-gram rows", take(rows2, 1, 1));
+</pre>
+</div>
+
+<pre class="example">
+2-gram rows 1 13 3 0 9 6 8 14
+3-gram rows 3 12 1 9 14 3 15 9
+repeated context, 3-gram rows 3 12 1 9 10 5 1 9
+3 12 1 9 10 5 1 9
+</pre>
+
+
+<p>
+EG01's from-scratch form equals the builtin to the bit; at 90 windows every table size from 16 to 1,024 slots raised validation loss (3.93 to 4.67 against 3.79).
+</p>
+</div>
+</div>
+<div id="outline-container-orgebdebaf" class="outline-3">
+<h3 id="orgebdebaf"><span class="section-number-3">2.7.</span> The state-space scan</h3>
+<div class="outline-text-3" id="text-2-7">
+<p>
+SS01 replaces attention with a diagonal linear recurrence: the state at each position is the previous state scaled by a per-dimension decay plus the projected input, written as one <code>repeat</code> per position. With a unit impulse at position 0 the states are the decays raised to the distance, and the mean of those powers is the survival number the SS01 window diagram draws as a fading chip.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">xB = [[1, 1, 1], [0, 0, 0], [0, 0, 0], [0, 0, 0]];
+decay = [0.5, 0.9, 1];
+h = take(xB, 0, 0);
+states = reshape(h, [1, 3]);
+t = 1;
+repeat 3 {
+  h = decay * h + take(xB, 0, t);
+  states = concat(states, reshape(h, [1, 3]), 0);
+  t = t + 1
+};
+print("states", states);
+print("survival of position 0 at position 3", pow(decay, 3), "mean", round(mean(pow(decay, 3)) * 1000) / 1000);
+</pre>
+</div>
+
+<pre class="example">
+states 1 1 1
+0.5 0.9 1
+0.25 0.81 1
+0.125 0.7290000000000001 1
+survival of position 0 at position 3 0.125 0.7290000000000001 1 mean 0.618
+0.618
+</pre>
+
+
+<p>
+SS01's trained decays span 0.26 to 0.98 (mean 0.76): about a third of the first position of a seven-token window survives to its end. The block keeps 256 bytes of state at any history where attention keeps 262,144 at 1,024 tokens, and reaches validation loss 4.56 against 3.79.
+</p>
+</div>
+</div>
+</div>
+<div id="outline-container-org59ee162" class="outline-2">
+<h2 id="org59ee162"><span class="section-number-2">3.</span> The sources, read in lesson order</h2>
+<div class="outline-text-2" id="text-3">
+<p>
+What follows is the committed source of the mechanism modules and of one
+whole lesson, split at function boundaries with prose before each. Every
+block tangles to the file named in its header (relative to this
+document), and the gate proves the concatenation equals the committed file
+byte for byte. Findings referred to by number (F3, F5, &#x2026;) are in the
+<a href="../reference/sw-mlpl-findings.md">sw-MLPL findings</a>; the
+capability ledger is <a href="../reference/sw-mlpl-blockers.md">here</a>.
+</p>
+</div>
+</div>
+<div id="outline-container-org0f982cd" class="outline-2">
+<h2 id="org0f982cd"><span class="section-number-2">4.</span> The synthetic domain: <code>lib/domain.mlpl</code></h2>
+<div class="outline-text-2" id="text-4">
+<p>
+Four task families with exact oracles, a restricted alphabet, seeded generators, windows, and the held-out split. Everything a lesson trains on is a deterministic function of one mixture record, which is what lets the gate check every diagram and results row.
+</p>
+</div>
+<div id="outline-container-org05b49e6" class="outline-3">
+<h3 id="org05b49e6"><span class="section-number-3">4.1.</span> Module header</h3>
+<div class="outline-text-3" id="text-4-1">
+<p>
+The module comment is the first line of every tracked file; the style check requires it, and it is the one-line answer to what the module is for.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl"># Synthetic domain: restricted alphabet, four seeded task-family generators with oracles, mixture, windows, splits.
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org1ee107d" class="outline-3">
+<h3 id="org1ee107d"><span class="section-number-3">4.2.</span> <code>u:domain_alphabet</code></h3>
+<div class="outline-text-3" id="text-4-2">
+<p>
+Fifty-two characters. The index of a character is its token id, so there is no tokenizer file: encoding is a string search and decoding a slice. Index 0, the tilde, is padding and never appears in a text.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:domain_alphabet() {
+  "The restricted byte-level alphabet; a character's index is its token id and index 0 is padding.";
+  "~ 0123456789+-*=&gt;,[]():abcdefghijklmnopqrstuvwxyz_|."
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org994b702" class="outline-3">
+<h3 id="org994b702"><span class="section-number-3">4.3.</span> <code>u:domain_vocab_size</code></h3>
+<div class="outline-text-3" id="text-4-3">
+<p>
+The vocabulary is the alphabet length, 52, and the head's output width everywhere.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:domain_vocab_size() {
+  "Number of token ids, equal to the alphabet length.";
+  str_len(u:domain_alphabet())
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org5b3d98c" class="outline-3">
+<h3 id="org5b3d98c"><span class="section-number-3">4.4.</span> <code>u:domain_tag_names</code></h3>
+<div class="outline-text-3" id="text-4-4">
+<p>
+The four task families in tag order; every example carries its tag so accuracy can be reported per family.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:domain_tag_names() {
+  "Task-family names in tag order 0 to 3.";
+  ["arithmetic", "sequence", "mlpl", "prose"]
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orga1b5a93" class="outline-3">
+<h3 id="orga1b5a93"><span class="section-number-3">4.5.</span> <code>u:domain_encode</code></h3>
+<div class="outline-text-3" id="text-4-5">
+<p>
+Characters become ids one at a time with <code>str_find</code>. A character outside the alphabet makes the whole result an <code>err</code>, which is why callers write <code>unwrap(u:domain_encode(...))</code> on texts they built themselves and <code>?</code> on texts from a generator.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:domain_encode(s) {
+  "Map each character of s to its alphabet index; a character outside the alphabet returns err.";
+  n = str_len(s);
+  ids = fill([n], 0);
+  bad = 0;
+  i = 0;
+  while lt(i, n) {
+    id = str_find(u:domain_alphabet(), str_slice(s, i, 1));
+    ids = scatter(ids, i, id);
+    bad = bad + lt(id, 0);
+    i = i + 1
+  };
+  if bad {
+    err("domain_encode: character outside the restricted alphabet")
+  } else {
+    ok(ids)
+  }
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orga2d48eb" class="outline-3">
+<h3 id="orga2d48eb"><span class="section-number-3">4.6.</span> <code>u:domain_decode</code></h3>
+<div class="outline-text-3" id="text-4-6">
+<p>
+The inverse: ids back to characters by slicing the alphabet. Greedy decoding ends here.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:domain_decode(ids) {
+  "Map token ids back to their characters.";
+  n = reduce_mul(shape(ids));
+  out = "";
+  i = 0;
+  while lt(i, n) {
+    out = str_concat(out, str_slice(u:domain_alphabet(), take(ids, 0, i), 1));
+    i = i + 1
+  };
+  out
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orge3e76c1" class="outline-3">
+<h3 id="orge3e76c1"><span class="section-number-3">4.7.</span> <code>u:domain_slice</code></h3>
+<div class="outline-text-3" id="text-4-7">
+<p>
+There is no rank-one slice builtin, so a contiguous slice is a <code>gather_rows</code> over a one-column reshape. The pattern recurs throughout the sources.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:domain_slice(v, start, count) {
+  "Contiguous slice of a rank-one vector (rank-one gather spelled through gather_rows).";
+  n = reduce_mul(shape(v));
+  reshape(gather_rows(reshape(v, [n, 1]), start + range(count)), [count])
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgda1bc55" class="outline-3">
+<h3 id="orgda1bc55"><span class="section-number-3">4.8.</span> <code>u:domain_window</code></h3>
+<div class="outline-text-3" id="text-4-8">
+<p>
+The training unit. A text is <code>prompt|answer.</code>; the window <code>x</code> is the first <code>T</code> ids right-padded with zeros, <code>y</code> is the same sequence shifted one position (the next-token target), and <code>mask</code> is one exactly on the answer and stop targets after the bar. Only masked positions are scored, so the model is never trained to reproduce the prompt. The primer's first block builds one of these by hand.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:domain_window(text, T) {
+  "Encode prompt|answer. text into a right-padded window: x (first T ids), y (shifted T ids), mask (1 on answer targets).";
+  ids = u:domain_encode(text)?;
+  n = reduce_mul(shape(ids));
+  bar = str_find(text, "|");
+  if gt(n, T + 1) {
+    err("domain_window: text longer than the window")
+  } else {
+    padded = if lt(n, T + 1) {
+      concat(ids, fill([T + 1 - n], 0))
+    } else {
+      ids
+    };
+    positions = range(T) + 1;
+    ok({x: u:domain_slice(padded, 0, T), y: u:domain_slice(padded, 1, T), mask: gt(positions, bar) * lt(positions, n)})
+  }
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgb729fc1" class="outline-3">
+<h3 id="orgb729fc1"><span class="section-number-3">4.9.</span> <code>u:domain_text</code></h3>
+<div class="outline-text-3" id="text-4-9">
+<p>
+How an example becomes a text: prompt, bar, answer, stop character.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:domain_text(example) {
+  "The training text of one example: prompt, bar, answer, stop.";
+  str_concat(str_concat(str_concat(example.prompt, "|"), example.answer), ".")
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org40a489c" class="outline-3">
+<h3 id="org40a489c"><span class="section-number-3">4.10.</span> <code>u:arith_oracle</code></h3>
+<div class="outline-text-3" id="text-4-10">
+<p>
+The arithmetic family has an exact answer for every prompt; the oracle is the definition of correct. Op 2 keeps products small by reducing both operands modulo 13.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:arith_oracle(a, b, op) {
+  "Exact answer for op 0 (a+b), 1 (larger minus smaller), 2 (small product).";
+  if eq(op, 0) {
+    a + b
+  } else {
+    if eq(op, 1) {
+      reduce(:max, [a, b]) - reduce(:min, [a, b])
+    } else {
+      mod(a, 13) * mod(b, 13)
+    }
+  }
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org2bb063b" class="outline-3">
+<h3 id="org2bb063b"><span class="section-number-3">4.11.</span> <code>u:gen_arithmetic</code></h3>
+<div class="outline-text-3" id="text-4-11">
+<p>
+One seeded arithmetic example. <code>rand_ints</code> with an explicit seed is what makes the whole corpus a function of the mixture record, and therefore a fixture the gate can check.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:gen_arithmetic(seed) {
+  "Small-integer arithmetic example, tag 0.";
+  r = rand_ints(3, 0, 100, seed);
+  a = take(r, 0, 0);
+  b = take(r, 0, 1);
+  op = mod(take(r, 0, 2), 3);
+  lhs = if eq(op, 0) {
+    str_concat(str_concat(to_string(a), "+"), to_string(b))
+  } else {
+    if eq(op, 1) {
+      str_concat(str_concat(to_string(reduce(:max, [a, b])), "-"), to_string(reduce(:min, [a, b])))
+    } else {
+      str_concat(str_concat(to_string(mod(a, 13)), "*"), to_string(mod(b, 13)))
+    }
+  };
+  {prompt: str_concat(lhs, "="), answer: to_string(u:arith_oracle(a, b, op)), tag: 0}
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgdc0443f" class="outline-3">
+<h3 id="orgdc0443f"><span class="section-number-3">4.12.</span> <code>u:digits_text</code></h3>
+<div class="outline-text-3" id="text-4-12">
+<p>
+Space-separated digits, the surface form of the sequence family.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:digits_text(v) {
+  "Space-separated digits of a rank-one vector.";
+  n = reduce_mul(shape(v));
+  out = "";
+  i = 0;
+  while lt(i, n) {
+    out = if eq(i, 0) {
+      to_string(take(v, 0, i))
+    } else {
+      str_concat(str_concat(out, " "), to_string(take(v, 0, i)))
+    };
+    i = i + 1
+  };
+  out
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org4ce5d5d" class="outline-3">
+<h3 id="org4ce5d5d"><span class="section-number-3">4.13.</span> <code>u:sequence_oracle</code></h3>
+<div class="outline-text-3" id="text-4-13">
+<p>
+Reverse and sort are the two sequence transformations; <code>grade_up</code> gives the permutation that sorts.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:sequence_oracle(v, op) {
+  "Exact answer for op 0 (reverse) or 1 (ascending sort) of a digit vector.";
+  n = reduce_mul(shape(v));
+  order = if eq(op, 0) {
+    (n - 1) - range(n)
+  } else {
+    grade_up(v)
+  };
+  reshape(gather_rows(reshape(v, [n, 1]), order), [n])
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org25bf202" class="outline-3">
+<h3 id="org25bf202"><span class="section-number-3">4.14.</span> <code>u:gen_sequence</code></h3>
+<div class="outline-text-3" id="text-4-14">
+<p>
+One seeded sequence example of three to five digits.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:gen_sequence(seed) {
+  "Sequence transformation example (rev or sort of three to five digits), tag 1.";
+  r = rand_ints(7, 0, 10, seed);
+  n = 3 + mod(take(r, 0, 5), 3);
+  v = u:domain_slice(r, 0, n);
+  op = mod(take(r, 0, 6), 2);
+  name = if eq(op, 0) {
+    "rev "
+  } else {
+    "sort "
+  };
+  {prompt: str_concat(str_concat(name, u:digits_text(v)), "="), answer: u:digits_text(u:sequence_oracle(v, op)), tag: 1}
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org2f921f8" class="outline-3">
+<h3 id="org2f921f8"><span class="section-number-3">4.15.</span> <code>u:mlpl_oracle</code></h3>
+<div class="outline-text-3" id="text-4-15">
+<p>
+The MLPL family's answers come from the interpreter's own builtins, which is the point of the family: the language is its own oracle.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:mlpl_oracle(v, kind) {
+  "Exact answer computed by the interpreter's own builtin: 0 reduce_add, 1 reduce(:max), 2 reduce_mul.";
+  if eq(kind, 0) {
+    reduce_add(v)
+  } else {
+    if eq(kind, 1) {
+      reduce(:max, v)
+    } else {
+      reduce_mul(v)
+    }
+  }
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgbc51ced" class="outline-3">
+<h3 id="orgbc51ced"><span class="section-number-3">4.16.</span> <code>u:gen_mlpl</code></h3>
+<div class="outline-text-3" id="text-4-16">
+<p>
+One seeded tiny-expression example such as <code>reduce_add([1,2,3])=</code> with the answer the builtin returns.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:gen_mlpl(seed) {
+  "Tiny MLPL expression example whose answer is produced by the builtin it names, tag 2.";
+  r = rand_ints(4, 1, 10, seed);
+  v = u:domain_slice(r, 0, 3);
+  kind = mod(take(r, 0, 3), 3);
+  head = if eq(kind, 0) {
+    "reduce_add(["
+  } else {
+    if eq(kind, 1) {
+      "reduce(:max,["
+    } else {
+      "reduce_mul(["
+    }
+  };
+  body = str_join(str_split(u:digits_text(v), " "), ",");
+  {prompt: str_concat(str_concat(head, body), "])="), answer: to_string(u:mlpl_oracle(v, kind)), tag: 2}
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org224e7d9" class="outline-3">
+<h3 id="org224e7d9"><span class="section-number-3">4.17.</span> <code>u:prose_place</code></h3>
+<div class="outline-text-3" id="text-4-17">
+<p>
+Each animal always ends up in the same place. That fixed local pattern is why prose is the one family a 90-window model generalizes on (finding 1), and the seam Engram was meant to fill.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:prose_place(animal) {
+  "The place each animal always ends up on; a fixed local pattern for Engram to memorize.";
+  unwrap(list_get(["mat", "rug", "nest", "log"], animal))
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgddb3c15" class="outline-3">
+<h3 id="orgddb3c15"><span class="section-number-3">4.18.</span> <code>u:gen_prose</code></h3>
+<div class="outline-text-3" id="text-4-18">
+<p>
+One seeded prose example: an animal, a verb, and the animal's place.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:gen_prose(seed) {
+  "Short templated prose example, tag 3.";
+  r = rand_ints(2, 0, 4, seed);
+  animal = take(r, 0, 0);
+  verb = take(r, 0, 1);
+  a = unwrap(list_get(["cat", "dog", "bird", "frog"], animal));
+  w = unwrap(list_get(["sat", "ran", "hid", "sang"], verb));
+  {prompt: str_concat(str_concat(str_concat(str_concat("the ", a), " "), w), " on the "), answer: u:prose_place(animal), tag: 3}
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgc1cea0f" class="outline-3">
+<h3 id="orgc1cea0f"><span class="section-number-3">4.19.</span> <code>u:domain_example</code></h3>
+<div class="outline-text-3" id="text-4-19">
+<p>
+Dispatch by tag. The nested <code>if</code> chain is the language's way of writing a four-way choice.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:domain_example(tag, seed) {
+  "Dispatch one example of the given task family.";
+  if eq(tag, 0) { u:gen_arithmetic(seed) } else {
+    if eq(tag, 1) { u:gen_sequence(seed) } else {
+      if eq(tag, 2) { u:gen_mlpl(seed) } else { u:gen_prose(seed) }
+    }
+  }
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgfa02356" class="outline-3">
+<h3 id="orgfa02356"><span class="section-number-3">4.20.</span> <code>u:domain_mixture_path</code></h3>
+<div class="outline-text-3" id="text-4-20">
+<p>
+Where the mixture record lives when a filesystem sandbox exists.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:domain_mixture_path() {
+  "Location of the fixed mixture fixture.";
+  "fixtures/domain/mixture-v0.json"
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org8ee28f4" class="outline-3">
+<h3 id="org8ee28f4"><span class="section-number-3">4.21.</span> <code>u:domain_mixture_v0</code></h3>
+<div class="outline-text-3" id="text-4-21">
+<p>
+The same record inline. The connect-mode surface that captures recordings has no filesystem (finding F16), so the lesson must be able to rebuild its data from source alone; a test pins the inline record equal to the JSON fixture.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:domain_mixture_v0() {
+  "The version-zero mixture as an inline record, for surfaces without a filesystem sandbox (finding F16); tests pin it equal to the JSON fixture.";
+  {seed: 0, total: 120, window: 28, train_fraction: 0.75, ratios: {arithmetic: 0.35, sequence: 0.3, mlpl: 0.25, prose: 0.1}, version: 0}
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org1e0a98f" class="outline-3">
+<h3 id="org1e0a98f"><span class="section-number-3">4.22.</span> <code>u:domain_load_mixture</code></h3>
+<div class="outline-text-3" id="text-4-22">
+<p>
+Read the fixture if there is a sandbox, else fall back to the inline record. This is why every recording is reproducible over <code>mlpl-serve</code>.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:domain_load_mixture(path) {
+  "Read the mixture fixture record from JSON, falling back to the inline version-zero record when no sandbox exists.";
+  text = read_text(path);
+  if text {
+    parse_json(unwrap(text))
+  } else {
+    ok(u:domain_mixture_v0())
+  }
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org0cd3728" class="outline-3">
+<h3 id="org0cd3728"><span class="section-number-3">4.23.</span> <code>u:domain_counts</code></h3>
+<div class="outline-text-3" id="text-4-23">
+<p>
+Ratios become counts; the last family absorbs rounding so the total is exact (120 at microscope scale: 42, 36, 30, 12).
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:domain_counts(mixture) {
+  "Example count per task family; the last family absorbs rounding so the total is exact.";
+  c0 = round(mixture.ratios.arithmetic * mixture.total);
+  c1 = round(mixture.ratios.sequence * mixture.total);
+  c2 = round(mixture.ratios.mlpl * mixture.total);
+  [c0, c1, c2, mixture.total - (c0 + c1 + c2)]
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org664235a" class="outline-3">
+<h3 id="org664235a"><span class="section-number-3">4.24.</span> <code>u:domain_join</code></h3>
+<div class="outline-text-3" id="text-4-24">
+<p>
+Strings are accumulated with a separator and split once at the end, because string lists cannot be appended to in place.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:domain_join(acc, s, first) {
+  "Accumulate strings separated by semicolons.";
+  if first {
+    s
+  } else {
+    str_concat(str_concat(acc, ";"), s)
+  }
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgde41c30" class="outline-3">
+<h3 id="orgde41c30"><span class="section-number-3">4.25.</span> <code>u:domain_build</code></h3>
+<div class="outline-text-3" id="text-4-25">
+<p>
+The whole corpus in family order, deterministic in the mixture's seed. Prompts, answers, texts, and tags come back together so the evaluation harness can score by family.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:domain_build(mixture) {
+  "Generate the whole mixture deterministically: prompts, answers, texts, and tags in family order.";
+  counts = u:domain_counts(mixture);
+  prompts = "";
+  answers = "";
+  texts = "";
+  tags = fill([mixture.total], 0);
+  k = 0;
+  tag = 0;
+  while lt(tag, 4) {
+    j = 0;
+    while lt(j, take(counts, 0, tag)) {
+      ex = u:domain_example(tag, mixture.seed * 100000 + tag * 10000 + j);
+      prompts = u:domain_join(prompts, ex.prompt, eq(k, 0));
+      answers = u:domain_join(answers, ex.answer, eq(k, 0));
+      texts = u:domain_join(texts, u:domain_text(ex), eq(k, 0));
+      tags = scatter(tags, k, tag);
+      k = k + 1;
+      j = j + 1
+    };
+    tag = tag + 1
+  };
+  {prompts: str_split(prompts, ";"), answers: str_split(answers, ";"), texts: str_split(texts, ";"), tags: tags, count: k}
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgcdc18c4" class="outline-3">
+<h3 id="orgcdc18c4"><span class="section-number-3">4.26.</span> <code>u:domain_windows</code></h3>
+<div class="outline-text-3" id="text-4-26">
+<p>
+Every text stacked into <code>[N, T]</code> matrices of ids, targets, and masks. The <code>?</code> propagates a window error out of the loop.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:domain_windows(texts, T) {
+  "Stack every text into x, y, mask matrices of shape [N, T].";
+  n = list_len(texts);
+  first = u:domain_window(unwrap(list_get(texts, 0)), T)?;
+  x = reshape(first.x, [1, T]);
+  y = reshape(first.y, [1, T]);
+  mask = reshape(first.mask, [1, T]);
+  i = 1;
+  while lt(i, n) {
+    w = u:domain_window(unwrap(list_get(texts, i)), T)?;
+    x = concat(x, reshape(w.x, [1, T]), 0);
+    y = concat(y, reshape(w.y, [1, T]), 0);
+    mask = concat(mask, reshape(w.mask, [1, T]), 0);
+    i = i + 1
+  };
+  ok({x: x, y: y, mask: mask})
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org5b6564d" class="outline-3">
+<h3 id="org5b6564d"><span class="section-number-3">4.27.</span> <code>u:domain_split</code></h3>
+<div class="outline-text-3" id="text-4-27">
+<p>
+The held-out split: seeded uniform keys ranked with <code>grade_up</code>; the first <code>round(fraction * n)</code> rows train. With fraction 0.75 that is 90 training and 30 validation rows, the same for every lesson.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:domain_split(n, train_fraction, seed) {
+  "Deterministic held-out split: rank seeded uniform keys, first round(fraction * n) are training rows.";
+  keys = random(seed, [n]);
+  order = grade_up(keys);
+  k = round(train_fraction * n);
+  {keys: keys, order: order, train: u:domain_slice(order, 0, k), val: u:domain_slice(order, k, n - k)}
+}
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-org93f452a" class="outline-2">
+<h2 id="org93f452a"><span class="section-number-2">5.</span> Exact-match evaluation: <code>lib/evaluate.mlpl</code></h2>
+<div class="outline-text-2" id="text-5">
+<p>
+Three functions turn predictions into the per-family accuracy every results row reports.
+</p>
+</div>
+<div id="outline-container-org3d0fd06" class="outline-3">
+<h3 id="org3d0fd06"><span class="section-number-3">5.1.</span> Module header</h3>
+<div class="outline-text-3" id="text-5-1">
+<p>
+Quality is exact match against an oracle, never a similarity score.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl"># Exact-match evaluation: per-example hits and per-task-family accuracy.
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org356948c" class="outline-3">
+<h3 id="org356948c"><span class="section-number-3">5.2.</span> <code>u:exact_match</code></h3>
+<div class="outline-text-3" id="text-5-2">
+<p>
+One or zero per example: the greedy answer string equals the oracle's string.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:exact_match(preds, answers) {
+  "One or zero per example: prediction string equals the answer string exactly.";
+  n = list_len(answers);
+  hits = fill([n], 0);
+  i = 0;
+  while lt(i, n) {
+    hits = scatter(hits, i, str_eq(unwrap(list_get(preds, i)), unwrap(list_get(answers, i))));
+    i = i + 1
+  };
+  hits
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org164c234" class="outline-3">
+<h3 id="org164c234"><span class="section-number-3">5.3.</span> <code>u:tag_accuracy</code></h3>
+<div class="outline-text-3" id="text-5-3">
+<p>
+Hit rate over one family, zero when the family is absent from the indexed rows.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:tag_accuracy(hits, tags, tag) {
+  "Mean hit rate over examples carrying tag; zero when the tag is absent.";
+  mask = eq(tags, tag);
+  count = reduce_add(mask);
+  if count {
+    reduce_add(hits * mask) / count
+  } else {
+    0
+  }
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgb79f713" class="outline-3">
+<h3 id="orgb79f713"><span class="section-number-3">5.4.</span> <code>u:accuracy_by_tag</code></h3>
+<div class="outline-text-3" id="text-5-4">
+<p>
+The record every lesson reports and every results row carries: arithmetic, sequence, mlpl, prose, and overall.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:accuracy_by_tag(hits, tags) {
+  "Per-family and overall exact-match accuracy as a record.";
+  {arithmetic: u:tag_accuracy(hits, tags, 0), sequence: u:tag_accuracy(hits, tags, 1), mlpl: u:tag_accuracy(hits, tags, 2), prose: u:tag_accuracy(hits, tags, 3), overall: mean(hits)}
+}
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-orgf18cc88" class="outline-2">
+<h2 id="orgf18cc88"><span class="section-number-2">6.</span> Dense helpers: <code>lib/dense.mlpl</code></h2>
+<div class="outline-text-2" id="text-6">
+<p>
+The masked loss, greedy decoding, the evaluation harness, and the teacher export, shared by every language-model lesson.
+</p>
+</div>
+<div id="outline-container-org5a9e478" class="outline-3">
+<h3 id="org5a9e478"><span class="section-number-3">6.1.</span> Module header</h3>
+<div class="outline-text-3" id="text-6-1">
+<p>
+The dense helpers are shared by every lesson that trains a language model: the masked loss, greedy decoding, prompt evaluation, and the teacher export. <code>include</code> splices a neighbour in, resolved relative to this file.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl"># Dense-lesson helpers: chunked flattening, masked next-token loss, greedy decoding, and prompt evaluation.
+include "domain.mlpl";
+include "evaluate.mlpl";
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orga1745a3" class="outline-3">
+<h3 id="orga1745a3"><span class="section-number-3">6.2.</span> <code>u:rows</code></h3>
+<div class="outline-text-3" id="text-6-2">
+<p>
+A contiguous row slice of a matrix, again through <code>gather_rows</code>.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:rows(M, start, count) {
+  "Contiguous row slice of a rank-two matrix.";
+  gather_rows(M, start + range(count))
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgb1dc19e" class="outline-3">
+<h3 id="orgb1dc19e"><span class="section-number-3">6.3.</span> <code>u:flat_chunk</code></h3>
+<div class="outline-text-3" id="text-6-3">
+<p>
+Rows of a chunk flattened into one sequence; used by the earliest experiments and kept for the tests that pin it.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:flat_chunk(M, chunk, size) {
+  "Rows chunk*size .. chunk*size+size of M flattened into one rank-one sequence.";
+  reshape(u:rows(M, chunk * size, size), [size * reduce_mul(shape(take(M, 0, 0)))])
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgac51e14" class="outline-3">
+<h3 id="orgac51e14"><span class="section-number-3">6.4.</span> <code>u:positions</code></h3>
+<div class="outline-text-3" id="text-6-4">
+<p>
+Sinusoidal positions of the requested length and width. The block that adds them is the only place the dense model knows where a token is; the state-space block of SS01 keeps them for a controlled comparison even though a scan is positional by construction.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:positions(length, width) {
+  "Unlabeled sinusoidal position table (label stripping dates from finding F10, now resolved upstream; kept for readability).";
+  reshape(sinusoidal_encoding(length, width), [length, width])
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org2e16288" class="outline-3">
+<h3 id="org2e16288"><span class="section-number-3">6.5.</span> <code>u:masked_ce</code></h3>
+<div class="outline-text-3" id="text-6-5">
+<p>
+The loss. <code>one_hot(targets)</code> picks each position's log-probability, the mask keeps the answer and stop positions, and the mean is over masked positions only. The vocabulary size is an argument because shape arithmetic is not traced through <code>grad</code> (finding F11).
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:masked_ce(logits, targets, mask, vocab) {
+  "Mean negative log-likelihood over masked positions only; equals cross_entropy when the mask is all ones (vocab is explicit: size arithmetic is not traced, F11).";
+  picked = reduce_add(one_hot(targets, vocab) * log(softmax(logits)), 1);
+  0 - reduce_add(picked * mask) / reduce_add(mask)
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org52aff6a" class="outline-3">
+<h3 id="org52aff6a"><span class="section-number-3">6.6.</span> <code>u:stop_id</code></h3>
+<div class="outline-text-3" id="text-6-6">
+<p>
+The id of the stop character, where greedy decoding ends.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:stop_id() {
+  "Token id of the stop character.";
+  str_find(u:domain_alphabet(), ".")
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org11b8f23" class="outline-3">
+<h3 id="org11b8f23"><span class="section-number-3">6.7.</span> <code>u:greedy</code></h3>
+<div class="outline-text-3" id="text-6-7">
+<p>
+Greedy decoding with a forward-function reference: append the argmax of the last row until the stop id or the budget. <code>call(forward, seq)</code> is how the lessons pass a model to a helper without models being function arguments (finding F7: models are globals, functions are references).
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:greedy(forward, prompt_ids, max_new) {
+  "Greedy decode with a forward-function reference until the stop id or max_new tokens; returns new ids only.";
+  seq = prompt_ids;
+  out = fill([0], 0);
+  k = 0;
+  while lt(k, max_new) {
+    nxt = argmax(last_row(call(forward, seq)));
+    seq = concat(seq, nxt);
+    out = concat(out, nxt);
+    k = if eq(nxt, u:stop_id()) {
+      max_new
+    } else {
+      k + 1
+    }
+  };
+  out
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgbb16f90" class="outline-3">
+<h3 id="orgbb16f90"><span class="section-number-3">6.8.</span> <code>u:answer_text</code></h3>
+<div class="outline-text-3" id="text-6-8">
+<p>
+Decode and drop a trailing stop character.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:answer_text(ids) {
+  "Decode generated ids and drop the trailing stop character if present.";
+  text = u:domain_decode(ids);
+  n = str_len(text);
+  if n {
+    if str_eq(str_slice(text, n - 1, 1), ".") {
+      str_slice(text, 0, n - 1)
+    } else {
+      text
+    }
+  } else {
+    text
+  }
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org35fac63" class="outline-3">
+<h3 id="org35fac63"><span class="section-number-3">6.9.</span> <code>u:predict_prompts</code></h3>
+<div class="outline-text-3" id="text-6-9">
+<p>
+Greedy answers for the indexed prompts, accumulated as one separator-joined string and split at the end.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:predict_prompts(forward, prompts, index, max_new) {
+  "Greedy answers for the prompts at the given row indices, as a string list.";
+  n = reduce_mul(shape(index));
+  acc = "";
+  i = 0;
+  while lt(i, n) {
+    prompt = str_concat(unwrap(list_get(prompts, take(index, 0, i))), "|");
+    text = u:answer_text(u:greedy(forward, unwrap(u:domain_encode(prompt)), max_new));
+    acc = if eq(i, 0) {
+      text
+    } else {
+      str_concat(str_concat(acc, ";"), text)
+    };
+    i = i + 1
+  };
+  str_split(acc, ";")
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org4e279f1" class="outline-3">
+<h3 id="org4e279f1"><span class="section-number-3">6.10.</span> <code>u:select_list</code></h3>
+<div class="outline-text-3" id="text-6-10">
+<p>
+The strings at the given indices, the same accumulate-and-split idiom.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:select_list(items, index) {
+  "The strings at the given indices, as a string list.";
+  n = reduce_mul(shape(index));
+  acc = "";
+  i = 0;
+  while lt(i, n) {
+    item = unwrap(list_get(items, take(index, 0, i)));
+    acc = if eq(i, 0) {
+      item
+    } else {
+      str_concat(str_concat(acc, ";"), item)
+    };
+    i = i + 1
+  };
+  str_split(acc, ";")
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org7d24256" class="outline-3">
+<h3 id="org7d24256"><span class="section-number-3">6.11.</span> <code>u:evaluate_prompts</code></h3>
+<div class="outline-text-3" id="text-6-11">
+<p>
+The evaluation harness: predictions, oracle answers, hits, and per-family accuracy over one index set. The lessons call it once on the validation rows and once on the training rows, which is how memorization (training exact match 0.7 to 0.99) is told apart from generalization (held-out exact match near zero except prose).
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:evaluate_prompts(forward, d, index, max_new) {
+  "Per-family and overall exact-match accuracy of greedy answers over the indexed examples.";
+  preds = u:predict_prompts(forward, d.prompts, index, max_new);
+  answers = u:select_list(d.answers, index);
+  hits = u:exact_match(preds, answers);
+  tags = reshape(gather_rows(reshape(d.tags, [d.count, 1]), index), [reduce_mul(shape(index))]);
+  {accuracy: u:accuracy_by_tag(hits, tags), hits: hits, preds: preds}
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org0ffccc9" class="outline-3">
+<h3 id="org0ffccc9"><span class="section-number-3">6.12.</span> <code>u:set_loss</code></h3>
+<div class="outline-text-3" id="text-6-12">
+<p>
+The masked loss over a whole row set, weighted by target count so a row with more answer characters counts more. Eager only: it loops over rows and calls the forward reference.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:set_loss(forward, X, Y, M, rows, vocab) {
+  "Masked next-token loss averaged over every answer target in the first rows of X, using a forward-function reference (eager only).";
+  total = 0;
+  count = 0;
+  i = 0;
+  while lt(i, rows) {
+    mrow = take(M, 0, i);
+    total = total + u:masked_ce(call(forward, take(X, 0, i)), take(Y, 0, i), mrow, vocab) * reduce_add(mrow);
+    count = count + reduce_add(mrow);
+    i = i + 1
+  };
+  total / count
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org22bb21f" class="outline-3">
+<h3 id="org22bb21f"><span class="section-number-3">6.13.</span> <code>u:topk_export</code></h3>
+<div class="outline-text-3" id="text-6-13">
+<p>
+The teacher export of TE01: at every masked position, the top-k ids and log-probabilities, as parallel flat vectors that serialize to the fixture schema.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:topk_export(forward, X, Y, M, rows, k, vocab) {
+  "Top-k next-token log-probabilities at every masked position of the first rows: parallel flat vectors rows, positions, targets, topk_ids, topk_logprobs, and count.";
+  out_rows = fill([0], 0);
+  out_pos = fill([0], 0);
+  out_tgt = fill([0], 0);
+  out_ids = fill([0], 0);
+  out_lp = fill([0], 0);
+  i = 0;
+  while lt(i, rows) {
+    lp = log(softmax(call(forward, take(X, 0, i))));
+    yrow = take(Y, 0, i);
+    mrow = take(M, 0, i);
+    j = 0;
+    while lt(j, reduce_mul(shape(mrow))) {
+      if take(mrow, 0, j) {
+        row_lp = take(lp, 0, j);
+        top = argtop_k(row_lp, k);
+        out_rows = concat(out_rows, i);
+        out_pos = concat(out_pos, j);
+        out_tgt = concat(out_tgt, take(yrow, 0, j));
+        out_ids = concat(out_ids, top);
+        out_lp = concat(out_lp, reshape(gather_rows(reshape(row_lp, [vocab, 1]), top), [k]))
+      } else {
+        0
+      };
+      j = j + 1
+    };
+    i = i + 1
+  };
+  {rows: out_rows, positions: out_pos, targets: out_tgt, topk_ids: out_ids, topk_logprobs: out_lp, count: reduce_mul(shape(out_rows)), top_k: k}
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgc96a949" class="outline-3">
+<h3 id="orgc96a949"><span class="section-number-3">6.14.</span> <code>u:topk_agreement</code></h3>
+<div class="outline-text-3" id="text-6-14">
+<p>
+How often the exported top-1 id is the target; the teacher fixture's sanity number.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:topk_agreement(export) {
+  "Fraction of exported positions whose top-1 id equals the target.";
+  ids = reshape(export.topk_ids, [export.count, export.top_k]);
+  mean(eq(reshape(gather_rows(reshape(ids, [export.count * export.top_k, 1]), range(export.count) * export.top_k), [export.count]), export.targets))
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org098b43b" class="outline-3">
+<h3 id="org098b43b"><span class="section-number-3">6.15.</span> <code>u:pad_to</code></h3>
+<div class="outline-text-3" id="text-6-15">
+<p>
+Right-pad ids to a full window for forwards that only accept the training length (the mixture blocks, whose gate columns are literal-length constants, finding F20).
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:pad_to(ids, T) {
+  "Right-pad a rank-one id vector with zeros to length T.";
+  n = reduce_mul(shape(ids));
+  if lt(n, T) {
+    concat(ids, fill([T - n], 0))
+  } else {
+    ids
+  }
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org8e36c4e" class="outline-3">
+<h3 id="org8e36c4e"><span class="section-number-3">6.16.</span> <code>u:greedy_padded</code></h3>
+<div class="outline-text-3" id="text-6-16">
+<p>
+Greedy decoding for those fixed-length forwards: pad, run, read the row at the sequence end, stop at the stop id, the budget, or the window edge.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:greedy_padded(forward, prompt_ids, max_new, T) {
+  "Greedy decode for a forward that only accepts full T-length windows: pad, run, read the row at the sequence end; stops at the stop id, max_new, or the window edge.";
+  seq = prompt_ids;
+  out = fill([0], 0);
+  k = 0;
+  while lt(k, max_new) {
+    n = reduce_mul(shape(seq));
+    nxt = if lt(n, T) {
+      argmax(take(call(forward, u:pad_to(seq, T)), 0, n - 1))
+    } else { u:stop_id() };
+    seq = concat(seq, nxt);
+    out = concat(out, nxt);
+    k = if eq(nxt, u:stop_id()) {
+      max_new
+    } else {
+      k + 1
+    }
+  };
+  out
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org984492c" class="outline-3">
+<h3 id="org984492c"><span class="section-number-3">6.17.</span> <code>u:evaluate_prompts_padded</code></h3>
+<div class="outline-text-3" id="text-6-17">
+<p>
+The padded twin of the evaluation harness.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:evaluate_prompts_padded(forward, d, index, max_new, T) {
+  "Per-family and overall exact-match accuracy of padded greedy answers over the indexed examples.";
+  n = reduce_mul(shape(index));
+  acc = "";
+  i = 0;
+  while lt(i, n) {
+    prompt = str_concat(unwrap(list_get(d.prompts, take(index, 0, i))), "|");
+    text = u:answer_text(u:greedy_padded(forward, unwrap(u:domain_encode(prompt)), max_new, T));
+    acc = if eq(i, 0) {
+      text
+    } else {
+      str_concat(str_concat(acc, ";"), text)
+    };
+    i = i + 1
+  };
+  preds = str_split(acc, ";");
+  answers = u:select_list(d.answers, index);
+  hits = u:exact_match(preds, answers);
+  tags = reshape(gather_rows(reshape(d.tags, [d.count, 1]), index), [n]);
+  {accuracy: u:accuracy_by_tag(hits, tags), hits: hits, preds: preds}
+}
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-org23df1a8" class="outline-2">
+<h2 id="org23df1a8"><span class="section-number-2">7.</span> A whole lesson: <code>demos/dense_baseline.mlpl</code> (DN01)</h2>
+<div class="outline-text-2" id="text-7">
+<p>
+The dense baseline is the pattern every later lesson follows: train once at top level, emit observations, draw diagrams from the same values, write the row, state the contract. Its measured row is validation loss 3.79, perplexity 44.2, held-out exact match 0 / 0 / 0 / 0.667 by family, training exact match 0.70, 3,812 parameters.
+</p>
+</div>
+<div id="outline-container-org5a5162e" class="outline-3">
+<h3 id="org5a5162e"><span class="section-number-3">7.1.</span> Module header</h3>
+<div class="outline-text-3" id="text-7-1">
+<p>
+A lesson is a script: it trains one model in one process, emits observations, draws its diagrams from the same values, and writes its results row. DN01 is the smallest and the pattern for the rest. The header comment names the lesson; the includes bring the domain, the observation names, the SVG helpers, and the results writer.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl"># DN01 dense baseline: one transformer block trained per example on the synthetic domain, with recorded observations, diagrams, and the memory/speed/quality triple.
+include "../lib/dense.mlpl";
+include "../lib/observe.mlpl";
+include "../lib/svg.mlpl";
+include "../lib/results.mlpl";
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org831d0a0" class="outline-3">
+<h3 id="org831d0a0"><span class="section-number-3">7.2.</span> Lesson body, part 1</h3>
+<div class="outline-text-3" id="text-7-2">
+<p>
+Every lesson opens by printing what it shows and the shapes involved, so a transcript reads as a report.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">print("WHAT THIS SHOWS -- A dense 3.8K-parameter transformer trained on 90 examples memorizes them but generalizes only where a local pattern exists (prose).");
+print("SHAPES -- ids:[T], embedding:[T,16], attention:[T,16], logits:[T,52]; T=28 window, 120 examples, 90 train / 30 validation.");
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org7f95989" class="outline-3">
+<h3 id="org7f95989"><span class="section-number-3">7.3.</span> Lesson body, part 2</h3>
+<div class="outline-text-3" id="text-7-3">
+<p>
+Arguments are the output directory (empty when the lesson runs over the recording server, which has no filesystem) and the interpreter's version string for the results row. Then the fixed configuration: width 16, hidden 32, 300 epochs, learning rate 0.003, and the domain's windows and split. <code>emit_frame</code> with a literal name (finding F8) records the configuration as frame 0 and returns the value unchanged.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">out_dir = if list_len(args()) {
+  unwrap(list_get(args(), 0))
+} else {
+  ""
+};
+binary = if gt(list_len(args()), 1) {
+  unwrap(list_get(args(), 1))
+} else {
+  "unknown"
+};
+writing = str_len(out_dir);
+m = unwrap(u:domain_load_mixture(u:domain_mixture_path()));
+d = u:domain_build(m);
+w = unwrap(u:domain_windows(d.texts, m.window));
+s = u:domain_split(d.count, m.train_fraction, m.seed);
+V = u:domain_vocab_size();
+T = m.window;
+dm = 16;
+hidden = 32;
+epochs = 300;
+lr = 0.003;
+every = 25;
+ntrain = reduce_mul(shape(s.train));
+nval = reduce_mul(shape(s.val));
+train_x = gather_rows(w.x, s.train);
+train_y = gather_rows(w.y, s.train);
+train_m = gather_rows(w.mask, s.train);
+val_x = gather_rows(w.x, s.val);
+val_y = gather_rows(w.y, s.val);
+val_m = gather_rows(w.mask, s.val);
+posT = u:positions(T, dm);
+config = emit_frame("dense/config", 0, [dm, hidden, T, epochs, ntrain, nval]);
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgd0e76bc" class="outline-3">
+<h3 id="orgd0e76bc"><span class="section-number-3">7.4.</span> Lesson body, part 3</h3>
+<div class="outline-text-3" id="text-7-4">
+<p>
+The five sub-models are globals: the embedding, a norm-then-attention chain, a norm-then-FFN chain, the final norm, and the head. The integer after each constructor is its parameter-naming id; <code>adam</code> keeps state by parameter name, which is why one training run per process is the rule (finding F22).
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">emb = embed(V, dm, 0);
+att = chain(rms_norm(dm), causal_attention(dm, 1, 1));
+ffn = chain(rms_norm(dm), linear(dm, hidden, 2), relu_layer(), linear(hidden, dm, 3));
+norm = rms_norm(dm);
+head = linear(dm, V, 4);
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orge60516c" class="outline-3">
+<h3 id="orge60516c"><span class="section-number-3">7.5.</span> <code>u:body</code></h3>
+<div class="outline-text-3" id="text-7-5">
+<p>
+The block written out with explicit residuals rather than the <code>residual</code> combinator, so <code>attention_weights</code> can still reach the attention sub-model afterwards (finding F13).
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:body(h0) {
+  "Explicit residual block (attention, then FFN), final norm, and the vocabulary head.";
+  h1 = h0 + apply(att, h0);
+  h2 = h1 + apply(ffn, h1);
+  apply(head, apply(norm, h2))
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org66a5d80" class="outline-3">
+<h3 id="org66a5d80"><span class="section-number-3">7.6.</span> <code>u:forward</code></h3>
+<div class="outline-text-3" id="text-7-6">
+<p>
+Logits for a sequence of any length: embedding plus positions through the body. Eager decoding uses this; training uses <code>u:body</code> directly with the precomputed full-window positions.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:forward(x1) {
+  "Logits for one sequence: embedding plus positions 0..n-1 through the body.";
+  u:body(apply(emb, x1) + u:positions(reduce_mul(shape(x1)), dm))
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgaf34d19" class="outline-3">
+<h3 id="orgaf34d19"><span class="section-number-3">7.7.</span> Lesson body, part 6</h3>
+<div class="outline-text-3" id="text-7-7">
+<p>
+Parameter accounting is explicit arithmetic over <code>param_count</code>: 3,812 in total, of which one embedding row per token is read, so 2,996 active parameters per token.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">p_emb = param_count(emb);
+p_att = param_count(att);
+p_ffn = param_count(ffn);
+p_norm = param_count(norm);
+p_head = param_count(head);
+params = p_emb + p_att + p_ffn + p_norm + p_head;
+active = params - p_emb + dm;
+print("MODEL -- params", params, "of which embedding", p_emb, "attention", p_att, "ffn", p_ffn, "head", p_head, "; active per token", active);
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org59d39d5" class="outline-3">
+<h3 id="org59d39d5"><span class="section-number-3">7.8.</span> Lesson body, part 7</h3>
+<div class="outline-text-3" id="text-7-8">
+<p>
+The training loop at top level: one Adam step per training window per epoch, 27,000 steps in all, and every 25 epochs the masked loss on all training and validation rows emitted as a frame. The recording is these thirteen frames.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">curve_e = fill([0], 0);
+curve_t = fill([0], 0);
+curve_v = fill([0], 0);
+t0 = clock_ms();
+train_ms = 0;
+e = 0;
+while lt(e, epochs) {
+  ts = clock_ms();
+  i = 0;
+  while lt(i, ntrain) {
+    x1 = take(train_x, 0, i);
+    y1 = take(train_y, 0, i);
+    m1 = take(train_m, 0, i);
+    adam(u:masked_ce(u:body(apply(emb, x1) + posT), y1, m1, V), [emb, att, ffn, norm, head], lr, 0.9, 0.999, 0.00000001);
+    i = i + 1
+  };
+  train_ms = train_ms + (clock_ms() - ts);
+  e = e + 1;
+  if eq(mod(e, every), 0) {
+    tl = emit_frame("dense/loss/train", e, u:set_loss(:u:forward, train_x, train_y, train_m, ntrain, V));
+    vl = emit_frame("dense/loss/val", e, u:set_loss(:u:forward, val_x, val_y, val_m, nval, V));
+    curve_e = concat(curve_e, e);
+    curve_t = concat(curve_t, tl);
+    curve_v = concat(curve_v, vl);
+    print("epoch", e, "train loss", u:svg_round(tl, 4), "val loss", u:svg_round(vl, 4))
+  } else {
+    0
+  }
+};
+steps = epochs * ntrain;
+ms_per_step = train_ms / steps;
+ms_per_token = train_ms / (steps * T);
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org07e47a4" class="outline-3">
+<h3 id="org07e47a4"><span class="section-number-3">7.9.</span> Lesson body, part 8</h3>
+<div class="outline-text-3" id="text-7-9">
+<p>
+After training, exact match by family on the validation and on the training rows, both emitted, and the final losses read back off the curves.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">td = clock_ms();
+rv = u:evaluate_prompts(:u:forward, d, s.val, 12);
+decode_ms = clock_ms() - td;
+rt = u:evaluate_prompts(:u:forward, d, s.train, 12);
+val_acc = emit_frame("dense/accuracy/val", epochs, [rv.accuracy.arithmetic, rv.accuracy.sequence, rv.accuracy.mlpl, rv.accuracy.prose, rv.accuracy.overall]);
+train_acc = emit_frame("dense/accuracy/train", epochs, [rt.accuracy.arithmetic, rt.accuracy.sequence, rt.accuracy.mlpl, rt.accuracy.prose, rt.accuracy.overall]);
+final_val = take(curve_v, 0, reduce_mul(shape(curve_v)) - 1);
+final_train = take(curve_t, 0, reduce_mul(shape(curve_t)) - 1);
+ppl = exp(final_val);
+gen_tokens = reduce_add(u:exact_match(rv.preds, rv.preds)) * 0 + nval * 4;
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org6a0cc20" class="outline-3">
+<h3 id="org6a0cc20"><span class="section-number-3">7.10.</span> Lesson body, part 9</h3>
+<div class="outline-text-3" id="text-7-10">
+<p>
+The example window <code>2+3=|5.</code> is pushed through the trained model for the diagrams: its argmax predictions and its attention weights, plus one decoded validation prompt and one decoded prose prompt.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">example = "2+3=|5.";
+ex_ids = unwrap(u:domain_encode(example));
+ex_logits = u:forward(ex_ids);
+ex_pred = emit_frame("dense/logits/example-argmax", epochs, argmax(ex_logits, 1));
+ex_att = emit_frame("dense/attention/example", epochs, attention_weights(att, apply(emb, ex_ids) + u:positions(7, dm)));
+val_prompt = unwrap(list_get(d.prompts, take(s.val, 0, 0)));
+val_answer = unwrap(list_get(d.answers, take(s.val, 0, 0)));
+val_pred = unwrap(list_get(rv.preds, 0));
+prose_index = compress(eq(reshape(gather_rows(reshape(d.tags, [d.count, 1]), s.val), [nval]), 3), s.val);
+prose_prompt = unwrap(list_get(d.prompts, take(prose_index, 0, 0)));
+prose_answer = unwrap(list_get(d.answers, take(prose_index, 0, 0)));
+prose_pred = u:answer_text(u:greedy(:u:forward, unwrap(u:domain_encode(str_concat(prose_prompt, "|"))), 12));
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org2ba6270" class="outline-3">
+<h3 id="org2ba6270"><span class="section-number-3">7.11.</span> Lesson body, part 10</h3>
+<div class="outline-text-3" id="text-7-11">
+<p>
+The results row: lesson id, configuration string, binary, parameter counts, counted costs, the machine-dependent milliseconds per token, the losses, and per-family accuracy. The DN01 row also states the persistent state attention keeps at 16 and 1,024 tokens of history, the column SS01 introduced. The gate compares every column except the binary and the timing with the committed table.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">row = {lesson: "DN01", config: "dense d16 h32 1head T28 120ex 300ep lr0.003", binary: binary, params: params, active_params: active, expert_evals: 1, bytes_per_token: active * 8, ms_per_token: u:svg_round(ms_per_token, 4), val_loss: u:svg_round(final_val, 4), ppl: u:svg_round(ppl, 2), arith_acc: u:svg_round(rv.accuracy.arithmetic, 3), seq_acc: u:svg_round(rv.accuracy.sequence, 3), mlpl_acc: u:svg_round(rv.accuracy.mlpl, 3), prose_acc: u:svg_round(rv.accuracy.prose, 3), state_bytes: str_concat(str_concat(u:svg_num(2 * 16 * dm * 8), " / "), u:svg_num(2 * 1024 * dm * 8))};
+r_row = if writing {
+  write_atomic(str_concat(out_dir, "/results-row.md"), str_concat(u:results_row(row), "\n"))
+} else {
+  ok(0)
+};
+print("MEMORY -- params", params, "active/token", active, "bytes/token (f64)", active * 8);
+print("SPEED -- ms/step", u:svg_round(ms_per_step, 3), "ms/token", u:svg_round(ms_per_token, 4), "greedy decode ms for", nval, "prompts", u:svg_round(decode_ms, 1), "(", binary, ")");
+print("QUALITY -- val loss", u:svg_round(final_val, 4), "ppl", u:svg_round(ppl, 2), "val acc [arith seq mlpl prose all]", val_acc, "train acc", train_acc);
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org95fd2e4" class="outline-3">
+<h3 id="org95fd2e4"><span class="section-number-3">7.12.</span> <code>u:pred_text</code></h3>
+<div class="outline-text-3" id="text-7-12">
+<p>
+Predicted ids as characters for the diagram.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:pred_text(pred_ids) {
+  "Characters for a vector of predicted ids.";
+  u:domain_decode(pred_ids)
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org6a830dd" class="outline-3">
+<h3 id="org6a830dd"><span class="section-number-3">7.13.</span> <code>u:model_svg</code></h3>
+<div class="outline-text-3" id="text-7-13">
+<p>
+The data-structure diagram: the window's path through the stages with real shapes and parameter counts, the example's ids, the argmax beside the target, and the what/why/how panel. Every number in it is a value computed above.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:model_svg() {
+  "Diagram: one token window's path through embedding, positions, attention, FFN, norm, head, and loss, with real shapes and parameter counts.";
+  page = u:svg_head("DN01 dense model transformation", "The example 2+3=|5. flows through the embedding, positional addition, a residual attention block, a residual feed-forward block, a final norm, and the vocabulary head; each stage shows its shape and parameter count and the final row shows the argmax prediction beside the target.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "DN01 DENSE BASELINE -- one window through the model"));
+  page = str_concat(page, u:svg_text(32, 60, "m", str_concat(str_concat("WHAT: ", u:svg_num(params)), " parameters, all read for every token (dense) except the unread embedding rows")));
+  page = str_concat(page, u:svg_box(32, 80, 130, 64, "ids [T]", "52-symbol alphabet", "0 params"));
+  page = str_concat(page, u:svg_box(180, 80, 150, 64, "embed [T,16]", "row lookup by id", str_concat(u:svg_num(p_emb), " params")));
+  page = str_concat(page, u:svg_box(348, 80, 150, 64, "+ positions", "sinusoidal, unlabeled", "0 params"));
+  page = str_concat(page, u:svg_box(516, 80, 200, 64, "h1 = h0 + att(h0)", "rms_norm, causal attention", str_concat(u:svg_num(p_att), " params")));
+  page = str_concat(page, u:svg_box(734, 80, 196, 64, "h2 = h1 + ffn(h1)", "rms_norm, 16-&gt;32 relu 32-&gt;16", str_concat(u:svg_num(p_ffn), " params")));
+  page = str_concat(page, u:svg_box(516, 160, 200, 64, "norm + head", "rms_norm, linear 16-&gt;52", str_concat(u:svg_num(p_norm + p_head), " params")));
+  page = str_concat(page, u:svg_box(734, 160, 196, 64, "logits [T,52]", "masked cross-entropy on", "answer and stop targets"));
+  page = str_concat(page, u:svg_text(32, 258, "k", str_concat("example  ", example)));
+  page = str_concat(page, u:svg_chars(example, 260, 241, 30));
+  page = str_concat(page, u:svg_text(32, 298, "k", "ids"));
+  page = str_concat(page, u:svg_cells(ex_ids, 260, 281, 30, fill([7], 0)));
+  page = str_concat(page, u:svg_text(32, 338, "k", "argmax prediction"));
+  page = str_concat(page, u:svg_chars(u:pred_text(ex_pred), 260, 321, 30));
+  page = str_concat(page, u:svg_text(32, 378, "k", "target (next char)"));
+  page = str_concat(page, u:svg_chars(str_concat(str_slice(example, 1, 6), "~"), 260, 361, 30));
+  page = str_concat(page, u:svg_rect(30, 400, 900, 120, "panel"));
+  page = str_concat(page, u:svg_text(50, 428, "", "WHY: a dense block spends every parameter on every token; it is the reference that MoE, recurrence, and Engram must beat."));
+  page = str_concat(page, u:svg_text(50, 453, "", "WHY: the residual is written by hand (h1 = h0 + att(h0)) so attention_weights can still reach the attention sub-model (F13)."));
+  page = str_concat(page, u:svg_text(50, 478, "", "HOW: u:body applies the att, ffn, norm, head globals; u:masked_ce scores answer and stop targets; adam updates all five."));
+  page = str_concat(page, u:svg_text(50, 503, "m", "Prediction cells are teacher-forced: each position sees the true prefix; only positions after the bar are scored."));
+  str_concat(page, "&lt;/svg&gt;")
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org13efa7d" class="outline-3">
+<h3 id="org13efa7d"><span class="section-number-3">7.14.</span> <code>u:bars</code></h3>
+<div class="outline-text-3" id="text-7-14">
+<p>
+Accuracy bars for the run diagram.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:bars(vals, x0, y0, wd, cls) {
+  "Vertical bars for accuracy values in [0, 1], 100 px tall at most.";
+  n = reduce_mul(shape(vals));
+  out = "";
+  i = 0;
+  while lt(i, n) {
+    h = round(take(vals, 0, i) * 100);
+    out = str_concat(out, u:svg_rect(x0 + i * 80, y0 + 100 - h, wd, h + 1, cls));
+    out = str_concat(out, u:svg_text(x0 + i * 80, y0 + 100 - h - 4, "s", u:svg_num(u:svg_round(take(vals, 0, i), 2))));
+    i = i + 1
+  };
+  out
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org50f2a41" class="outline-3">
+<h3 id="org50f2a41"><span class="section-number-3">7.15.</span> <code>u:run_svg</code></h3>
+<div class="outline-text-3" id="text-7-15">
+<p>
+The transformation diagram: the two loss curves, the accuracy bars for training and validation rows, the attention heatmap of the example, and two decodes. Its values are the emitted observations, so the diagram and the recording cannot disagree.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:run_svg() {
+  "Diagram: training and validation loss over epochs, per-family accuracy, the attention map of one example, and one validation decode.";
+  page = u:svg_head("DN01 training run", "Training loss falls toward zero while validation loss rises after the first checkpoints, the per-family accuracy bars show memorization on training rows and prose-only generalization on validation rows, and the attention heatmap and a decoded validation prompt show the trained model at work.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "DN01 RUN -- loss, accuracy, attention, decode"));
+  page = str_concat(page, u:svg_text(32, 60, "m", str_concat(str_concat(str_concat("WHAT: ", u:svg_num(steps)), " one-example Adam steps, "), str_concat(str_concat(u:svg_num(epochs), " epochs; every "), str_concat(u:svg_num(every), " epochs masked loss is measured on all train and validation rows")))));
+  n = reduce_mul(shape(curve_e));
+  top = reduce(:max, concat(curve_t, curve_v));
+  xs = 60 + (curve_e / epochs) * 360;
+  yt = 300 - (curve_t / top) * 200;
+  yv = 300 - (curve_v / top) * 200;
+  page = str_concat(page, str_concat("&lt;line x1=\"60\" y1=\"300\" x2=\"420\" y2=\"300\" class=\"axis\"/&gt;&lt;line x1=\"60\" y1=\"100\" x2=\"60\" y2=\"300\" class=\"axis\"/&gt;", ""));
+  page = str_concat(page, u:svg_polyline(xs, yt, "l1"));
+  page = str_concat(page, u:svg_polyline(xs, yv, "l2"));
+  page = str_concat(page, u:svg_text(60, 92, "k", str_concat("masked loss (nats); top of axis = ", u:svg_num(u:svg_round(top, 3)))));
+  page = str_concat(page, u:svg_text(60, 318, "m", str_concat(str_concat("epoch 0 .. ", u:svg_num(epochs)), "   gold = train, pink = validation")));
+  page = str_concat(page, u:svg_text(300, 318, "l1", ""));
+  page = str_concat(page, u:svg_text(60, 336, "", str_concat(str_concat("final train ", u:svg_num(u:svg_round(final_train, 4))), str_concat("   final val ", str_concat(u:svg_num(u:svg_round(final_val, 4)), str_concat("   ppl ", u:svg_num(u:svg_round(ppl, 2))))))));
+  page = str_concat(page, u:svg_text(480, 92, "k", "exact-match accuracy: blue = train rows, pink = validation rows"));
+  page = str_concat(page, u:bars(train_acc, 480, 100, 30, "tr"));
+  page = str_concat(page, u:bars(val_acc, 514, 100, 30, "va"));
+  page = str_concat(page, str_concat(str_concat(u:svg_text(480, 218, "s", "arith"), u:svg_text(560, 218, "s", "seq")), str_concat(str_concat(u:svg_text(640, 218, "s", "mlpl"), u:svg_text(720, 218, "s", "prose")), u:svg_text(800, 218, "s", "overall"))));
+  page = str_concat(page, u:svg_text(480, 250, "k", str_concat("attention weights for ", example)));
+  page = str_concat(page, u:svg_heat(ex_att, 480, 258, 26));
+  page = str_concat(page, u:svg_text(680, 275, "", "rows attend to columns;"));
+  page = str_concat(page, u:svg_text(680, 293, "", "causal: nothing right of"));
+  page = str_concat(page, u:svg_text(680, 311, "", "the diagonal is nonzero"));
+  page = str_concat(page, u:svg_text(680, 345, "k", "validation decode"));
+  page = str_concat(page, u:svg_text(680, 365, "", str_concat(str_concat(val_prompt, "| -&gt; "), str_concat(val_pred, str_concat("  (", str_concat(val_answer, ")"))))));
+  page = str_concat(page, u:svg_text(680, 385, "", str_concat(str_concat(prose_prompt, "| -&gt; "), str_concat(prose_pred, str_concat("  (", str_concat(prose_answer, ")"))))));
+  page = str_concat(page, u:svg_text(680, 405, "m", "(expected answer in parentheses)"));
+  page = str_concat(page, u:svg_rect(30, 452, 900, 76, "panel"));
+  page = str_concat(page, u:svg_text(50, 476, "", "WHY: rising validation loss with falling training loss is memorization; arithmetic, sequence, mlpl need rules 90 rows lack."));
+  page = str_concat(page, u:svg_text(50, 498, "", "HOW: every value here is an emitted observation (dense/loss/*, dense/accuracy/*, dense/attention/example) or a results cell."));
+  page = str_concat(page, u:svg_text(50, 518, "m", "Prose generalizes because its answer is a local pattern (animal -&gt; place): the seam Engram will later fill without a network."));
+  str_concat(page, "&lt;/svg&gt;")
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org8bd631c" class="outline-3">
+<h3 id="org8bd631c"><span class="section-number-3">7.16.</span> Lesson body, part 15</h3>
+<div class="outline-text-3" id="text-7-16">
+<p>
+The diagrams are written only when an output directory was given; then the numerical contract is stated and checked, and the script's value is <code>ok</code> or <code>err</code>. The gate script compares the written files with the committed previews byte for byte.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">r1 = if writing {
+  write_atomic(str_concat(out_dir, "/dense-model.svg"), u:model_svg())
+} else {
+  ok(0)
+};
+r2 = if writing {
+  write_atomic(str_concat(out_dir, "/dense-run.svg"), u:run_svg())
+} else {
+  ok(0)
+};
+print("NUMERICAL CONTRACT -- training loss ends below 0.3 while validation loss ends above 1.0; validation prose accuracy is at least 0.5; every other validation family is below 0.5.");
+print("THE POINT -- Dense capacity memorizes; only locally patterned answers survive to held-out rows.");
+print("BOUNDARY -- 90 training rows and one 16-wide block; this is the reference row for every later mechanism, not a claim about transformers in general.");
+contract = lt(final_train, 0.3) * gt(final_val, 1) * gt(rv.accuracy.prose, 0.49) * lt(rv.accuracy.arithmetic, 0.5) * lt(rv.accuracy.sequence, 0.5) * lt(rv.accuracy.mlpl, 0.5);
+if contract * is_ok(r1) * is_ok(r2) * is_ok(r_row) {
+  ok("dense baseline written")
+} else {
+  err("dense baseline contract failed")
+}
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-org07aea78" class="outline-2">
+<h2 id="org07aea78"><span class="section-number-2">8.</span> Routing, gates, and dispatch: <code>lib/moe.mlpl</code></h2>
+<div class="outline-text-2" id="text-8">
+<p>
+The mixture of experts from scratch: logits, probabilities, top-1 and top-2 masks, Switch gates, the balance term, sparse dispatch and its exact scatter back, the specialization score, and the low-rank delta experts. Measured: MX01 (four experts, top-1) matches the dense loss at 1.86 times the parameters and 1.02 times the active parameters per token; SD01 evaluates 3,360 instead of 13,440 expert rows with outputs equal to the bit; MX02 top-2 costs twice the expert work for worse loss and the first held-out MLPL answers.
+</p>
+</div>
+<div id="outline-container-org8a3e1bc" class="outline-3">
+<h3 id="org8a3e1bc"><span class="section-number-3">8.1.</span> Module header</h3>
+<div class="outline-text-3" id="text-8-1">
+<p>
+Routing is the subject of the repository, so it is written from scratch: every intermediate value has a name and a shape.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl"># Mixture-of-experts routing written out: router logits, probabilities, top-k masks, Switch-style gates, dispatch tables, load, entropy, and the balance loss.
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgc48e509" class="outline-3">
+<h3 id="orgc48e509"><span class="section-number-3">8.2.</span> <code>u:router_logits</code></h3>
+<div class="outline-text-3" id="text-8-2">
+<p>
+One linear layer over the hidden state gives a score per expert per token.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:router_logits(h, Wr, br) {
+  "Router scores [T, E]: one linear layer over the hidden state.";
+  matmul(h, Wr) + br
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org8e2e098" class="outline-3">
+<h3 id="org8e2e098"><span class="section-number-3">8.3.</span> <code>u:router_probs</code></h3>
+<div class="outline-text-3" id="text-8-3">
+<p>
+Softmax over experts, per token.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:router_probs(logits) {
+  "Router probabilities [T, E]: softmax over experts for each token.";
+  softmax(logits)
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org677a8ac" class="outline-3">
+<h3 id="org677a8ac"><span class="section-number-3">8.4.</span> <code>u:top1_mask</code></h3>
+<div class="outline-text-3" id="text-8-4">
+<p>
+The selection: a one-hot of each token's best expert. <code>argmax</code> and <code>one_hot</code> are not differentiable, so the mask is a constant on the tape (finding F5); the gradient reaches the router through the gate, not through the choice.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:top1_mask(logits, E) {
+  "One-hot [T, E] selecting each token's highest-scoring expert; a stop-gradient constant on the tape.";
+  one_hot(argmax(logits, 1), E)
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org3d7e930" class="outline-3">
+<h3 id="org3d7e930"><span class="section-number-3">8.5.</span> <code>u:topk_mask</code></h3>
+<div class="outline-text-3" id="text-8-5">
+<p>
+The general top-k selection, built eagerly row by row with <code>argtop_k</code>; the traced lessons use the top-1 and top-2 forms below.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:topk_mask(logits, k, E) {
+  "0/1 [T, E] selecting each token's k highest-scoring experts, built eagerly row by row.";
+  T = reduce_mul(shape(take(logits, 1, 0)));
+  mask = fill([0, E], 0);
+  t = 0;
+  while lt(t, T) {
+    row = reduce_add(one_hot(argtop_k(take(logits, 0, t), k), E), 0);
+    mask = concat(mask, reshape(row, [1, E]), 0);
+    t = t + 1
+  };
+  mask
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org29b0f09" class="outline-3">
+<h3 id="org29b0f09"><span class="section-number-3">8.6.</span> <code>u:switch_gate</code></h3>
+<div class="outline-text-3" id="text-8-6">
+<p>
+Switch-style gating: the selected expert's probability, zero elsewhere. Because the probability is on the tape, the router receives a gradient from every token's loss.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:switch_gate(logits, E) {
+  "Switch-style gate [T, E]: the selected expert's probability, zero elsewhere, so the router receives a gradient.";
+  u:router_probs(logits) * u:top1_mask(logits, E)
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgb4540e2" class="outline-3">
+<h3 id="orgb4540e2"><span class="section-number-3">8.7.</span> <code>u:renormalized_gate</code></h3>
+<div class="outline-text-3" id="text-8-7">
+<p>
+Top-k combine: the kept probabilities renormalized to sum to one per token.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:renormalized_gate(probs, mask) {
+  "Gate [T, E] whose selected entries are renormalized to sum to one per token (top-k combine).";
+  kept = probs * mask;
+  kept / reduce_add(kept, 1)
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgbdd5596" class="outline-3">
+<h3 id="orgbdd5596"><span class="section-number-3">8.8.</span> <code>u:gate_column</code></h3>
+<div class="outline-text-3" id="text-8-8">
+<p>
+One expert's gate as a <code>[T, 1]</code> factor.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:gate_column(gate, e, T) {
+  "Column e of a gate as a [T, 1] factor to scale one expert's output.";
+  reshape(take(gate, 1, e), [T, 1])
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org0331c25" class="outline-3">
+<h3 id="org0331c25"><span class="section-number-3">8.9.</span> <code>u:expert_load</code></h3>
+<div class="outline-text-3" id="text-8-9">
+<p>
+Tokens per expert. MX01 records it every checkpoint (<code>moe/load</code>).
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:expert_load(mask) {
+  "Tokens routed to each expert, [E].";
+  reduce_add(mask, 0)
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org032272a" class="outline-3">
+<h3 id="org032272a"><span class="section-number-3">8.10.</span> <code>u:router_entropy</code></h3>
+<div class="outline-text-3" id="text-8-10">
+<p>
+Mean per-token entropy of the router distribution: <code>log(E)</code> when indifferent, zero when certain. MX01 ends at 0.62 nats with four experts (<code>log 4</code> is 1.39).
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:router_entropy(probs) {
+  "Mean per-token entropy of the router distribution in nats; log(E) means indifferent, zero means certain.";
+  0 - mean(reduce_add(probs * log(probs + 0.000000000001), 1))
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgdc28504" class="outline-3">
+<h3 id="orgdc28504"><span class="section-number-3">8.11.</span> <code>u:balance_loss</code></h3>
+<div class="outline-text-3" id="text-8-11">
+<p>
+The Switch load-balance term: routed fraction times mean probability, summed over experts and scaled by E; exactly one when perfectly balanced. It is what keeps the four experts in use (MX01 balance 1.17).
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:balance_loss(probs, mask, E, T) {
+  "Switch load-balance term: E times the sum over experts of routed fraction times mean probability; equals one when perfectly balanced (T is explicit: size arithmetic is not traced, F12).";
+  fraction = reduce_add(mask, 0) / T;
+  importance = reduce_add(probs, 0) / T;
+  E * reduce_add(fraction * importance)
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgf86cb62" class="outline-3">
+<h3 id="orgf86cb62"><span class="section-number-3">8.12.</span> <code>u:dispatch_rows</code></h3>
+<div class="outline-text-3" id="text-8-12">
+<p>
+Sparse dispatch begins here: <code>compress</code> keeps the rows whose mask entry is one, in token order.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:dispatch_rows(x, mask_col) {
+  "The rows of x [T, d] routed to one expert: those whose mask column entry is one, in token order.";
+  compress(mask_col, x)
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgce797b4" class="outline-3">
+<h3 id="orgce797b4"><span class="section-number-3">8.13.</span> <code>u:dispatch_gate</code></h3>
+<div class="outline-text-3" id="text-8-13">
+<p>
+The gate values of those rows, shaped to scale the expert's output.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:dispatch_gate(gate_col, mask_col) {
+  "The gate values of the routed rows as a [n_e, 1] factor.";
+  kept = compress(mask_col, gate_col);
+  reshape(kept, [reduce_mul(shape(kept)), 1])
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgde7f32d" class="outline-3">
+<h3 id="orgde7f32d"><span class="section-number-3">8.14.</span> <code>u:place_rows</code></h3>
+<div class="outline-text-3" id="text-8-14">
+<p>
+Scatter back: a one-hot selection matrix transposed and multiplied puts each expert's rows at their token positions with zeros elsewhere. Summing the placed outputs over experts equals the dense-masked sum exactly; SD01 asserts it to the bit, and the primer's dispatch block reproduces it.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:place_rows(rows, mask_col, T) {
+  "Scatter an expert's [n_e, d] outputs back to their token positions in a [T, d] array (zeros elsewhere) with a one-hot selection matrix.";
+  positions = compress(mask_col, range(T));
+  matmul(transpose(one_hot(positions, T)), rows)
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org5e17716" class="outline-3">
+<h3 id="org5e17716"><span class="section-number-3">8.15.</span> <code>u:dispatch_cost</code></h3>
+<div class="outline-text-3" id="text-8-15">
+<p>
+Parameters touched per token under sparse dispatch against dense-masked evaluation; the counted cost that distinguishes the two paths in the results table.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:dispatch_cost(mask, p_expert, p_shared) {
+  "Parameters touched per token under sparse dispatch versus dense-masked evaluation: {sparse, dense, evals_sparse, evals_dense}.";
+  T = reduce_mul(shape(take(mask, 1, 0)));
+  E = reduce_mul(shape(take(mask, 0, 0)));
+  k = reduce_add(mask) / T;
+  {sparse: p_shared + k * p_expert, dense: p_shared + E * p_expert, evals_sparse: k, evals_dense: E}
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgc8a8294" class="outline-3">
+<h3 id="orgc8a8294"><span class="section-number-3">8.16.</span> <code>u:top2_mask</code></h3>
+<div class="outline-text-3" id="text-8-16">
+<p>
+Top-2 as two argmax passes: the second pass masks the first choice with a huge negative offset. Two constant one-hots, so it traces like the top-1 mask.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:top2_mask(logits, E) {
+  "0/1 [T, E] selecting each token's two highest-scoring experts, built from two argmax passes so it traces as a constant on the tape.";
+  first = one_hot(argmax(logits, 1), E);
+  second = one_hot(argmax(logits - first * 1000000000, 1), E);
+  first + second
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org5726397" class="outline-3">
+<h3 id="org5726397"><span class="section-number-3">8.17.</span> <code>u:top2_gate</code></h3>
+<div class="outline-text-3" id="text-8-17">
+<p>
+The two kept probabilities renormalized per token. Row sums replicate by a matmul with a ones matrix passed in by the caller, because a reshape with a computed shape is not traced (finding F11).
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:top2_gate(logits, E, ones_ee) {
+  "Top-2 gate [T, E]: the two selected probabilities renormalized per token; ones_ee is a constant [E, E] ones matrix passed in so row sums replicate by matmul (nested shape arguments are not traced, F11).";
+  probs = u:router_probs(logits);
+  kept = probs * u:top2_mask(logits, E);
+  kept / matmul(kept, ones_ee)
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org1a7845e" class="outline-3">
+<h3 id="org1a7845e"><span class="section-number-3">8.18.</span> <code>u:row_normalize</code></h3>
+<div class="outline-text-3" id="text-8-18">
+<p>
+Each row divided by its total; empty rows stay zero.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:row_normalize(counts) {
+  "Each row of a count matrix divided by its row total (rows with no counts become zero).";
+  totals = reduce_add(counts, 1);
+  counts / reshape(totals + eq(totals, 0), [reduce_mul(shape(totals)), 1])
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org27bbb4f" class="outline-3">
+<h3 id="org27bbb4f"><span class="section-number-3">8.19.</span> <code>u:specialization_score</code></h3>
+<div class="outline-text-3" id="text-8-19">
+<p>
+Mean over families of the largest expert share: 0.25 with four experts when routing ignores the family, 1 when each family owns an expert. MX01 scores 0.61 without ever seeing a family label.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:specialization_score(counts) {
+  "Mean over families of the largest expert share of that family's tokens; 1/E when routing ignores the family, 1 when each family uses one expert.";
+  shares = u:row_normalize(counts);
+  n = reduce_mul(shape(take(shares, 1, 0)));
+  total = 0;
+  i = 0;
+  while lt(i, n) {
+    total = total + reduce(:max, take(shares, 0, i));
+    i = i + 1
+  };
+  total / n
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org8d2ebe4" class="outline-3">
+<h3 id="org8d2ebe4"><span class="section-number-3">8.20.</span> <code>u:delta_expand</code></h3>
+<div class="outline-text-3" id="text-8-20">
+<p>
+LD01's low-rank delta experts: a constant one-hot that repeats each expert's gate <code>r</code> times so one <code>[T, E]</code> gate scales a <code>[T, E*r]</code> product.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:delta_expand(E, r) {
+  "Constant block one-hot [E, E*r] that repeats each expert's gate value r times, so a [T, E] gate becomes a [T, E*r] factor by matmul.";
+  transpose(one_hot(floor(range(E * r) / r), E))
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org0502f9d" class="outline-3">
+<h3 id="org0502f9d"><span class="section-number-3">8.21.</span> <code>u:delta_out</code></h3>
+<div class="outline-text-3" id="text-8-21">
+<p>
+All sixteen deltas in two matmuls: <code>x A_all</code> scaled per column by the expanded gate, then <code>B_all</code>. Exact for any E and k, and no per-expert loop.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:delta_out(x, A_all, B_all, gate, expand) {
+  "Gated sum over low-rank delta experts in two matmuls: (x @ A_all) scaled per column by the expanded gate, then @ B_all; exact for any E and k.";
+  matmul(matmul(x, A_all) * matmul(gate, expand), B_all)
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org92900d1" class="outline-3">
+<h3 id="org92900d1"><span class="section-number-3">8.22.</span> <code>u:delta_params</code></h3>
+<div class="outline-text-3" id="text-8-22">
+<p>
+Parameters of one rank-r delta over width d: 128 at rank 4 and width 16, against 1,072 for a full expert.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:delta_params(d, r) {
+  "Trainable parameters of one rank-r delta expert over width d.";
+  2 * d * r
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgd9a12fa" class="outline-3">
+<h3 id="orgd9a12fa"><span class="section-number-3">8.23.</span> <code>u:router_macs</code></h3>
+<div class="outline-text-3" id="text-8-23">
+<p>
+Multiply-adds spent choosing experts per token, recorded as a counted cost in the LD01 row.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:router_macs(d, E) {
+  "Multiply-adds per token spent choosing experts: one d-by-E matmul row plus the bias adds.";
+  d * E + E
+}
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-orgd840a77" class="outline-2">
+<h2 id="orgd840a77"><span class="section-number-2">9.</span> Recurrence: <code>lib/recur.mlpl</code></h2>
+<div class="outline-text-2" id="text-9">
+<p>
+One shared block applied R times with deep supervision, then the same for the mixture block and for the composed block with Engram. Measured: RC01 at R=2 reaches 3.45 against 3.79 at the same 3,812 parameters; RM01 at R=3 reaches 3.42, the lowest 120-example loss in the table, with 38 to 46 percent of tokens changing expert between passes; RE01, all three sparsities, memorizes best (training loss 0.006) and generalizes worst (4.76).
+</p>
+</div>
+<div id="outline-container-orgb0b4cdf" class="outline-3">
+<h3 id="orgb0b4cdf"><span class="section-number-3">9.1.</span> Module header</h3>
+<div class="outline-text-3" id="text-9-1">
+<p>
+Recurrence is the same block applied again to its own output. The functions read the block's sub-models as the caller's globals (<code>recur_att</code>, <code>recur_ffn</code>, &#x2026;), because a model cannot be a function argument (finding F7) and reusing the same global value shares the weights (finding F3).
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl"># Recurrence: one shared transformer block applied R times to the same token state, with deep supervision (the head scored after every recurrence), so that depth comes from reuse rather than from new parameters.
+include "dense.mlpl";
+include "moe.mlpl";
+include "engram.mlpl";
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgf22470a" class="outline-3">
+<h3 id="orgf22470a"><span class="section-number-3">9.2.</span> <code>u:recur_step</code></h3>
+<div class="outline-text-3" id="text-9-2">
+<p>
+One recurrence of the dense block: attention with a residual, then the FFN with a residual.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:recur_step(h) {
+  "One recurrence of the shared block: attention with a residual, then the feed-forward network with a residual (recur_att and recur_ffn are the caller's global models; reusing the same values shares the weights, finding F3).";
+  h1 = h + apply(recur_att, h);
+  h1 + apply(recur_ffn, h1)
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org3a6cbc9" class="outline-3">
+<h3 id="org3a6cbc9"><span class="section-number-3">9.3.</span> <code>u:recur_state</code></h3>
+<div class="outline-text-3" id="text-9-3">
+<p>
+The state after R recurrences. <code>repeat R</code> with a parameter-bound count traces through <code>grad</code> (finding F15); the primer's recurrence block shows the parameter count not moving with R.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:recur_state(h0, R) {
+  "The token state after R recurrences of the shared block (repeat with a parameter-bound count traces, finding F15).";
+  h = h0;
+  repeat R {
+    h = u:recur_step(h)
+  };
+  h
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org591d497" class="outline-3">
+<h3 id="org591d497"><span class="section-number-3">9.4.</span> <code>u:recur_logits</code></h3>
+<div class="outline-text-3" id="text-9-4">
+<p>
+The head applied to a state through the final norm.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:recur_logits(h) {
+  "Vocabulary logits of a state through the caller's global recur_norm and recur_head.";
+  apply(recur_head, apply(recur_norm, h))
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org525fa9b" class="outline-3">
+<h3 id="org525fa9b"><span class="section-number-3">9.5.</span> <code>u:recur_loss</code></h3>
+<div class="outline-text-3" id="text-9-5">
+<p>
+Deep supervision: the head is scored after every recurrence and the losses averaged, so each pass is rewarded for improving the answer. RC01's finding is that this regularized the block rather than building a converging loop: every model scored best when stopped after one pass.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:recur_loss(h0, y, mask, V, R) {
+  "Deep supervision: the mean over recurrences of the masked next-token loss of the head applied to each intermediate state, so every recurrence is rewarded for improving the answer.";
+  h = h0;
+  total = 0;
+  repeat R {
+    h = u:recur_step(h);
+    total = total + u:masked_ce(u:recur_logits(h), y, mask, V)
+  };
+  total / R
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org2f696be" class="outline-3">
+<h3 id="org2f696be"><span class="section-number-3">9.6.</span> <code>u:recur_active_params</code></h3>
+<div class="outline-text-3" id="text-9-6">
+<p>
+Parameters touched per token: the shared block R times plus one embedding row, the norm, and the head; 2,996 at R=1 rising by 2,176 per extra recurrence.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:recur_active_params(p_att, p_ffn, p_norm, p_head, dm, R) {
+  "Parameters touched per token: one embedding row, the shared block R times, the final norm, and the head.";
+  dm + R * (p_att + p_ffn) + p_norm + p_head
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org333daed" class="outline-3">
+<h3 id="org333daed"><span class="section-number-3">9.7.</span> <code>u:rm_moe</code></h3>
+<div class="outline-text-3" id="text-9-7">
+<p>
+RM01's mixture block: the MX01 experts written as four literal gate columns (finding F20) over the caller's window length.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:rm_moe(h1) {
+  "Dense-masked mixture of four experts over the caller's global recur_pre, recur_router, and recur_ex0..3 (the MX01 block with literal gate columns, finding F20; the window length is the caller's global rm_T, so evaluation pads prompts to it).";
+  x = apply(recur_pre, h1);
+  gate = u:switch_gate(apply(recur_router, x), 4);
+  reshape(take(gate, 1, 0), [rm_T, 1]) * apply(recur_ex0, x) + reshape(take(gate, 1, 1), [rm_T, 1]) * apply(recur_ex1, x) + reshape(take(gate, 1, 2), [rm_T, 1]) * apply(recur_ex2, x) + reshape(take(gate, 1, 3), [rm_T, 1]) * apply(recur_ex3, x)
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org704e1ef" class="outline-3">
+<h3 id="org704e1ef"><span class="section-number-3">9.8.</span> <code>u:rm_step</code></h3>
+<div class="outline-text-3" id="text-9-8">
+<p>
+One recurrence of the mixture block; the router runs again at every pass.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:rm_step(h) {
+  "One recurrence of the mixture block: attention with a residual, then the routed mixture with a residual; every recurrence re-routes.";
+  h1 = h + apply(recur_att, h);
+  h1 + u:rm_moe(h1)
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgf86739f" class="outline-3">
+<h3 id="orgf86739f"><span class="section-number-3">9.9.</span> <code>u:rm_state</code></h3>
+<div class="outline-text-3" id="text-9-9">
+<p>
+The state after R recurrences of the mixture block.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:rm_state(h0, R) {
+  "The token state after R recurrences of the mixture block.";
+  h = h0;
+  repeat R {
+    h = u:rm_step(h)
+  };
+  h
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgd3b1db3" class="outline-3">
+<h3 id="orgd3b1db3"><span class="section-number-3">9.10.</span> <code>u:rm_balance</code></h3>
+<div class="outline-text-3" id="text-9-10">
+<p>
+The balance term of the decision the next recurrence would make, so the balance loss applies at every pass.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:rm_balance(h) {
+  "The Switch balance term of the routing decision the next recurrence would make from state h.";
+  h1 = h + apply(recur_att, h);
+  logits = apply(recur_router, apply(recur_pre, h1));
+  u:balance_loss(u:router_probs(logits), u:top1_mask(logits, 4), 4, rm_T)
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org40ec379" class="outline-3">
+<h3 id="org40ec379"><span class="section-number-3">9.11.</span> <code>u:rm_loss</code></h3>
+<div class="outline-text-3" id="text-9-11">
+<p>
+Deep supervision over the recurrent mixture plus the mean balance term scaled by alpha.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:rm_loss(h0, y, mask, V, R, alpha) {
+  "Deep supervision over the recurrent mixture: the mean over recurrences of the masked loss at each state plus alpha times the balance term of each recurrence's routing.";
+  h = h0;
+  total = 0;
+  bal = 0;
+  repeat R {
+    bal = bal + u:rm_balance(h);
+    h = u:rm_step(h);
+    total = total + u:masked_ce(u:recur_logits(h), y, mask, V)
+  };
+  total / R + alpha * bal / R
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org147f365" class="outline-3">
+<h3 id="org147f365"><span class="section-number-3">9.12.</span> <code>u:rm_route</code></h3>
+<div class="outline-text-3" id="text-9-12">
+<p>
+Which expert each token would take from a given state; the strip in the RM01 diagrams.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:rm_route(h) {
+  "Expert index per token [T] of the routing decision made from state h.";
+  h1 = h + apply(recur_att, h);
+  argmax(apply(recur_router, apply(recur_pre, h1)), 1)
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org92ed40f" class="outline-3">
+<h3 id="org92ed40f"><span class="section-number-3">9.13.</span> <code>u:rm_change_share</code></h3>
+<div class="outline-text-3" id="text-9-13">
+<p>
+The share of masked tokens whose expert differs between consecutive passes: 38 to 46 percent in RM01, routing over reasoning time.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:rm_change_share(h0, mask, R) {
+  "Share of masked tokens whose expert differs between consecutive recurrences (zero when R is 1).";
+  h = h0;
+  prev = u:rm_route(h);
+  changes = 0;
+  r = 1;
+  while lt(r, R) {
+    h = u:rm_step(h);
+    cur = u:rm_route(h);
+    changes = changes + reduce_add((1 - eq(cur, prev)) * mask);
+    prev = cur;
+    r = r + 1
+  };
+  changes / (reduce_add(mask) * (R - 1) + eq(R, 1))
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgd7934dc" class="outline-3">
+<h3 id="orgd7934dc"><span class="section-number-3">9.14.</span> <code>u:re_step</code></h3>
+<div class="outline-text-3" id="text-9-14">
+<p>
+RE01 composes all three sparsities: attention, the Engram layer (its table and projections are globals too), then the routed mixture, per recurrence.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:re_step(h, rows) {
+  "One recurrence of the composed block: attention with a residual, the Engram layer (the caller's globals eg_mem, eg_Wv, eg_bv, eg_Wg, eg_bg; rows are the window's table rows), then the routed mixture with a residual; every recurrence re-routes and re-gates.";
+  h1 = h + apply(recur_att, h);
+  h1e = u:engram_apply(h1, rows, eg_mem, eg_Wv, eg_bv, eg_Wg, eg_bg);
+  h1e + u:rm_moe(h1e)
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org87e0212" class="outline-3">
+<h3 id="org87e0212"><span class="section-number-3">9.15.</span> <code>u:re_state</code></h3>
+<div class="outline-text-3" id="text-9-15">
+<p>
+The state after R recurrences of the composed block.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:re_state(h0, R, rows) {
+  "The token state after R recurrences of the composed block.";
+  h = h0;
+  repeat R {
+    h = u:re_step(h, rows)
+  };
+  h
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org237cf12" class="outline-3">
+<h3 id="org237cf12"><span class="section-number-3">9.16.</span> <code>u:re_balance</code></h3>
+<div class="outline-text-3" id="text-9-16">
+<p>
+The balance term of the composed block's next routing decision.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:re_balance(h, rows) {
+  "The Switch balance term of the routing decision the next recurrence would make from state h (after attention and the Engram layer).";
+  h1 = h + apply(recur_att, h);
+  h1e = u:engram_apply(h1, rows, eg_mem, eg_Wv, eg_bv, eg_Wg, eg_bg);
+  logits = apply(recur_router, apply(recur_pre, h1e));
+  u:balance_loss(u:router_probs(logits), u:top1_mask(logits, 4), 4, rm_T)
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org7b4c732" class="outline-3">
+<h3 id="org7b4c732"><span class="section-number-3">9.17.</span> <code>u:re_loss</code></h3>
+<div class="outline-text-3" id="text-9-17">
+<p>
+Deep supervision over the composed block with the balance term.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:re_loss(h0, y, mask, V, R, alpha, rows) {
+  "Deep supervision over the composed block: the mean over recurrences of the masked loss at each state plus alpha times the balance term of each recurrence's routing.";
+  h = h0;
+  total = 0;
+  bal = 0;
+  repeat R {
+    bal = bal + u:re_balance(h, rows);
+    h = u:re_step(h, rows);
+    total = total + u:masked_ce(u:recur_logits(h), y, mask, V)
+  };
+  total / R + alpha * bal / R
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgb073f84" class="outline-3">
+<h3 id="orgb073f84"><span class="section-number-3">9.18.</span> <code>u:re_route</code></h3>
+<div class="outline-text-3" id="text-9-18">
+<p>
+The expert per token of the composed block's decision.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:re_route(h, rows) {
+  "Expert index per token [T] of the routing decision made from state h through the Engram layer.";
+  h1 = h + apply(recur_att, h);
+  h1e = u:engram_apply(h1, rows, eg_mem, eg_Wv, eg_bv, eg_Wg, eg_bg);
+  argmax(apply(recur_router, apply(recur_pre, h1e)), 1)
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgd2794a0" class="outline-3">
+<h3 id="orgd2794a0"><span class="section-number-3">9.19.</span> <code>u:re_gate</code></h3>
+<div class="outline-text-3" id="text-9-19">
+<p>
+The Engram gate matrix the composed block would apply from a state; the RE01 window diagram draws it per recurrence.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:re_gate(h, rows) {
+  "The Engram gate matrix [T, dm] of the decision made from state h.";
+  h1 = h + apply(recur_att, h);
+  r = u:engram_retrieve(eg_mem, rows);
+  v = u:engram_value(r, eg_Wv, eg_bv);
+  u:engram_gate(h1, v, eg_Wg, eg_bg)
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgc1d4611" class="outline-3">
+<h3 id="orgc1d4611"><span class="section-number-3">9.20.</span> <code>u:re_change_share</code></h3>
+<div class="outline-text-3" id="text-9-20">
+<p>
+The change-of-expert share for the composed block.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:re_change_share(h0, mask, R, rows) {
+  "Share of masked tokens whose expert differs between consecutive recurrences (zero when R is 1).";
+  h = h0;
+  prev = u:re_route(h, rows);
+  changes = 0;
+  r = 1;
+  while lt(r, R) {
+    h = u:re_step(h, rows);
+    cur = u:re_route(h, rows);
+    changes = changes + reduce_add((1 - eq(cur, prev)) * mask);
+    prev = cur;
+    r = r + 1
+  };
+  changes / (reduce_add(mask) * (R - 1) + eq(R, 1))
+}
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-orgcb2dfeb" class="outline-2">
+<h2 id="orgcb2dfeb"><span class="section-number-2">10.</span> Engram from scratch: <code>lib/engram.mlpl</code></h2>
+<div class="outline-text-2" id="text-10">
+<p>
+Hashed n-gram addressing, a gathered table, a value projection, and a concat gate, equal to the sw-MLPL builtin to the bit. Measured (EG01): at 90 training windows every table size from 16 to 1,024 slots lowers training loss and raises validation loss (3.93 to 4.67 against 3.79); memory here is memorization capacity.
+</p>
+</div>
+<div id="outline-container-org242d64d" class="outline-3">
+<h3 id="org242d64d"><span class="section-number-3">10.1.</span> Module header</h3>
+<div class="outline-text-3" id="text-10-1">
+<p>
+Engram written out so the hashing, the gather, and the gate can each be watched, with the same shapes and initialization as the sw-MLPL <code>engram</code> builtin so the two forms are compared exactly; EG01 asserts parity to the bit in outputs and gradients.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl"># Engram from scratch: n-gram addressing through the frozen ngram_hash contract, gather_rows retrieval from one flattened table, a value projection, and a concat gate into the residual stream; the same shapes and initialization as the sw-MLPL engram builtin so the two forms can be compared exactly.
+include "dense.mlpl";
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org43abc70" class="outline-3">
+<h3 id="org43abc70"><span class="section-number-3">10.2.</span> <code>u:engram_offsets</code></h3>
+<div class="outline-text-3" id="text-10-2">
+<p>
+The table is one flattened matrix; each (order, head) region starts at its region index times the slot count, the builtin's rule.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:engram_offsets(orders, heads, slots) {
+  "Row offset of each (order, head) region in the one flattened table, as a [1, orders * heads] row: region index times slots (the builtin's head_offset rule).";
+  reshape(range(orders * heads) * slots, [1, orders * heads])
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orge3ed886" class="outline-3">
+<h3 id="orge3ed886"><span class="section-number-3">10.3.</span> <code>u:engram_rows</code></h3>
+<div class="outline-text-3" id="text-10-3">
+<p>
+Addressing: the frozen <code>ngram_hash</code> contract gives a local slot per position, order, and head, and the region offset makes it a global row. Constants: no gradient flows through an address. The primer's Engram block calls the same builtin.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:engram_rows(ids, order_list, orders, heads, slots, seed) {
+  "Global table rows addressed by a window: the frozen rolling hash (local slot per position, order, and head) plus the region offset; shape [T, orders * heads]. Constants: no gradient flows through them.";
+  n = reduce_mul(shape(ids));
+  reshape(ngram_hash(ids, order_list, heads, slots, seed), [n, orders * heads]) + u:engram_offsets(orders, heads, slots)
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org7f784f5" class="outline-3">
+<h3 id="org7f784f5"><span class="section-number-3">10.4.</span> <code>u:engram_retrieve</code></h3>
+<div class="outline-text-3" id="text-10-4">
+<p>
+Retrieval: <code>gather_rows</code> over the table, flattened per position. It is differentiable with respect to the table (scatter-add backward, finding F4), which is how the table trains; the output shape uses the caller's globals because a reshape bound to parameters loses its gradient inside <code>grad</code> (finding F23).
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:engram_retrieve(table, rows) {
+  "The addressed rows of the table gathered and flattened per position into [eg_T, eg_width] (the caller's globals: window length and orders * heads * head_dim; reshape dims bound to parameters lose the gradient inside grad, finding F23); differentiable with respect to the table (scatter-add backward, finding F4 resolved).";
+  reshape(gather_rows(table, rows), [eg_T, eg_width])
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org171dc03" class="outline-3">
+<h3 id="org171dc03"><span class="section-number-3">10.5.</span> <code>u:engram_value</code></h3>
+<div class="outline-text-3" id="text-10-5">
+<p>
+The retrieved memory projected into the hidden width.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:engram_value(r, Wv, bv) {
+  "The value projection of the retrieved memory into the hidden width.";
+  matmul(r, Wv) + bv
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org05aad0a" class="outline-3">
+<h3 id="org05aad0a"><span class="section-number-3">10.6.</span> <code>u:engram_gate</code></h3>
+<div class="outline-text-3" id="text-10-6">
+<p>
+The concat gate: a sigmoid over the hidden state and the value decides per position and dimension how much memory joins the residual stream. EG01's gate means run 0.5 to 0.74.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:engram_gate(h, v, Wg, bg) {
+  "The concat gate: a sigmoid over [h | v] that decides per position and dimension how much retrieved memory joins the residual stream.";
+  sigmoid(matmul(concat(h, v, 1), Wg) + bg)
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org98b799b" class="outline-3">
+<h3 id="org98b799b"><span class="section-number-3">10.7.</span> <code>u:engram_apply</code></h3>
+<div class="outline-text-3" id="text-10-7">
+<p>
+The whole forward in one line: retrieve, project, gate, add. Exactly <code>apply_engram</code>.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:engram_apply(h, rows, table, Wv, bv, Wg, bg) {
+  "The whole Engram forward: retrieve, project, gate, and add to the hidden state (exactly the builtin apply_engram; eg_T and eg_width are the caller's globals).";
+  r = u:engram_retrieve(table, rows);
+  v = u:engram_value(r, Wv, bv);
+  h + u:engram_gate(h, v, Wg, bg) * v
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org83f1274" class="outline-3">
+<h3 id="org83f1274"><span class="section-number-3">10.8.</span> <code>u:engram_init</code></h3>
+<div class="outline-text-3" id="text-10-8">
+<p>
+The builtin's near-identity start: a zero table, small projections, and a gate bias of minus two so the memory path starts about twelve percent open.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:engram_init(orders, heads, slots, head_dim, hidden, seed) {
+  "Initial values with the builtin's near-identity rule: a zero table [orders * heads * slots, head_dim], value projection randn(seed + 1) scaled by 0.01, zero value bias, gate weight randn(seed + 2) scaled by 0.01, and gate bias -2 (the gate starts about 0.12 open on a zero value path).";
+  width = orders * heads * head_dim;
+  {table: fill([orders * heads * slots, head_dim], 0), Wv: randn(seed + 1, [width, hidden]) * 0.01, bv: fill([1, hidden], 0), Wg: randn(seed + 2, [2 * hidden, hidden]) * 0.01, bg: fill([1, hidden], 0 - 2), width: width, rows: orders * heads * slots}
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgb4d748d" class="outline-3">
+<h3 id="orgb4d748d"><span class="section-number-3">10.9.</span> <code>u:engram_params</code></h3>
+<div class="outline-text-3" id="text-10-9">
+<p>
+Parameter counts: the table (slots times orders times heads times width) and everything else.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:engram_params(orders, heads, slots, head_dim, hidden) {
+  "Parameter counts: the table and the projection and gate parameters, as a record with table, other, and total.";
+  table = orders * heads * slots * head_dim;
+  other = orders * heads * head_dim * hidden + hidden + 2 * hidden * hidden + hidden;
+  {table: table, other: other, total: table + other}
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgff3fa1f" class="outline-3">
+<h3 id="orgff3fa1f"><span class="section-number-3">10.10.</span> <code>u:engram_shift</code></h3>
+<div class="outline-text-3" id="text-10-10">
+<p>
+Ids shifted right by k with the pad id in front, the windowing the hash uses.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:engram_shift(ids, k) {
+  "The ids shifted right by k positions with the builtin's pad id 0 filling the start.";
+  n = reduce_mul(shape(ids));
+  if k {
+    concat(fill([k], 0), u:domain_slice(ids, 0, n - k))
+  } else {
+    ids
+  }
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org7ecca2f" class="outline-3">
+<h3 id="org7ecca2f"><span class="section-number-3">10.11.</span> <code>u:engram_contexts</code></h3>
+<div class="outline-text-3" id="text-10-11">
+<p>
+The n-gram context of every position as a matrix, one column per lag.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:engram_contexts(ids, order) {
+  "The n-gram context of every position as a [T, order] matrix: column k is the id k positions back (pad 0 before the start), the same windowing the hash uses.";
+  n = reduce_mul(shape(ids));
+  out = reshape(ids, [n, 1]);
+  k = 1;
+  while lt(k, order) {
+    out = concat(out, reshape(u:engram_shift(ids, k), [n, 1]), 1);
+    k = k + 1
+  };
+  out
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org8d9eda1" class="outline-3">
+<h3 id="org8d9eda1"><span class="section-number-3">10.12.</span> <code>u:engram_collisions</code></h3>
+<div class="outline-text-3" id="text-10-12">
+<p>
+Collisions per region: distinct contexts minus the distinct rows they landed on; a repeated context is repetition, not a collision. Matches <code>engram_stats</code>.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:engram_collisions(contexts, rows_col) {
+  "Collisions of one (order, head) region: distinct contexts minus distinct rows they were hashed to (a repeated context is repetition, not a collision), matching engram_stats.";
+  n = reduce_mul(shape(rows_col));
+  dc = reduce_mul(shape(take(dedupe_rows(contexts).rows, 1, 0)));
+  dr = reduce_mul(shape(take(dedupe_rows(reshape(rows_col, [n, 1])).rows, 1, 0)));
+  dc - dr
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orga36972c" class="outline-3">
+<h3 id="orga36972c"><span class="section-number-3">10.13.</span> <code>u:engram_nonzero_rows</code></h3>
+<div class="outline-text-3" id="text-10-13">
+<p>
+How many table rows were ever written; the EG01 sweep records it per table size.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:engram_nonzero_rows(table) {
+  "How many table rows hold any nonzero value.";
+  reduce_add(gt(reduce_add(abs(table), 1), 0))
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgb660aaa" class="outline-3">
+<h3 id="orgb660aaa"><span class="section-number-3">10.14.</span> <code>u:engram_bytes</code></h3>
+<div class="outline-text-3" id="text-10-14">
+<p>
+Table bytes at a given value width: 32,768 for 256 slots of 8 f64 values over two orders.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:engram_bytes(rows, head_dim, bytes_per_value) {
+  "Table bytes at a given value width.";
+  rows * head_dim * bytes_per_value
+}
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-orgb7a78cf" class="outline-2">
+<h2 id="orgb7a78cf"><span class="section-number-2">11.</span> The state-space block: <code>lib/ssm.mlpl</code></h2>
+<div class="outline-text-2" id="text-11">
+<p>
+A diagonal linear scan with a learned decay in place of attention. Measured (SS01): 256 bytes of sequence state at any history against attention's 262,144 at 1,024 tokens; validation loss 4.56 against 3.79; training exact match 0.99 against 0.70; the sequential scan two to eight times slower per token in the interpreter.
+</p>
+</div>
+<div id="outline-container-org04d60ac" class="outline-3">
+<h3 id="org04d60ac"><span class="section-number-3">11.1.</span> Module header</h3>
+<div class="outline-text-3" id="text-11-1">
+<p>
+The state-space block of SS01: a diagonal linear recurrence in place of attention, so the sequence history lives in one fixed-size state.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl"># State-space block: a diagonal linear recurrence written out (s_t = decay * s_(t-1) + x_t B, y_t = s_t C) with a learned decay held in 0 to 1 by a sigmoid, so the sequence history lives in one fixed-size state instead of attention's growing key-value cache.
+include "dense.mlpl";
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org308c56e" class="outline-3">
+<h3 id="org308c56e"><span class="section-number-3">11.2.</span> <code>u:ssm_decay</code></h3>
+<div class="outline-text-3" id="text-11-2">
+<p>
+The decay per state dimension is a sigmoid of a learned logit, so training can only slide it between forgetting (0) and accumulating (1). SS01's trained decays span 0.26 to 0.98.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:ssm_decay(a_logit) {
+  "Per-dimension decay in (0, 1): sigmoid of the raw learned logit, so training can only slide it between forgetting and accumulating.";
+  sigmoid(a_logit)
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org30960ca" class="outline-3">
+<h3 id="org30960ca"><span class="section-number-3">11.3.</span> <code>u:ssm_scan</code></h3>
+<div class="outline-text-3" id="text-11-3">
+<p>
+The scan: one <code>repeat</code> per position, sequential by construction. The count traces through <code>grad</code> (finding F15) and the state width is an argument because shape arithmetic is not (finding F11). The primer's last block is this function on a toy input.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:ssm_scan(xB, decay, n, ds) {
+  "The scan over n positions of the projected input xB [n, ds]: s_t = decay * s_(t-1) + xB_t, stacked as [n, ds]; sequential by construction (one repeat per position; the count traces through grad, finding F15; ds is passed because shape arithmetic is not traced, F11).";
+  h = take(xB, 0, 0);
+  out = reshape(h, [1, ds]);
+  t = 1;
+  steps = n - 1;
+  repeat steps {
+    h = decay * h + take(xB, 0, t);
+    out = concat(out, reshape(h, [1, ds]), 0);
+    t = t + 1
+  };
+  out
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org2d54b74" class="outline-3">
+<h3 id="org2d54b74"><span class="section-number-3">11.4.</span> <code>u:ssm_states</code></h3>
+<div class="outline-text-3" id="text-11-4">
+<p>
+The state at every position: project the input by B, then scan.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:ssm_states(x, a_logit, B, n, ds) {
+  "The state at every position [n, ds] of an input x [n, dm]: project by B, then scan with the sigmoid decay.";
+  u:ssm_scan(matmul(x, B), u:ssm_decay(a_logit), n, ds)
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org48cf344" class="outline-3">
+<h3 id="org48cf344"><span class="section-number-3">11.5.</span> <code>u:ssm_out</code></h3>
+<div class="outline-text-3" id="text-11-5">
+<p>
+The block output: every state read through C; the caller adds the residual.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:ssm_out(x, a_logit, B, C, n, ds) {
+  "The block output [n, dm]: every position's state read through C; the caller adds the residual.";
+  matmul(u:ssm_states(x, a_logit, B, n, ds), C)
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org646ab84" class="outline-3">
+<h3 id="org646ab84"><span class="section-number-3">11.6.</span> <code>u:ssm_params</code></h3>
+<div class="outline-text-3" id="text-11-6">
+<p>
+Decay logits plus the two projections: 1,056 at widths 16 and 32, against 1,024 for the attention block it replaces.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:ssm_params(dm, ds) {
+  "Trainable parameters of the block: the decay logits, B [dm, ds], and C [ds, dm].";
+  ds + dm * ds + ds * dm
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orge7e5296" class="outline-3">
+<h3 id="orge7e5296"><span class="section-number-3">11.7.</span> <code>u:ssm_state_bytes</code></h3>
+<div class="outline-text-3" id="text-11-7">
+<p>
+The persistent state: 32 f64 values, 256 bytes, whatever the history.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:ssm_state_bytes(ds) {
+  "Persistent sequence state at f64: one vector of ds values, whatever the history length.";
+  ds * 8
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org62b2d7d" class="outline-3">
+<h3 id="org62b2d7d"><span class="section-number-3">11.8.</span> <code>u:kv_bytes</code></h3>
+<div class="outline-text-3" id="text-11-8">
+<p>
+What one-head attention keeps instead: a key and a value row per token of history, 262,144 bytes at 1,024 tokens. These two functions are the results table's last column.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:kv_bytes(history, dm) {
+  "Persistent sequence state a one-head, one-layer causal attention keeps at f64: a key and a value row per token of history.";
+  2 * history * dm * 8
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orga1ccc69" class="outline-3">
+<h3 id="orga1ccc69"><span class="section-number-3">11.9.</span> <code>u:ssm_survival</code></h3>
+<div class="outline-text-3" id="text-11-9">
+<p>
+How much of one position is still in the state at a later one: the mean decay raised to the distance. The SS01 window diagram draws it as a fading chip per position.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:ssm_survival(decay, from_pos, to_pos) {
+  "Mean over dimensions of the share of position from_pos's contribution still present in the state at to_pos: decay^(to_pos - from_pos), averaged.";
+  mean(pow(decay, to_pos - from_pos))
+}
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-orgb711ac1" class="outline-2">
+<h2 id="orgb711ac1"><span class="section-number-2">12.</span> Observation names: <code>lib/observe.mlpl</code></h2>
+<div class="outline-text-2" id="text-12">
+<p>
+How observation names are spelled, and nothing more.
+</p>
+</div>
+<div id="outline-container-orgdb00beb" class="outline-3">
+<h3 id="orgdb00beb"><span class="section-number-3">12.1.</span> Module header</h3>
+<div class="outline-text-3" id="text-12-1">
+<p>
+The observation facade is deliberately thin: <code>emit_frame</code> needs a literal name (finding F8), so the helpers only agree on how names are spelled.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl"># Observation naming helpers; emit_frame itself must be called with a literal name (finding F8).
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org1e12906" class="outline-3">
+<h3 id="org1e12906"><span class="section-number-3">12.2.</span> <code>u:observe_path</code></h3>
+<div class="outline-text-3" id="text-12-2">
+<p>
+Names are slash-joined: mechanism prefix, then leaf.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:observe_path(prefix, leaf) {
+  "Join a mechanism prefix and a leaf into one stable slash-separated observation name.";
+  str_concat(str_concat(prefix, "/"), leaf)
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgf0ea826" class="outline-3">
+<h3 id="orgf0ea826"><span class="section-number-3">12.3.</span> <code>u:observe_prefixes</code></h3>
+<div class="outline-text-3" id="text-12-3">
+<p>
+The documented prefixes a generic host groups observations under; <code>ssm</code> joined the list with SS01.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:observe_prefixes() {
+  "The mechanism prefixes lessons group observations under in a generic host.";
+  ["data", "dense", "recur", "moe", "engram", "distill", "quant", "cache", "hybrid", "packed", "ssm"]
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org92b6b9d" class="outline-3">
+<h3 id="org92b6b9d"><span class="section-number-3">12.4.</span> <code>u:observe_prefix_known</code></h3>
+<div class="outline-text-3" id="text-12-4">
+<p>
+Whether a prefix is documented; tests use it to keep the list honest.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:observe_prefix_known(prefix) {
+  "Return 1 when prefix is one of the documented mechanism prefixes, else 0.";
+  known = u:observe_prefixes();
+  hits = 0;
+  i = 0;
+  while lt(i, list_len(known)) {
+    hits = hits + str_eq(unwrap(list_get(known, i)), prefix);
+    i = i + 1
+  };
+  hits
+}
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-orga738d40" class="outline-2">
+<h2 id="orga738d40"><span class="section-number-2">13.</span> The results table: <code>lib/results.mlpl</code></h2>
+<div class="outline-text-2" id="text-13">
+<p>
+The writer and reader of the one table every claim cites.
+</p>
+</div>
+<div id="outline-container-org146b7f8" class="outline-3">
+<h3 id="org146b7f8"><span class="section-number-3">13.1.</span> Module header</h3>
+<div class="outline-text-3" id="text-13-1">
+<p>
+One fixed-column row per lesson run. Column order is frozen so the ablation matrix reads straight down; the writer and the reader below agree on it.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl"># Results-table writer: one fixed-column markdown row per lesson run, appended to docs/reference/results.md (the last column, persistent state bytes at 16 and 1,024 tokens of history, is a text cell).
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org04e82be" class="outline-3">
+<h3 id="org04e82be"><span class="section-number-3">13.2.</span> <code>u:results_columns</code></h3>
+<div class="outline-text-3" id="text-13-2">
+<p>
+The twenty-three columns in table order; the last is the persistent-state text cell.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:results_columns() {
+  "Record keys of the fixed results columns, in table order.";
+  ["lesson", "config", "binary", "params", "active_params", "bytes_per_expert", "packed_bytes", "expert_evals", "bytes_per_token", "cache_hit_rate", "ms_per_token", "val_loss", "ppl", "arith_acc", "seq_acc", "mlpl_acc", "prose_acc", "kl", "router_entropy", "balance", "specialization", "gate_mean", "state_bytes"]
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orge939fd9" class="outline-3">
+<h3 id="orge939fd9"><span class="section-number-3">13.3.</span> <code>u:results_cell</code></h3>
+<div class="outline-text-3" id="text-13-3">
+<p>
+A cell as text: strings verbatim, numbers through <code>to_string</code>, a dash when the lesson did not measure it.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:results_cell(row, key) {
+  "One cell as text: strings verbatim, numbers via to_string, missing values as a dash.";
+  if has_field(row, key) {
+    v = unwrap(record_get(row, key));
+    if str_eq(type_of(v), "string") {
+      v
+    } else {
+      to_string(v)
+    }
+  } else {
+    "-"
+  }
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgdbf6c8b" class="outline-3">
+<h3 id="orgdbf6c8b"><span class="section-number-3">13.4.</span> <code>u:results_row</code></h3>
+<div class="outline-text-3" id="text-13-4">
+<p>
+The formatted row. The gate compares every column except the binary and the timing with the committed table.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:results_row(row) {
+  "Format a record as one markdown table row with every fixed column.";
+  keys = u:results_columns();
+  out = "|";
+  i = 0;
+  while lt(i, list_len(keys)) {
+    out = str_concat(str_concat(str_concat(out, " "), u:results_cell(row, unwrap(list_get(keys, i)))), " |");
+    i = i + 1
+  };
+  out
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org02b4f2c" class="outline-3">
+<h3 id="org02b4f2c"><span class="section-number-3">13.5.</span> <code>u:results_append</code></h3>
+<div class="outline-text-3" id="text-13-5">
+<p>
+Append a row to the table file.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:results_append(path, row) {
+  "Append one formatted row plus newline to the results file.";
+  append_bytes(path, tokenize_bytes(str_concat(u:results_row(row), "\n")))
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgabf5a13" class="outline-3">
+<h3 id="orgabf5a13"><span class="section-number-3">13.6.</span> <code>u:str_trim</code></h3>
+<div class="outline-text-3" id="text-13-6">
+<p>
+Trim spaces, for reading cells back.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:str_trim(s) {
+  "Strip leading and trailing spaces.";
+  n = str_len(s);
+  a = 0;
+  while lt(a, n) * str_eq(str_slice(s, a, 1), " ") {
+    a = a + 1
+  };
+  b = n;
+  while gt(b, a) * str_eq(str_slice(s, b - 1, 1), " ") {
+    b = b - 1
+  };
+  str_slice(s, a, b - a)
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgcf7ea0e" class="outline-3">
+<h3 id="orgcf7ea0e"><span class="section-number-3">13.7.</span> <code>u:results_cell_number</code></h3>
+<div class="outline-text-3" id="text-13-7">
+<p>
+A cell as a number; a dash reads as minus one.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:results_cell_number(cells, i) {
+  "The i-th cell of a split results row as a number, or -1 for a dash.";
+  c = u:str_trim(unwrap(list_get(cells, i)));
+  if str_eq(c, "-") {
+    0 - 1
+  } else {
+    unwrap(to_number(c))
+  }
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org635369c" class="outline-3">
+<h3 id="org635369c"><span class="section-number-3">13.8.</span> <code>u:results_lookup</code></h3>
+<div class="outline-text-3" id="text-13-8">
+<p>
+Read a lesson's numeric columns back from the committed table. The resource budget (RB01) and the ablation diagram (RE01) are drawn from rows this way, so a diagram can never disagree with the table.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-mlpl">def u:results_lookup(path, lesson) {
+  "Read the committed results table and return the numeric columns of one lesson's row (first match) as a record; err when absent.";
+  lines = str_split(read_text(path)?, "\n");
+  prefix = str_concat(str_concat("| ", lesson), " |");
+  found = "";
+  i = 0;
+  while lt(i, list_len(lines)) {
+    line = unwrap(list_get(lines, i));
+    found = if str_eq(found, "") * gt(str_len(line), str_len(prefix)) {
+      if str_eq(str_slice(line, 0, str_len(prefix)), prefix) {
+        line
+      } else {
+        found
+      }
+    } else {
+      found
+    };
+    i = i + 1
+  };
+  if str_eq(found, "") {
+    err(str_concat("results row not found: ", lesson))
+  } else {
+    c = str_split(found, "|");
+    ok({params: u:results_cell_number(c, 4), active_params: u:results_cell_number(c, 5), bytes_per_expert: u:results_cell_number(c, 6), expert_evals: u:results_cell_number(c, 8), bytes_per_token: u:results_cell_number(c, 9), val_loss: u:results_cell_number(c, 12), ppl: u:results_cell_number(c, 13), arith_acc: u:results_cell_number(c, 14), seq_acc: u:results_cell_number(c, 15), mlpl_acc: u:results_cell_number(c, 16), prose_acc: u:results_cell_number(c, 17), ms_per_token: u:results_cell_number(c, 11), router_entropy: u:results_cell_number(c, 19), balance: u:results_cell_number(c, 20), specialization: u:results_cell_number(c, 21), gate_mean: u:results_cell_number(c, 22)})
+  }
+}
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-orgbeee707" class="outline-2">
+<h2 id="orgbeee707"><span class="section-number-2">14.</span> Colophon</h2>
+<div class="outline-text-2" id="text-14">
+<p>
+Written for the sw-ML study; distributed under the MIT License (see
+<code>LICENSE</code> and <code>COPYRIGHT</code> in the repository root). The org-babel backend is
+<code>../sw-mlpl/elisp/ob-mlpl.el</code>; the peer literate documents it follows are
+<code>../sw-mlpl/examples/literate/*.org</code> and <code>../demo-coding-agent/docs/mlplcode.org</code>.
+</p>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<p class="author">Author: Michael A Wright</p>
+</div>
+</body>
+</html>

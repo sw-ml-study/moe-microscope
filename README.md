@@ -254,6 +254,8 @@ just budget          # RB01 resource budget: document and diagram, no training
 just benchmark       # GB01 generation benchmark fixture and document (write to re-measure)
 just mlpl-style      # canonical formatting and docstring checks
 just check-gate-cache # prove the gate cache reruns exactly the lessons a library edit touches
+just literate        # check the literate org document: tangle parity, primer results, HTML export
+just literate-html   # export docs/literate/moe-microscope.org to learn/literate.html (Emacs, batch)
 ```
 
 `just check` validates repository structure, documentation links,
@@ -279,6 +281,21 @@ that changes nothing under `lib/`, `demos/`, `tests/`, `probes/`,
 The interactive host is the generic Rust/Yew/WASM microscope and MLPL web
 framework in `../demo-extensions`; that Rust code is the only part of this
 effort subject to `sw-checklist`.
+
+## Literate reading
+
+[`docs/literate/moe-microscope.org`](docs/literate/moe-microscope.org) is
+an Emacs org-mode, reproducible-research reading of the microscope: a
+primer of seven self-contained, runnable MLPL blocks (a window, a dense
+block, the router, dispatch parity, recurrence, Engram hashing, the
+state-space scan) with the measured numbers beside them, and the
+mechanism sources split at function boundaries with prose before each.
+The source blocks tangle to the committed `lib/` and `demos/` files byte
+for byte, the gate proves it (`scripts/check-tangle`, which also reruns
+every primer block against its recorded result), and the batch HTML
+export is published as [`learn/literate.html`](https://sw-ml-study.github.io/moe-microscope/literate.html)
+beside the live demo. It runs on sw-MLPL's `ob-mlpl` backend from the
+adjacent checkout; the document's first block sets it up.
 
 ## Development process
 

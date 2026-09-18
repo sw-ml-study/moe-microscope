@@ -58,7 +58,6 @@ def u:forward(x1) {
   u:body(apply(emb, x1) + u:positions(reduce_mul(shape(x1)), dm))
 }
 
-
 p_emb = param_count(emb);
 p_att = param_count(att);
 p_ffn = param_count(ffn);
