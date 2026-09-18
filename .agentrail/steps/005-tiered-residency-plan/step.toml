@@ -1,0 +1,9 @@
+number = 5
+slug = "tiered-residency-plan"
+status = "pending"
+description = "TW01 reframed: tiered weight residency in the plan. Two inputs: sw-atlas's wo..."
+role = "production"
+context_files = []
+created_at = "2026-09-18T10:50:59"
+task_type = "documentation"
+commits = []

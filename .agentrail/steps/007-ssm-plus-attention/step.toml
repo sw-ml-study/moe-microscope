@@ -1,7 +1,7 @@
 number = 7
-slug = "latent-moe"
+slug = "ssm-plus-attention"
 status = "pending"
-description = "LM01 latent experts. Experts in a projected-down latent space (d -> r shared ..."
+description = "HA01 the state block with one attention block among several. The Nemotron pat..."
 role = "production"
 context_files = []
 created_at = "2026-09-16T19:28:19"

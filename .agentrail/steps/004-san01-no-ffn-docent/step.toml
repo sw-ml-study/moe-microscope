@@ -1,0 +1,9 @@
+number = 4
+slug = "san01-no-ffn-docent"
+status = "pending"
+description = "SAN01: is no-FFN real? sw-atlas (../../software-wrighter-lab/sw-atlas/docs/pl..."
+role = "production"
+context_files = []
+created_at = "2026-09-18T10:50:59"
+task_type = "mlpl-lesson"
+commits = []

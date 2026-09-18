@@ -1,4 +1,4 @@
-number = 4
+number = 6
 slug = "selective-ssm"
 status = "pending"
 description = "SS02 selective state-space block. The SS01 block with A, B, and C computed fr..."
