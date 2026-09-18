@@ -1,0 +1,11 @@
+{
+  "task_type": "mlpl-lesson",
+  "state": {
+    "number": 2,
+    "step": "simple-ssm"
+  },
+  "action": "Read dense/recur/bench libraries and demos; probed repeat-with-runtime-count and mixed adam through grad; TDD with tests/test_ssm.mlpl; Python patchers for wiring; headless Chrome for diagram review and live-page verify; mlpl-serve capture for the recording; nohup+Monitor for three gate runs; named git add, commit, push.",
+  "result": "success",
+  "reward": 1,
+  "timestamp": "2026-09-17T19:09:50"
+}

@@ -1,9 +1,10 @@
 number = 2
 slug = "simple-ssm"
-status = "in-progress"
+status = "completed"
 description = "SS01 simple state-space block. lib/ssm.mlpl: a diagonal linear state-space bl..."
 role = "production"
 context_files = []
 created_at = "2026-09-16T19:28:19"
+completed_at = "2026-09-17T19:09:50"
 task_type = "mlpl-lesson"
-commits = []
+commits = ["53a8c1eca6c8dc9ac96812498e0ba2eeb9de8a76"]
