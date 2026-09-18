@@ -586,10 +586,14 @@ track in [`plan.md`](plan.md).
   browser verification with the sw-campus side's handoff.
 - Saga 13 `campus-docent-v1`: when the campus adds the 1442 card reader and
   new exhibits, the retrain and the maturity-status intent grow with it.
-- Saga 14 `quantization-packing-and-cache`: INT8 and INT4 experts, the packed
-  TinyMoE file, the LRU expert-cache simulator with capacity curves, prefill
-  double buffering, and partial decode-cache compression (KC01) applied
-  only to the attention blocks the hybrid keeps.
+- Saga 14 `quantization-packing-and-residency`: INT8 and INT4 experts, the
+  packed TinyMoE file with a shard directory, and TW01, the three-tier
+  residency simulator (resident, a real bounded read on the packed file, a
+  calibrated far tier) over shard records that are either the microscope's
+  padded experts or a depth-shard manifest sw-atlas supplies; capacity
+  curves, a per-token `tier/trace`, a next-use-labelled trace for the MLOS
+  question, prefill double buffering, and partial decode-cache compression
+  (KV01) applied only to the attention blocks the hybrid keeps.
 - Saga 15 `hybrid-execution-and-embedded-budget`: bandwidth calibration, the
   q-star transfer/compute split, expert banks, and the 256 MB budget report,
   now asking whether a logical model larger than RAM (cold experts and the

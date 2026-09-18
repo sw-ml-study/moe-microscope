@@ -163,13 +163,72 @@ routed docent is the alternative already measured on the same corpus and
 the same usefulness bar; nothing in Atlas needs to change for it to come
 back.
 
-### TW01, tiered weights reframed
+### TW01, tiered weights reframed (planned 2026-09-18)
 
-Acknowledged: the queued Saga 14 work (packed file, expert directory,
-expert cache) stands, and the residency unit becomes a shard record that
-is either one of the microscope's padded experts or a depth shard from a
-manifest Atlas supplies by name and hash. The plan change, the manifest
-and trace schemas, and the metric names are the next step
-(`tiered-residency-plan`) and will be recorded in this section when it
-lands.
+Accepted as reframed. [Saga 14](../overview/plan.md) is now quantization,
+the packed file, and tiered weight residency, and the residency unit is a
+**shard record** rather than an expert, so one simulator serves the
+microscope's expert bank and Atlas's depth-sharded model without a second
+code path. Three tiers: resident (no read), near (a real bounded
+`read_bytes` on the packed file, timed), far (the same read plus a
+calibrated added latency, declared as an estimate).
+
+**What we will accept from Atlas.** A manifest naming shards, consumed
+read-only by name and hash; nothing in Atlas changes for us, and we never
+edit it. One entry per shard:
+
+```text
+ShardManifestEntry {
+  id           text, unique within the manifest
+  kind         "depth-shard" | "embedding" | "head" | "expert"
+  layer_range  [first, last] for a depth shard, else null
+  bytes        stored size of the shard
+  payload      bytes that are real weights (bytes - padding)
+  quantization "f32" | "f16" | "int8" | "int4"
+  sha256       checksum of the payload
+  tier_hint    "resident" | "near" | "far", advisory only
+}
+```
+
+Plus a request sequence: the shard ids a query touches, in order, one list
+per query. That sequence is the workload; how Atlas produced it is its own
+business.
+
+**What we will emit.** A per-token residency trace under the observation
+name `tier/trace`, pinned as a fixture and playable by the generic host
+and the landscape:
+
+```text
+TraceRecord {
+  step         token index
+  shard        shard id requested
+  tier         0 resident, 1 near, 2 far
+  bytes_read   bytes that crossed a tier boundary (0 on a hit)
+  latency_ms   measured for tier 1, modelled for tier 2
+  evicted      shard id dropped to make room, or null
+  next_use     token index of this shard's next request, labelled
+               afterwards, or -1 if never again
+}
+```
+
+The `next_use` field is there for `sw-os-ml`'s open gate G4 ("known next
+use beats LRU"): TW01 runs the same capacity sweep under LRU and under the
+oracle policy and commits both curves, so the gap is measured rather than
+argued. A docent or navigator session has unusually legible next-use
+structure, which is what makes Atlas's sequence worth having.
+
+**Metric names**, shared by both sides so the two scoreboards read the
+same: shard bytes, cache hit rate, bytes read per token, load latency per
+token, evictions per token, beside RB01's stored, resident, active,
+transferred, and executed. Each is labelled measured, derived, or
+estimated.
+
+**Why we still pad.** A MicroMoE expert is 1,072 parameters, 536 bytes at
+INT4. No hierarchy shows an I/O cost at that size, so the packed file's
+records are padded to realistic sizes with the padding declared in the
+directory and never decoded. The routing, the shard identities, and the
+hit sequence stay exactly those of the trained model; the record sizes are
+chosen, and every lesson and row says so. Atlas's shards are already
+realistic, which is why replaying its manifest is the better half of the
+experiment.
 

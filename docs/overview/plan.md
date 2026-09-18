@@ -280,9 +280,9 @@ research (dense, +recurrence, +MoE, +Engram, combinations, +quantization,
 | 6 | RE01 | recurrent MoE + Engram | do memory and compute sparsity complement each other? |
 | 7 | KD01 | distilled variants | which distillation term buys what? |
 | 8 | QZ01 | INT8 then INT4 experts | what quality is lost, and how many more experts fit in a cache? |
-| 9 | XC01 | constrained expert cache | what does capacity do to hit rate, bytes per token, and speed? |
+| 9 | TW01 | tiered weight residency over three tiers | what does capacity do to hit rate, bytes read per token, and speed, and does known next use beat LRU? |
 | 10 | HY01 | CPU/NPU hybrid with q-star | can FreeToken-style scheduling help? |
-| 11 | PK01 | packed TinyMoE file and 256 MB budget | can the whole thing survive an embedded budget? |
+| 11 | PK01 | packed TinyMoE file with a shard directory, and the 256 MB budget | can the whole thing survive an embedded budget? |
 
 ## Visualization track, every saga
 
@@ -393,7 +393,7 @@ quantitative language: stored, resident, active, transferred, executed.
    tokens per second, p50 and p95 token latency, expert loads per token, and
    peak memory where the interpreter exposes it, for DN01, MX01, MX02, and
    LD01, written to `docs/reference/` with the M/D/E legend. This is the
-   vocabulary XC01 and HY01 reuse.
+   vocabulary TW01 and HY01 reuse.
 3. **documentation-hierarchy.** Restructure `docs/` into overview, results,
    concepts, experiments, implementation, and reference, with `docs/README.md`
    as the landing page and three reader journeys (understand the idea, see
@@ -638,7 +638,7 @@ as the live demo, never a cartoon of what should happen.
    layer extended with a panning stage and tweened data chips) that renders
    any scene list; no mechanism semantics in the host.
 3. **landscape-scenes.** One scene per mechanism, each derived from a
-   lesson's recording: routing (MX01), hot and cached experts (XC01),
+   lesson's recording: routing (MX01), hot and cached shards (TW01),
    Engram lookups (EG01), recurrence (RM01), decode-cache compression
    (KV01), multi-token prediction (when a lesson exists), and their
    combination (RE01 and HY01).
@@ -907,41 +907,125 @@ Exit: the before/after study is a recorded lesson with rows and diagrams,
 and the campus easel can show which revision its docent knows.
 
 
-## Saga 14: quantization, packed format, expert cache, and partial KV compression
+## Saga 14: quantization, the packed file, and tiered weight residency
+
+Residency is the axis this saga measures: what must be in fast memory right
+now, and what a miss costs. It is the same question in three places. In the
+microscope a routed expert is fetched from a packed file. In
+[`../../software-wrighter-lab/sw-atlas`](../implementation/cross-repo-handoffs.md)
+a depth shard is fetched from OPFS or over an HTTP range request. In
+`../../software-wrighter-lab/sw-os-ml` an object moves between disk, RAM,
+and device memory. One simulator serves all three, because the residency
+unit is a **shard record** and the policy question does not care what is
+inside it.
 
 With most blocks state-space after Saga 7, only the attention blocks keep a
-key-value cache; the compression lesson (KC01) therefore compresses the
+key-value cache; the compression lesson (KV01) therefore compresses the
 remaining attention state after the architecture has removed most of it,
 and the diagram shows both reductions: pure transformer (every block a
 cache), hybrid (a few caches plus fixed states), hybrid plus compressed
 caches.
+
+### Why the packed file needs padded records
+
+A MicroMoE expert is 1,072 parameters: 8,576 bytes at f64 and 536 at INT4.
+No storage hierarchy can show an I/O cost at that size, and a simulator fed
+536-byte reads would measure nothing but its own arithmetic. So TW01 writes
+a **scaled storage fixture**: the same logical routing, the same expert
+identities, the same hit and miss sequence, with each record padded to a
+realistic size (the padding is declared in the directory and never read
+into a tensor). What is simulated is stated in the lesson and in the row:
+the routing is real, the bytes are real reads, the record sizes are chosen.
 
 1. **int8-experts (QZ01).** Symmetric INT8 experts and shared weights as
    integer-valued arrays plus scales; quality delta; bytes per expert.
 2. **int4-experts.** Teaching Q4 nibble packing for experts only; quality
    delta; bytes per expert. Reuse the byte-level conventions proven in
    `../demo-ml-utils` by handoff, not by copying.
-3. **packed-tinymoe-file (PK01 part 1).** Header, tokenizer, shared weights,
-   routers, Engram, expert index, and one independently readable record per
-   expert, written with `write_atomic` and read back expert by expert with
-   bounded `read_bytes(path, offset, length)`. File-layout diagram with byte
-   offsets.
-4. **expert-cache-simulator (XC01).** LRU over `(block, expert)` entries with
-   capacity in experts and in bytes; per-token hit/miss/load trace; hit rate,
-   bytes per token, and simulated tokens per second against capacity, drawn as
-   curves.
-5. **prefill-double-buffer.** Two full expert-bank buffers alternating over
-   blocks during prefill, with a timeline diagram; measured versus single
-   buffer.
+3. **packed-tinymoe-file with a shard directory (PK01).** Header, tokenizer,
+   shared weights, routers, Engram, and one independently readable record per
+   shard, written with `write_atomic` and read back one shard at a time with
+   bounded `read_bytes(path, offset, length)`. The directory entry is the
+   contract the rest of the saga and the sibling repositories share:
 
-6. **kv-cache-compression (KV01).** The decode-phase cache under
+   ```text
+   ShardDirectoryEntry {
+     id          text, unique within the file
+     kind        "expert" | "shared" | "router" | "engram" | "depth-shard"
+     offset      byte offset of the record in the file
+     size        bytes of the record as stored (including declared padding)
+     payload     bytes of the record that are real weights
+     shape       the tensor shape the payload decodes to
+     quantization "f64" | "int8" | "int4"
+     checksum    sha256 of the payload
+   }
+   ```
+
+   File-layout diagram with byte offsets, and the directory itself drawn as
+   a table beside it.
+4. **tiered weight residency (TW01).** The residency simulator over three
+   tiers, replacing the single-level expert cache the plan previously
+   queued:
+
+   | Tier | Holds | How it is measured here | Atlas's equivalent |
+   |---|---|---|---|
+   | 0 resident | shared weights, router, hot shards | in interpreter memory; no read | WASM heap or GPU buffer |
+   | 1 near | warm shards | a real bounded `read_bytes` on the packed file, timed with `clock_ms()` | OPFS or the Cache API |
+   | 2 far | cold shards | a calibrated latency model over the same real read (the calibration record of Saga 15 step 1 supplies the added latency) | the server, over an HTTP range request |
+
+   LRU over shard ids with capacity in shards and in bytes; a per-token
+   trace of hit, miss, tier, bytes, and eviction; hit rate, bytes read per
+   token, load latency, and simulated tokens per second against capacity,
+   drawn as curves. Tier 1 is honest measurement, tier 2 is a declared
+   model, and the diagram labels which is which.
+5. **the same simulator on a foreign manifest.** The residency unit is a
+   shard record, so a depth-sharded model is the same workload with
+   different records. sw-atlas supplies a manifest (name and hash, consumed
+   read-only, never edited here); the lesson replays its shard sequence
+   through the same LRU and reports the same columns, which is what makes
+   the microscope's answer usable there. When no manifest exists the lesson
+   runs on the microscope's own bank and says so.
+6. **next-use against LRU.** MLOS's open gate G4 asks whether known next
+   use beats LRU, and nothing writes `next_use` yet. The residency trace is
+   labelled after the fact with each shard's true next use, and the same
+   capacity sweep is run under LRU and under the oracle policy; the gap
+   between the two curves is the value a next-use predictor could buy, and
+   the labelled trace is a committed fixture the sibling can consume.
+7. **prefill-double-buffer.** Two full shard buffers alternating over blocks
+   during prefill, with a timeline diagram; measured versus single buffer.
+8. **kv-cache-compression (KV01).** The decode-phase cache under
    pressure: `gen_state` sizes per token at f64, INT8, and INT4 values,
    eviction of the oldest and lowest-attention entries, and the quality
    cost of each on the generation benchmark prompts; bytes per token and
    tokens per second beside exact match, with the cache drawn as it fills
    and is compressed.
-Exit: the same model runs from a packed file through a capacity-limited cache
-with a checked curve of hit rate and bytes per token versus capacity.
+
+### What the results table gains
+
+RB01 already reports stored, resident, active, transferred, and executed.
+Residency adds the columns the research note names, and they are filled by
+TW01 and by every later lesson that runs from the packed file:
+
+| Column | Meaning | Kind |
+|---|---|---|
+| Shard bytes | bytes of one residency unit as stored | D |
+| Cache hit rate | share of shard requests served from tier 0 | M |
+| Bytes read per token | bytes crossing tier 1 or 2 per generated token | M |
+| Load latency per token | milliseconds spent waiting on reads | M for tier 1, E for tier 2 |
+| Evictions per token | shards dropped from tier 0 | M |
+
+### Observations the host and the landscape play
+
+`tier/trace` is a per-token record of the residency decision: the shard
+requested, the tier it was served from, the bytes read, and whether
+something was evicted. The landscape's "hot and cached experts" station
+plays it as chips moving between a resident shelf and a fetched shelf, and
+the generic host renders it without knowing that a shard is an expert.
+
+Exit: the same model runs from a packed file with a shard directory through
+a three-tier residency simulator, with a checked curve of hit rate and bytes
+per token against capacity, a foreign manifest replayed through the same
+code path, and a next-use-labelled trace committed for the MLOS question.
 
 ## Saga 15: hybrid execution and the embedded budget
 
@@ -952,7 +1036,8 @@ with a checked curve of hit rate and bytes per token versus capacity.
    local compute by `q* = m * B_P / B_H`; assert the summed partial outputs
    equal the unsplit output; time and byte accounting per policy.
 3. **expert-banks.** Group experts into banks that dispatch together; measure
-   dispatch count versus bank size.
+   dispatch count versus bank size. A bank is a shard record like any other,
+   so the TW01 simulator measures it without a change.
 4. **embedded-budget-report (PK01 part 2).** Total bytes for the packed file,
    cache, Engram, KV state, and retained observations against a 256 MB budget
    at microscope and lab scale; documented gap to a real device runtime.
@@ -962,7 +1047,7 @@ claim.
 
 ## Saga 16: interactive microscope host, complete
 
-1. **systems-recordings.** Pinned recordings for QZ01, XC01, HY01, and PK01;
+1. **systems-recordings.** Pinned recordings for QZ01, TW01, HY01, and PK01;
    cache traces and q-star splits proven in the generic host.
 2. **live-demo-acceptance.** The interactive live demo renders every lesson
    from an editable source with playback, selection, and the measured triple
@@ -1019,7 +1104,7 @@ cache or executed on the CPU.
    1,024 to 4,096, `d_model` 128 to 256, 32 to 64 experts) on the GPU with
    the same source; results rows with GPU timings.
 3. **host-resident-experts.** Expert weights kept in host RAM and moved into
-   a bounded GPU expert cache on demand (the XC01 simulator made real);
+   a bounded GPU expert cache on demand (the TW01 simulator made real);
    measured bytes transferred, hit rate, and VRAM in use against cache
    capacity.
 4. **cpu-expert-execution.** Missing experts executed on the CPU while

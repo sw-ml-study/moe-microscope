@@ -1,6 +1,6 @@
 number = 5
 slug = "tiered-residency-plan"
-status = "pending"
+status = "in-progress"
 description = "TW01 reframed: tiered weight residency in the plan. Two inputs: sw-atlas's wo..."
 role = "production"
 context_files = []

@@ -54,7 +54,7 @@ The calculator's stored, resident, and active bytes for the current model with a
 | lab scale, 8-expert cache, INT8 | 8.36 MiB | 3.84 MiB | 1493.5 KiB | 2.18 | 2.63 |
 | lab scale, 8-expert cache, INT4 | 4.18 MiB | 1.92 MiB | 746.7 KiB | 2.18 | 2.63 |
 
-The 256-expert bank at f64 would be 2144 KiB of experts; caching only matters once the bank exceeds what is resident, which the current four-expert model never does. That is why XC01 will deliberately build a large bank of tiny experts.
+The 256-expert bank at f64 would be 2144 KiB of experts; caching only matters once the bank exceeds what is resident, which the current four-expert model never does. That is why TW01 will deliberately build a large bank of padded shard records.
 
 ## 6. Expert transfer estimates [E]
 

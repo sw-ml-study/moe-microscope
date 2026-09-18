@@ -134,7 +134,7 @@ def u:budget_markdown() {
     u:row(["lab scale, 8-expert cache, INT8", str_concat(u:n(u:svg_round(res_lab.stored / 1048576, 2)), " MiB"), str_concat(u:n(u:svg_round(res_lab.resident / 1048576, 2)), " MiB"), str_concat(u:n(u:kib(res_lab.active)), " KiB"), u:n(u:svg_round(res_lab.storage_to_resident, 2)), u:n(u:svg_round(res_lab.resident_to_active, 2))]),
     u:row(["lab scale, 8-expert cache, INT4", str_concat(u:n(u:svg_round(res_lab_int4.stored / 1048576, 2)), " MiB"), str_concat(u:n(u:svg_round(res_lab_int4.resident / 1048576, 2)), " MiB"), str_concat(u:n(u:kib(res_lab_int4.active)), " KiB"), u:n(u:svg_round(res_lab_int4.storage_to_resident, 2)), u:n(u:svg_round(res_lab_int4.resident_to_active, 2))]),
     "",
-    str_concat("The 256-expert bank at f64 would be ", str_concat(u:n(u:kib(bank256.bank * 8)), " KiB of experts; caching only matters once the bank exceeds what is resident, which the current four-expert model never does. That is why XC01 will deliberately build a large bank of tiny experts.")),
+    str_concat("The 256-expert bank at f64 would be ", str_concat(u:n(u:kib(bank256.bank * 8)), " KiB of experts; caching only matters once the bank exceeds what is resident, which the current four-expert model never does. That is why TW01 will deliberately build a large bank of padded shard records.")),
     "",
     "## 6. Expert transfer estimates [E]",
     "",

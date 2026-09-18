@@ -27,7 +27,7 @@ flowchart LR
 | 6 | Can cheap lookup memory replace learned memorization? | [Engram](engram.md) | measured (EG01, RE01) |
 | 6b | Can a teacher improve a tiny student? | [Distillation](distillation.md) | teacher fixture exists (TE01) |
 | 7 | How many experts fit in the same storage? | [Quantization](quantization.md) | projected (RB01) |
-| 8 | Does the whole model need to be resident? | [Expert cache](expert-cache.md) | estimated (RB01) |
+| 8 | Does the whole model need to be resident, and what does a miss cost? | [Tiered residency](expert-cache.md) | estimated (RB01); TW01 measures it |
 | 9 | Should every expert run on the same device? | [Heterogeneous execution](heterogeneous-execution.md) | planned |
 | 10 | Can a state-space block replace attention, and does a hybrid keep the best of each? | [State-space block](state-space.md) | measured (SS01: constant 256 B state, validation loss 4.56 against 3.79); SS02 and HA01 next |
 
@@ -44,7 +44,7 @@ on alone against the dense baseline.
 | Parameters | how many transformations share weights? | recurrence | RC01, RM01, RE01 (measured) |
 | Memory | what can be retrieved instead of recomputed? | Engram | EG01, RE01 (measured; not yet valuable at 90 windows) |
 | State | how much sequence history stays resident? | state-space block | SS01 (measured: 256 B at any history against 262,144 B for attention at 1,024 tokens); SS02, HA01 (Saga 7) |
-| Residency | what must be in fast memory right now? | expert cache | XC01 (planned); RB01 gives the estimates |
+| Residency | what must be in fast memory right now? | tiered weight residency | TW01 (planned, Saga 14); RB01 gives the estimates |
 | Precision | how many bits represent each parameter? | quantization | QZ01 (planned); RB01 projects |
 | Time | how many future tokens can one state predict? | multi-token prediction | MT01 to MT03 (planned, Saga 10) |
 
@@ -62,7 +62,7 @@ on alone against the dense baseline.
 | Engram | retrieves memorized n-gram information | moves lookup-like knowledge out of weights |
 | Distillation | transfers behavior from a larger model | improves tiny-model quality |
 | Quantization | shrinks expert representation | lets more experts fit in memory |
-| Expert cache | keeps hot experts in fast memory | lets the model exceed fast memory |
+| Tiered residency | keeps hot shards in fast memory, fetches the rest | lets the model exceed fast memory, and prices a miss |
 | CPU/NPU scheduling | sends work where it fits | exploits heterogeneous hardware |
 | Packed model | bounded inference artifact | tests whether the design fits constrained devices |
 

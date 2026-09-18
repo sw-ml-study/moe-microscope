@@ -34,5 +34,5 @@ was not proved, and where the raw evidence lives. Numbers cite a row of the
 
 The machine-readable inventory is [`catalog/lessons.toml`](../../catalog/lessons.toml).
 Experiments planned for later sagas (KD01, RW01,
-AD01, DS02, QZ01, PK01, XC01, HY01, ...) are listed in the
+AD01, DS02, QZ01, PK01, TW01, HY01, ...) are listed in the
 [delivery plan](../overview/plan.md).
