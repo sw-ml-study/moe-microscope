@@ -1,9 +1,10 @@
 number = 3
 slug = "literate-org-document"
-status = "in-progress"
+status = "completed"
 description = "Emacs org-mode literate, reproducible-research document for the microscope us..."
 role = "production"
 context_files = []
 created_at = "2026-09-17T09:50:56"
+completed_at = "2026-09-18T10:50:16"
 task_type = "documentation"
-commits = []
+commits = ["4d224da9d81590b1b9393fdfe0832f39ca04ab39"]
