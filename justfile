@@ -36,6 +36,10 @@ matcher mode="check":
 wordvec mode="check":
     ./scripts/run-wordvec-demo {{mode}}
 
+# Run SAN01, the no-FFN docent (two variants, about three minutes), and check its diagrams and docent rows; `just noffn write` regenerates them.
+noffn mode="check":
+    ./scripts/run-noffn-demo {{mode}}
+
 # Reassemble fixtures/campus/docs-a.txt from the snapshot's text and the linked repositories' READMEs (network).
 campus-docs:
     ./scripts/assemble-campus-docs

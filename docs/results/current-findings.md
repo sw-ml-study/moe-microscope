@@ -197,6 +197,31 @@ interpreter against 2 to 16 for attention, so the constant-memory block is
 not the faster one here. SS02 (token-dependent decay) and HA01 (one
 attention block among state blocks) are the next rows.
 
+## 12. Removing the docent's feed-forward layer changes nothing it could lose
+
+Evidence: SAN01 is CD01 with the hidden layer removed and the hashed
+embedding widened from 24 to 25 so the budget matches (26,094 against
+26,003 parameters); SAN01b is CD01b's fine-tuned word-vector table with
+the heads reading it directly (25,051). Same corpus, split, trainer, and
+epochs. SAN01: intent 0.946, destination 0.934, paraphrase destination
+0.389, unsupported recall 0.5 against CD01's 0.938, 0.925, 0.296, 0.3.
+SAN01b: 0.938, 0.925, 0.444, 0.3 against CD01b's 0.942, 0.917, 0.407, 0.3,
+and the expected ambiguous top-2 pair 0.545 against 0.182. Validation loss
+falls in both (1.19 and 1.17 against 1.50 and 1.70). Rows SAN01 and SAN01b
+in the docent results table; the comparison diagram is drawn from them.
+
+Interpretation: on this corpus the hidden layer was not where the docent's
+knowledge lived. A pooled bag of hashed features with two linear heads is
+already the classifier the data supports; the nonlinearity added
+parameters to memorise with and nothing to generalise with. That is the
+answer sw-atlas asked for before its Saga 5: no-FFN does not lose here.
+
+Limitation: the docent has no sequence mixing at all, so this says
+nothing about attention-only encoders at Atlas's size, where the FFN
+would sit between attention layers; one seed, one corpus, 724 training
+rows; and the matchers still beat every docent on paraphrases (finding
+8), no-FFN included.
+
 ## Supported now versus plausible but not demonstrated
 
 Supported: more stored than active capacity; measurable specialization; a

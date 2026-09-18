@@ -1,0 +1,263 @@
+# SAN01 no-FFN docent: CD01 and CD01b with the hidden layer removed, the intent and destination heads reading the pooled embedding directly (a linear classifier over pooled features), at matched budget for the hashed variant; one variant per process (third argument hashed or wordvec, finding F22), measured on the same held-out rows and paraphrases as CD01, CD01b, and the matchers, to answer sw-atlas's question whether feed-forward layers can be dropped on this corpus.
+include "../lib/wordvec.mlpl";
+include "../lib/svg.mlpl";
+
+print("WHAT THIS SHOWS -- Whether the docent's one hidden layer buys anything: the same features, embedding, heads, corpus, and budget, with the feed-forward layer stripped, beside CD01 and CD01b on the same held-out rows and paraphrases.");
+print("SHAPES -- features ids/mask:[N,24]; hashed embedding [1024,25] or word-vector table [1024,24]; pooled [1,d]; intent logits [1,6]; destination logits [1,13]; no hidden layer.");
+
+out_dir = unwrap(list_get(args(), 0));
+binary = unwrap(list_get(args(), 1));
+variant = if gt(list_len(args()), 2) {
+  unwrap(list_get(args(), 2))
+} else {
+  "hashed"
+};
+hashed = str_eq(variant, "hashed");
+S = 1024;
+dm = if hashed {
+  25
+} else {
+  24
+};
+ni = 6;
+lr = 0.003;
+epochs = 40;
+every = 5;
+window = 4;
+iters = 5;
+
+c = u:campus_load("fixtures/campus/snapshot-a.json");
+k = unwrap(parse_json(unwrap(read_text("fixtures/campus/corpus-a.json"))));
+pp = unwrap(parse_json(unwrap(read_text("fixtures/campus/paraphrases-a.json"))));
+dest_names = u:dest_names(c);
+nd = list_len(dest_names);
+feat = u:docent_matrix(k.queries, S);
+X = feat.ids;
+M = feat.mask;
+Cn = feat.counts;
+lab = u:docent_labels(c, k.intents, k.dests);
+Yi = lab.yi;
+Yd = lab.yd;
+member = k.train;
+train_rows = compress(member, range(k.n));
+val_rows = compress(1 - member, range(k.n));
+ntrain = reduce_mul(shape(train_rows));
+nval = reduce_mul(shape(val_rows));
+yi_val = reshape(gather_rows(reshape(Yi, [k.n, 1]), val_rows), [nval]);
+yd_val = reshape(gather_rows(reshape(Yd, [k.n, 1]), val_rows), [nval]);
+ex_ids = [u:dest_index(c, "ibm-1130-emulator"), u:dest_index(c, "rca-1802"), u:dest_index(c, "apl")];
+exhibit_sel = eq(yd_val, take(ex_ids, 0, 0)) + eq(yd_val, take(ex_ids, 0, 1)) + eq(yd_val, take(ex_ids, 0, 2));
+pfeat = u:docent_matrix(pp.queries, S);
+plab = u:docent_labels(c, pp.intents, pp.dests);
+np_rows = list_len(pp.queries);
+PX = pfeat.ids;
+PM = pfeat.mask;
+PC = pfeat.counts;
+PYi = plab.yi;
+PYd = plab.yd;
+amb_rows = fill([0], 0);
+amb_a = fill([0], 0);
+amb_b = fill([0], 0);
+j = 0;
+i = 0;
+while lt(i, k.n) {
+  is_amb = str_eq(u:lg(k.kinds, i), "ambiguous");
+  amb_rows = if is_amb {
+    concat(amb_rows, i)
+  } else {
+    amb_rows
+  };
+  pair = if is_amb {
+    str_split(u:lg(c.ambiguous_dests, j), ",")
+  } else {
+    str_split("none,none", ",")
+  };
+  amb_a = if is_amb {
+    concat(amb_a, u:dest_index(c, u:lg(pair, 0)))
+  } else {
+    amb_a
+  };
+  amb_b = if is_amb {
+    concat(amb_b, u:dest_index(c, u:lg(pair, 1)))
+  } else {
+    amb_b
+  };
+  j = j + is_amb;
+  i = i + 1
+};
+config = emit_frame("noffn/config", 0, [S, dm, ni, nd, epochs, ntrain, nval, hashed]);
+
+# The word-vector table is built only for the wordvec variant (the same recipe as CD01b); the hashed variant never reads the text.
+tb_filled = 0;
+tb_collisions = 0;
+vocab_size = 0;
+docent_table = param[1024, 24];
+docent_table = if hashed {
+  fill([1024, 24], 0)
+} else {
+  text = unwrap(read_text("fixtures/campus/docs-a.txt"));
+  vocab = u:wv_vocab(text, 2);
+  Cw = u:wv_cooccurrence(vocab.ids, vocab.sids, vocab.size, window);
+  P = u:wv_ppmi(Cw);
+  W = u:wv_factor(P, 24, iters, 7);
+  tb = u:wv_table(W, vocab, S, 3);
+  tb_filled = tb.filled;
+  tb_collisions = tb.collisions;
+  vocab_size = vocab.size;
+  tb.table
+};
+
+# Training runs at top level (finding F21) and once per process (finding F22). The body is never constructed: no parameter of it exists to count.
+docent_emb = embed(S, dm, 1);
+docent_head_i = linear(dm, ni, 3);
+docent_head_d = linear(dm, nd, 4);
+p_table = S * dm;
+p_heads = param_count(docent_head_i) + param_count(docent_head_d);
+params = p_table + p_heads;
+mean_features = reduce_add(Cn) / k.n;
+active = round(mean_features * dm + p_heads);
+print("MODEL --", variant, "params", params, "of which", if hashed {
+    "hashed embedding"
+  } else {
+    "word-vector table"
+  }, p_table, "heads", p_heads, "; no hidden layer; active per query (mean", u:svg_round(mean_features, 2), "features)", active, "; CD01 has 26003 with an 800-parameter body");
+
+def u:logits_of(ids, mask, n) {
+  "The variant's logits: heads on the pooled hashed embedding, or on the pooled table rows.";
+  if hashed {
+    u:docent_logits_n(ids, mask, n)
+  } else {
+    u:docent_logits_tn(ids, mask, n)
+  }
+}
+
+def u:measure(label) {
+  "Every CD01 metric for the current no-FFN docent, through the function-reference evaluator.";
+  t0 = clock_ms();
+  ev = u:docent_eval_f(:u:logits_of, X, M, Cn, Yi, Yd, val_rows, ni, nd);
+  ms = (clock_ms() - t0) / nval;
+  et = u:docent_eval_f(:u:logits_of, X, M, Cn, Yi, Yd, train_rows, ni, nd);
+  pv = u:docent_eval_f(:u:logits_of, PX, PM, PC, PYi, PYd, range(np_rows), ni, nd);
+  exhibit_acc = reduce_add(ev.hit_d * exhibit_sel) / reduce_add(exhibit_sel);
+  unsupported_recall = u:acc_where(ev.hit_i, yi_val, u:intent_index("unsupported"));
+  amb = u:top2_set_hits_f(:u:logits_of, X, M, Cn, amb_rows, amb_a, amb_b, nd);
+  print("QUALITY --", label, "val loss", u:svg_round(ev.loss, 4), "intent acc", u:svg_round(ev.intent_acc, 3), "dest acc", u:svg_round(ev.dest_acc, 3), "top-3", u:svg_round(ev.top3_acc, 3), "exhibit acc", u:svg_round(exhibit_acc, 3), "ambiguous top-2", u:svg_round(amb, 3), "unsupported recall", u:svg_round(unsupported_recall, 3), "paraphrase dest/intent", u:svg_round(pv.dest_acc, 3), u:svg_round(pv.intent_acc, 3), "train acc", u:svg_round(et.intent_acc, 3), u:svg_round(et.dest_acc, 3));
+  {ev: ev, et: et, pv: pv, exhibit_acc: exhibit_acc, unsupported_recall: unsupported_recall, amb: amb, ms: ms}
+}
+
+curve_e = fill([0], 0);
+curve_t = fill([0], 0);
+curve_v = fill([0], 0);
+curve_i = fill([0], 0);
+curve_d = fill([0], 0);
+train_ms = 0;
+e = 0;
+while lt(e, epochs) {
+  ts = clock_ms();
+  i = 0;
+  while lt(i, ntrain) {
+    r = take(train_rows, 0, i);
+    if hashed {
+      adam(u:docent_loss_n(take(X, 0, r), take(M, 0, r), take(Cn, 0, r), take(Yi, 0, r), take(Yd, 0, r), ni, nd), [docent_emb, docent_head_i, docent_head_d], lr, 0.9, 0.999, 0.00000001)
+    } else {
+      adam(u:docent_loss_tn(take(X, 0, r), take(M, 0, r), take(Cn, 0, r), take(Yi, 0, r), take(Yd, 0, r), ni, nd), [docent_table, docent_head_i, docent_head_d], lr, 0.9, 0.999, 0.00000001)
+    };
+    i = i + 1
+  };
+  train_ms = train_ms + (clock_ms() - ts);
+  e = e + 1;
+  if eq(mod(e, every), 0) {
+    et = u:docent_eval_f(:u:logits_of, X, M, Cn, Yi, Yd, train_rows, ni, nd);
+    ev = u:docent_eval_f(:u:logits_of, X, M, Cn, Yi, Yd, val_rows, ni, nd);
+    tl = emit_frame("noffn/loss/train", e, et.loss);
+    vl = emit_frame("noffn/loss/val", e, ev.loss);
+    ai = emit_frame("noffn/acc/intent", e, ev.intent_acc);
+    ad = emit_frame("noffn/acc/dest", e, ev.dest_acc);
+    curve_e = concat(curve_e, e);
+    curve_t = concat(curve_t, tl);
+    curve_v = concat(curve_v, vl);
+    curve_i = concat(curve_i, ai);
+    curve_d = concat(curve_d, ad);
+    print("epoch", e, variant, "train loss", u:svg_round(tl, 4), "val loss", u:svg_round(vl, 4), "val intent acc", u:svg_round(ai, 3), "val dest acc", u:svg_round(ad, 3))
+  } else {
+    0
+  }
+};
+mres = u:measure(variant);
+summary = emit_frame("noffn/accuracy/val", epochs, [mres.ev.intent_acc, mres.ev.dest_acc, mres.ev.top3_acc, mres.exhibit_acc, mres.amb, mres.unsupported_recall, mres.pv.dest_acc, mres.pv.intent_acc]);
+confusion = emit_frame("noffn/confusion/val", epochs, u:confusion(yd_val, mres.ev.pred_d, nd));
+
+example = "where is the cosmac demo";
+ex = u:docent_features(example, S);
+ex_lg = u:logits_of(ex.ids, ex.mask, ex.n);
+ex_pi = emit_frame("noffn/example/intent", epochs, softmax(reshape(ex_lg.intent, [ni])));
+ex_pd = emit_frame("noffn/example/dest", epochs, softmax(reshape(ex_lg.dest, [nd])));
+ex_top = argtop_k(reshape(ex_lg.dest, [nd]), 3);
+
+lesson = if hashed {
+  "SAN01"
+} else {
+  "SAN01b"
+};
+config_text = if hashed {
+  str_concat(str_concat("no-FFN docent: hashed S1024 F24 d25, heads on the pooled embedding, no hidden layer (", to_string(params)), " params against CD01's 26003); corpus A, 40 ep, lr 0.003, per-row adam")
+} else {
+  str_concat(str_concat("no-FFN docent over word vectors (PPMI rank-24 on docs-a.txt, ", to_string(vocab_size)), str_concat(str_concat(" words) in a 1024-slot table, fine-tuned, heads on the pooled rows, no hidden layer (", to_string(params)), " params against CD01b's 26003); corpus A, 40 ep, lr 0.003"))
+};
+row = {lesson: lesson, config: config_text, binary: binary, params: params, active_params: active, bytes_f64: params * 8, bytes_int8: params, ms_per_query: u:svg_round(mres.ms, 4), train_loss: u:svg_round(mres.et.loss, 4), val_loss: u:svg_round(mres.ev.loss, 4), intent_acc: u:svg_round(mres.ev.intent_acc, 3), dest_acc: u:svg_round(mres.ev.dest_acc, 3), top3_acc: u:svg_round(mres.ev.top3_acc, 3), exhibit_acc: u:svg_round(mres.exhibit_acc, 3), ambiguous_top2: u:svg_round(mres.amb, 3), unsupported_recall: u:svg_round(mres.unsupported_recall, 3), paraphrase_acc: u:svg_round(mres.pv.dest_acc, 3), paraphrase_intent_acc: u:svg_round(mres.pv.intent_acc, 3), expert_evals: 0};
+w_row = write_atomic(str_concat(str_concat(out_dir, "/results-row-"), str_concat(variant, ".md")), str_concat(u:docent_row(row), "\n"));
+metrics = {variant: variant, lesson: lesson, params: params, curve_e: curve_e, curve_t: curve_t, curve_v: curve_v, curve_i: curve_i, curve_d: curve_d};
+w_metrics = write_atomic(str_concat(str_concat(out_dir, "/metrics-"), str_concat(variant, ".json")), unwrap(to_json(metrics)));
+
+def u:dest_prob(rank) {
+  "Name and probability of the example's destination at a top-3 rank.";
+  d = take(ex_top, 0, rank);
+  str_concat(str_concat(u:lg(dest_names, d), " "), to_string(u:svg_round(take(ex_pd, 0, d), 3)))
+}
+
+def u:model_svg() {
+  "Diagram: the no-FFN docent's stages with shapes and parameter counts beside CD01's, and the example prediction; training and held-out numbers stay in the table so the diagram is byte-stable.";
+  page = u:svg_head("No-FFN docent model", "The stages of the no-FFN docent: padded feature row, the hashed embedding table widened to 25 so the budget matches CD01, the pooled mean, and the two heads reading it directly; CD01's hidden layer is drawn crossed out; then the example query's intent probabilities and top-3 destinations.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "NO-FFN DOCENT -- features, pooled embedding, two heads, nothing between"));
+  page = str_concat(page, u:svg_text(32, 60, "m", str_concat(str_concat("WHAT: ", to_string(params)), str_concat(str_concat(" parameters (CD01: 26003); a query touches about ", to_string(active)), " of them (its feature rows plus the heads)."))));
+  page = str_concat(page, u:svg_box(40, 84, 150, 64, "features", "ids [24], mask [24]", "0 params"));
+  page = str_concat(page, u:svg_box(210, 84, 150, 64, "embed", "[1024, 25] table", str_concat(to_string(p_table), " params")));
+  page = str_concat(page, u:svg_box(380, 84, 150, 64, "pool", "mask . rows / n", "[1, 25]"));
+  page = str_concat(page, u:svg_box(550, 84, 170, 64, "(CD01: linear+relu)", "[24] -> [32], 800 p", "REMOVED in SAN01"));
+  page = str_concat(page, "<line x1=\"556\" y1=\"90\" x2=\"714\" y2=\"142\" class=\"l2\"/><line x1=\"714\" y1=\"90\" x2=\"556\" y2=\"142\" class=\"l2\"/>");
+  page = str_concat(page, u:svg_box(740, 84, 190, 64, "heads", "intent [25]->[6], dest ->[13]", str_concat(to_string(p_heads), " params")));
+  page = str_concat(page, u:svg_text(40, 186, "k", str_concat("example  ", example)));
+  page = str_concat(page, u:svg_text(40, 210, "", str_concat("intent probabilities [navigate explain recommend story status unsupported]  ", u:svg_vec(ex_pi, 3))));
+  page = str_concat(page, u:svg_text(40, 234, "", str_concat("top-3 destinations  ", str_concat(str_concat(u:dest_prob(0), "   "), str_concat(str_concat(u:dest_prob(1), "   "), u:dest_prob(2))))));
+  page = str_concat(page, u:svg_text(40, 258, "m", "Without the hidden layer the docent is a linear classifier over pooled hashed features."));
+  page = str_concat(page, u:svg_rect(30, 290, 900, 230, "panel"));
+  page = str_concat(page, u:svg_text(50, 318, "", "WHY: sw-atlas bets its architecture on dropping feed-forward layers when knowledge comes from an external index; this is the"));
+  page = str_concat(page, u:svg_text(50, 340, "", "     smallest honest check: the same features, corpus, heads, budget, and trainer as CD01, with only the FFN removed."));
+  page = str_concat(page, u:svg_text(50, 366, "", "HOW: embed(1024, 25), linear(25, 6), linear(25, 13); loss = intent CE + destination CE; one adam step per row per epoch;"));
+  page = str_concat(page, u:svg_text(50, 388, "", "     u:docent_logits_n and u:docent_loss_n in lib/docent.mlpl; the body is never constructed, so no unused parameter is counted."));
+  page = str_concat(page, u:svg_text(50, 414, "", "     The word-vector variant (SAN01b) does the same over CD01b's fine-tuned table; its width is fixed at 24 by the vectors."));
+  page = str_concat(page, u:svg_text(50, 444, "m", "LIMIT: a pooled bag of hashed features has no sequence mixing; it says nothing about attention-only encoders at Atlas size."));
+  page = str_concat(page, u:svg_text(50, 470, "m", "Held-out and paraphrase numbers are rows SAN01 and SAN01b in the docent results table and the comparison diagram, never here."));
+  str_concat(page, "</svg>")
+}
+
+w1 = if hashed {
+  write_atomic(str_concat(out_dir, "/noffn-model.svg"), u:model_svg())
+} else {
+  ok(0)
+};
+print("MEMORY -- params", params, "active/query", active, "bytes f64", params * 8, "bytes int8", params, if hashed {
+    "; hashed embedding widened to 25 for the matched budget"
+  } else {
+    str_concat(str_concat("; table filled ", to_string(tb_filled)), str_concat(" collisions ", to_string(tb_collisions)))
+  });
+print("SPEED --", variant, "train ms", u:svg_round(train_ms, 0), "ms/step", u:svg_round(train_ms / (epochs * ntrain), 4), "ms/query (inference)", u:svg_round(mres.ms, 4), "(", binary, ")");
+print("NUMERICAL CONTRACT -- the no-FFN docent trains (training exact match above 0.95 on both heads) and its held-out intent and destination accuracy are within 0.05 of CD01's 0.938 and 0.925 or above them.");
+print("THE POINT -- If removing the hidden layer changes nothing on this corpus, the FFN was not where the docent's knowledge lived; if it loses, Atlas must keep an FFN or route among experts.");
+print("BOUNDARY -- 724 training rows, pooled hashed features with no sequence mixing, one seed; a check of the claim at microscope scale, not a verdict on attention-only encoders.");
+contract = gt(mres.et.intent_acc, 0.95) * gt(mres.et.dest_acc, 0.95) * gt(mres.ev.intent_acc, 0.888) * gt(mres.ev.dest_acc, 0.875);
+if contract * is_ok(w_row) * is_ok(w_metrics) * is_ok(w1) {
+  ok("no-FFN docent written")
+} else {
+  err("no-FFN docent contract failed")
+}

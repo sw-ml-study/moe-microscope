@@ -32,6 +32,7 @@ do not know why", and nothing has earned it.
 | 11 | RE01 all three sparsities | D | worse than expected | training loss 0.006, validation 4.76, the worst row of the ablation; the mechanisms work, the composition memorizes |
 | 12 | TE01 in-repo teacher | C- | worse than expected | the teacher is worse held out (4.14) than the student it is meant to teach; distillation cannot start from it |
 | 13 | SS01 state-space block | C+ mechanism A | as expected on memory, worse on loss | 256 B of sequence state at any history against 262,144 B for attention at 1,024 tokens, exactly; validation loss 4.56 against 3.79 and a slower sequential scan in the interpreter |
+| 14 | SAN01 no-FFN docent | B | better than expected | the hidden layer removed at matched budget loses nothing: intent 0.946 and destination 0.934 against 0.938 and 0.925, paraphrases 0.389 against 0.296; the answer sw-atlas needed |
 
 Infrastructure lessons are graded below the mechanisms; they are what
 makes the numbers above trustworthy.
@@ -198,6 +199,20 @@ makes the numbers above trustworthy.
   number.
 - Next: SS02 makes the decay depend on the token; HA01 keeps one attention
   block among state blocks and asks how little attention is enough.
+
+
+### SAN01 no-FFN docent: B, better than expected
+
+- Expected: a small loss from removing the hidden layer, to be weighed
+  against the structural guarantee sw-atlas wants (no place to memorise).
+- Result: no loss at all on this corpus. Both variants match or beat their
+  dense twins on every held-out column (SAN01 intent 0.946, destination
+  0.934, paraphrases 0.389, unsupported recall 0.5; SAN01b's ambiguous
+  top-2 pairs 0.545 against 0.182) with lower validation loss.
+- Value now: the answer Atlas needed before its Saga 5, with the
+  limitation stated (no sequence mixing in this model).
+- Next: none here; the MoE line stays as the fallback (MOE-RETURN) if
+  Atlas's attention-only no-FFN model disappoints at its scale.
 
 ## Infrastructure lessons
 

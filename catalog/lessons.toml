@@ -331,3 +331,19 @@ speed = "about a minute for 300 epochs in the interpreter; prefill 17.7 to 42.3 
 quality = "validation loss 4.56 against DN01's 3.79; held-out exact match 0 / 0 / 0.286 / 0.667 (arith, seq, mlpl, prose); training exact match 0.99; learned decay 0.26 to 0.98"
 status = "accepted"
 
+[[lesson]]
+id = "SAN01"
+slug = "docent-no-ffn"
+title = "Is no-FFN real? The docent with its hidden layer removed at matched budget"
+source = "demos/docent_noffn.mlpl"
+library = ["lib/docent.mlpl", "lib/wordvec.mlpl"]
+test = ["tests/test_noffn.mlpl"]
+previews = ["assets/previews/noffn-model.svg", "assets/previews/noffn-comparison.svg"]
+fixture = "fixtures/campus/corpus-a.json"
+implementation = "from-scratch"
+observations = ["noffn/config", "noffn/loss/train", "noffn/loss/val", "noffn/acc/intent", "noffn/acc/dest", "noffn/accuracy/val", "noffn/confusion/val", "noffn/example/intent", "noffn/example/dest"]
+memory = "SAN01: 26,094 parameters (a 1,024 by 25 hashed embedding plus two heads; CD01 has 26,003 with an 800-parameter hidden layer), 741 active per query; SAN01b: 25,051 (the 1,024 by 24 word-vector table plus heads), 712 active"
+speed = "two trainings of 40 epochs, about a minute (hashed) and two minutes (word vectors, including the vectors) in the interpreter; inference about 1.0 and 1.5 ms per query"
+quality = "SAN01 intent 0.946 / destination 0.934 / paraphrase 0.389 / unsupported recall 0.5 against CD01's 0.938 / 0.925 / 0.296 / 0.3; SAN01b 0.938 / 0.925 / 0.444 / 0.3 against CD01b's 0.942 / 0.917 / 0.407 / 0.3; no recording (the corpus is a fixture and the recording surface has no filesystem, finding F16)"
+status = "accepted"
+

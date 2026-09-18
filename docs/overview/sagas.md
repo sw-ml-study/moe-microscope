@@ -563,7 +563,9 @@ track in [`plan.md`](plan.md).
   gate cache and SS01 are done (SS01: a constant 256-byte state, validation
   loss 4.56 against DN01's 3.79, a slower sequential scan in the
   interpreter); a literate org-mode reading of the lessons was inserted
-  after SS01 at the user's request.
+  after SS01 at the user's request, and two steps for sw-atlas's work
+  orders followed it: SAN01 (no-FFN docent, done: no loss at matched
+  budget) and the tiered-residency plan (TW01 reframed).
 - Saga 8 `distillation`: moved ahead of memory and prediction on the
   research note's argument: the student matrix (ground truth, token KD,
   hidden-state KD, both) on the dense student and the hybrid, router warm

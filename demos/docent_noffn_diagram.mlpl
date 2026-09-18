@@ -1,0 +1,104 @@
+# SAN01 comparison diagram: the no-FFN docents (SAN01, SAN01b) beside the dense docents (CD01, CD01b) and the matchers (MB01, MB01t) on held-out intent and destination accuracy, paraphrase destination accuracy, and unsupported recall, drawn from the committed docent results table so the diagram can never disagree with it.
+include "../lib/docent.mlpl";
+include "../lib/svg.mlpl";
+
+out_dir = unwrap(list_get(args(), 0));
+table = "docs/reference/docent-results.md";
+names = str_split("CD01|SAN01|CD01b|SAN01b|MB01|MB01t", "|");
+labels = str_split("CD01 dense|SAN01 no-FFN|CD01b dense+wv|SAN01b no-FFN+wv|MB01 matcher|MB01t matcher+text", "|");
+
+def u:col(key, i) {
+  "One quality column of lesson i from the committed table.";
+  r = unwrap(u:docent_lookup(table, u:lg(names, i)));
+  if str_eq(key, "intent") {
+    r.intent_acc
+  } else {
+    if str_eq(key, "dest") {
+      r.dest_acc
+    } else {
+      if str_eq(key, "para") {
+        r.paraphrase_acc
+      } else {
+        if str_eq(key, "uns") {
+          r.unsupported_recall
+        } else {
+          r.params
+        }
+      }
+    }
+  }
+}
+
+def u:series(key) {
+  "The six lessons' values of one column as a vector.";
+  [u:col(key, 0), u:col(key, 1), u:col(key, 2), u:col(key, 3), u:col(key, 4), u:col(key, 5)]
+}
+
+intent = u:series("intent");
+dest = u:series("dest");
+para = u:series("para");
+uns = u:series("uns");
+params = u:series("params");
+
+def u:bars(vals, x0, y0, wd, cls) {
+  "Six vertical bars for values in [0, 1], 100 px tall at most, labeled.";
+  out = "";
+  i = 0;
+  while lt(i, 6) {
+    h = round(take(vals, 0, i) * 100);
+    out = str_concat(out, u:svg_rect(x0 + i * 34, y0 + 100 - h, wd, h + 1, cls));
+    out = str_concat(out, u:svg_text(x0 + i * 34, y0 + 100 - h - 4, "s", u:svg_num(u:svg_round(take(vals, 0, i), 2))));
+    i = i + 1
+  };
+  out
+}
+
+def u:group(title, vals, x0, cls) {
+  "One bar group with its title and the lesson initials under the bars.";
+  out = u:svg_text(x0, 86, "k", title);
+  out = str_concat(out, u:bars(vals, x0, 96, 28, cls));
+  initials = str_split("CD|SA|CDb|SAb|MB|MBt", "|");
+  i = 0;
+  while lt(i, 6) {
+    out = str_concat(out, u:svg_text(x0 + i * 34, 212, "s", u:lg(initials, i)));
+    i = i + 1
+  };
+  out
+}
+
+def u:comparison_svg() {
+  "Diagram: four bar groups and a numeric table over the six docent rows.";
+  page = u:svg_head("No-FFN against dense docents and matchers", "Held-out intent accuracy, destination accuracy, paraphrase destination accuracy, and unsupported recall for CD01, SAN01, CD01b, SAN01b, MB01, and MB01t, read from the docent results table; the no-FFN rows are the dense rows with the hidden layer removed at matched budget.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "IS NO-FFN REAL? -- the hidden layer removed, on the docent corpus"));
+  page = str_concat(page, u:svg_text(32, 60, "m", "WHAT: every bar is a cell of docs/reference/docent-results.md; CD CD01, SA SAN01, CDb CD01b, SAb SAN01b, MB MB01, MBt MB01t."));
+  page = str_concat(page, u:group("intent acc (val)", intent, 40, "tr"));
+  page = str_concat(page, u:group("destination acc (val)", dest, 262, "t3"));
+  page = str_concat(page, u:group("paraphrase dest acc", para, 484, "va"));
+  page = str_concat(page, u:group("unsupported recall", uns, 706, "t2"));
+  page = str_concat(page, u:svg_text(40, 250, "k", "lesson              params   intent   dest   paraphrase   unsupported"));
+  i = 0;
+  while lt(i, 6) {
+    y = 272 + i * 20;
+    page = str_concat(page, u:svg_text(40, y, "", u:lg(labels, i)));
+    page = str_concat(page, u:svg_text(196, y, "", u:svg_num(take(params, 0, i))));
+    page = str_concat(page, u:svg_text(262, y, "", u:svg_num(take(intent, 0, i))));
+    page = str_concat(page, u:svg_text(330, y, "", u:svg_num(take(dest, 0, i))));
+    page = str_concat(page, u:svg_text(392, y, "", u:svg_num(take(para, 0, i))));
+    page = str_concat(page, u:svg_text(490, y, "", u:svg_num(take(uns, 0, i))));
+    i = i + 1
+  };
+  page = str_concat(page, u:svg_rect(30, 406, 900, 114, "panel"));
+  page = str_concat(page, u:svg_text(50, 432, "", "WHY: sw-atlas drops feed-forward layers so the model cannot memorise facts; the microscope checks the cost on a corpus it has."));
+  page = str_concat(page, u:svg_text(50, 454, "", "HOW: SAN01 is CD01 with embed(1024, 25) and heads only; SAN01b is CD01b's fine-tuned table with heads only; same trainer."));
+  page = str_concat(page, u:svg_text(50, 478, "", "READ: if the SA bars match or beat the CD bars, the FFN was not where the docent's knowledge lived on this corpus."));
+  page = str_concat(page, u:svg_text(50, 502, "m", "LIMIT: pooled hashed features have no sequence mixing; the matchers remain the yardstick for usefulness (finding 8)."));
+  str_concat(page, "</svg>")
+}
+
+w = write_atomic(str_concat(out_dir, "/noffn-comparison.svg"), u:comparison_svg());
+print("NO-FFN COMPARISON -- intent", intent, "dest", dest, "paraphrase", para, "unsupported", uns);
+if is_ok(w) {
+  ok("no-FFN comparison drawn")
+} else {
+  err("no-FFN comparison not written")
+}

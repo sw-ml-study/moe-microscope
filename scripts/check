@@ -23,6 +23,7 @@ done
 "$repo_dir/scripts/run-docent-demo"
 "$repo_dir/scripts/run-matcher-demo"
 "$repo_dir/scripts/run-wordvec-demo"
+"$repo_dir/scripts/run-noffn-demo"
 "$repo_dir/scripts/run-recur-demo"
 "$repo_dir/scripts/run-rm-demo"
 "$repo_dir/scripts/run-engram-demo"

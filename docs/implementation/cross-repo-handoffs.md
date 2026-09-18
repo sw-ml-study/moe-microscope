@@ -124,3 +124,52 @@ link both pages: the frame-by-frame live demo
 (<https://sw-ml-study.github.io/moe-microscope/landscape.html>), described
 as playbacks of pinned recordings. Both pages carry the campus link in
 their footer; nothing else is needed from the campus side.
+
+## `../../software-wrighter-lab/sw-atlas`: the no-FFN check and the tiered-weights workload
+
+Atlas's plan (its `docs/plan.md`, section 11) carries three work orders
+for this repository. They are answered here, never by changing Atlas.
+
+### SAN01, is no-FFN real? (answered 2026-09-18)
+
+Atlas bets its architecture on dropping feed-forward layers so the model
+cannot memorise facts it was not shown. The microscope checked the cost on
+the campus docent corpus it already has: CD01 and CD01b with the hidden
+layer removed and the budget kept (the hashed embedding widened to 25;
+the word-vector table's width is fixed by the vectors).
+
+| Model | Params | Intent | Destination | Paraphrase dest | Unsupported recall |
+|---|---:|---:|---:|---:|---:|
+| CD01 dense (with FFN) | 26,003 | 0.938 | 0.925 | 0.296 | 0.3 |
+| SAN01 no-FFN | 26,094 | 0.946 | 0.934 | 0.389 | 0.5 |
+| CD01b dense + word vectors | 26,003 | 0.942 | 0.917 | 0.407 | 0.3 |
+| SAN01b no-FFN + word vectors | 25,051 | 0.938 | 0.925 | 0.444 | 0.3 |
+
+No-FFN does not lose on this corpus: both variants match or beat their
+dense twins on every held-out column with lower validation loss. The
+limitation Atlas should carry forward: the docent is a pooled bag of
+hashed features with no sequence mixing, so this is evidence about the
+hidden layer's contribution at this size and nothing about attention-only
+encoders; and the deterministic matchers still beat every docent on
+paraphrases (finding 8). Report: [SAN01](../experiments/SAN01.md); rows
+in the [docent results table](../reference/docent-results.md).
+
+### MOE-RETURN
+
+Mixture-of-experts stays here as the built and measured line (MX01, MX02,
+SD01, LD01, RM01, RE01, the routed docent CD02 and CD03 in Saga 11). If
+Atlas's attention-only no-FFN model underperforms at its scale, the
+routed docent is the alternative already measured on the same corpus and
+the same usefulness bar; nothing in Atlas needs to change for it to come
+back.
+
+### TW01, tiered weights reframed
+
+Acknowledged: the queued Saga 14 work (packed file, expert directory,
+expert cache) stands, and the residency unit becomes a shard record that
+is either one of the microscope's padded experts or a depth shard from a
+manifest Atlas supplies by name and hash. The plan change, the manifest
+and trace schemas, and the metric names are the next step
+(`tiered-residency-plan`) and will be recorded in this section when it
+lands.
+

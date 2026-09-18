@@ -1,0 +1,72 @@
+# No-FFN docent contract (SAN01): the heads read the pooled embedding itself, the function-reference evaluator agrees with the fixed one, gradients reach the embedding and both heads, the parameter count, and a row read back from the docent table.
+include "lib/docent.mlpl";
+
+docent_emb = embed(512, 25, 1);
+docent_body = chain(linear(25, 32, 2), relu_layer());
+docent_head_i = linear(25, 6, 3);
+docent_head_d = linear(25, 13, 4);
+
+@test {name: "no-FFN logits are the heads applied to the pooled embedding", tags: ["noffn", "forward"]}
+def u:test_noffn_forward() {
+  "There is no hidden layer: the intent and destination logits are linear in the pooled vector.";
+  r = u:docent_features("where is the cosmac demo", 512);
+  pooled = u:docent_pooled(r.ids, r.mask, r.n);
+  lg = u:docent_logits_n(r.ids, r.mask, r.n);
+  u:assert_approx(reduce_add(abs(lg.intent - apply(docent_head_i, pooled))), 0, 0.000000001, "intent head on pooled")?;
+  u:assert_approx(reduce_add(abs(lg.dest - apply(docent_head_d, pooled))), 0, 0.000000001, "destination head on pooled")?;
+  u:assert_shape(lg.dest, [1, 13], "destination logits")?;
+  u:assert_eq(u:docent_no_ffn_params(1024, 25, 6, 13), 26094, "hashed no-FFN budget at d=25 (CD01 has 26003)")?;
+  u:assert_eq(u:docent_no_ffn_params(1024, 24, 6, 13), 25051, "table no-FFN budget at d=24")
+}
+
+@test {name: "the function-reference evaluator agrees with the fixed evaluator", tags: ["noffn", "evaluate"]}
+def u:test_eval_f() {
+  "u:docent_eval_f over :u:docent_logits_n scores the same rows the same way as a direct computation.";
+  q = str_split("where is the campus|take me to apl|what is the weather today", "|");
+  f = u:docent_matrix(q, 512);
+  yi = [0, 0, 5];
+  yd = [0, 8, 12];
+  e = u:docent_eval_f(:u:docent_logits_n, f.ids, f.mask, f.counts, yi, yd, [0, 1, 2], 6, 13);
+  u:assert_eq(e.count, 3, "three rows")?;
+  lg0 = u:docent_logits_n(take(f.ids, 0, 0), take(f.mask, 0, 0), take(f.counts, 0, 0));
+  u:assert_eq(take(e.pred_d, 0, 0), argmax(lg0.dest), "prediction of row 0")?;
+  u:assert_true(gt(e.loss, 0), "positive loss")?;
+  u:assert_true(reduce_mul(lt(u:top2_set_hits_f(:u:docent_logits_n, f.ids, f.mask, f.counts, [0], [0], [8], 13), 1.001)), "top-2 hit rate is a fraction")
+}
+
+@test {name: "one row trains without a hidden layer: gradients reach the embedding and both heads", tags: ["noffn", "train"]}
+def u:test_train_noffn() {
+  "Forty Adam steps on one row lower its loss; the embedding rows and both heads move, so every trainable part receives a gradient.";
+  r = u:docent_features("take me to apl", 512);
+  ids = r.ids;
+  mask = r.mask;
+  n = r.n;
+  before = u:docent_loss_n(ids, mask, n, 0, 8, 6, 13);
+  rows_before = apply(docent_emb, ids);
+  probe = randn(9, [1, 25]);
+  hi_before = apply(docent_head_i, probe);
+  hd_before = apply(docent_head_d, probe);
+  k = 0;
+  while lt(k, 40) {
+    adam(u:docent_loss_n(ids, mask, n, 0, 8, 6, 13), [docent_emb, docent_head_i, docent_head_d], 0.01, 0.9, 0.999, 0.00000001);
+    k = k + 1
+  };
+  after = u:docent_loss_n(ids, mask, n, 0, 8, 6, 13);
+  u:assert_gt(before - after, 1, "loss fell by more than one nat")?;
+  u:assert_gt(reduce_add(abs(apply(docent_emb, ids) - rows_before)), 0.001, "the embedding rows moved (a model is trained by adam, not read by grad)")?;
+  u:assert_gt(reduce_add(abs(apply(docent_head_i, probe) - hi_before)), 0.001, "the intent head moved")?;
+  u:assert_gt(reduce_add(abs(apply(docent_head_d, probe) - hd_before)), 0.001, "the destination head moved")?;
+  lg = u:docent_logits_n(ids, mask, n);
+  u:assert_eq(argmax(lg.dest), 8, "decodes to apl")
+}
+
+@test {name: "a docent row reads back from the committed table", tags: ["noffn", "io"]}
+def u:test_lookup() {
+  "CD01's quality columns come back as numbers; a missing lesson is an err.";
+  r = unwrap(u:docent_lookup("docs/reference/docent-results.md", "CD01"));
+  u:assert_eq(r.params, 26003, "params")?;
+  u:assert_true(gt(r.dest_acc, 0.9), "destination accuracy")?;
+  u:assert_true(is_err(u:docent_lookup("docs/reference/docent-results.md", "NOPE")), "missing lesson")
+}
+
+u:run_registered_tests()

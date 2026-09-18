@@ -1,6 +1,6 @@
 number = 4
 slug = "san01-no-ffn-docent"
-status = "pending"
+status = "in-progress"
 description = "SAN01: is no-FFN real? sw-atlas (../../software-wrighter-lab/sw-atlas/docs/pl..."
 role = "production"
 context_files = []
