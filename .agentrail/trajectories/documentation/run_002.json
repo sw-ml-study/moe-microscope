@@ -1,0 +1,11 @@
+{
+  "task_type": "documentation",
+  "state": {
+    "number": 5,
+    "step": "tiered-residency-plan"
+  },
+  "action": "Read sw-atlas plan section 11 and research note sections 5-8; rewrote the saga with tables for the tiers and the new columns; wrote both schemas into the handoff; renamed XC01 to TW01 across forward-looking documents only, reverting one edit to a dated acceptance record; changed the budget demo's source rather than its generated output and re-ran just budget write; check-docs then the full gate; named git add, commit, push.",
+  "result": "success",
+  "reward": 1,
+  "timestamp": "2026-09-18T13:43:05"
+}

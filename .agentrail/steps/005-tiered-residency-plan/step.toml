@@ -1,9 +1,10 @@
 number = 5
 slug = "tiered-residency-plan"
-status = "in-progress"
+status = "completed"
 description = "TW01 reframed: tiered weight residency in the plan. Two inputs: sw-atlas's wo..."
 role = "production"
 context_files = []
 created_at = "2026-09-18T10:50:59"
+completed_at = "2026-09-18T13:43:05"
 task_type = "documentation"
-commits = []
+commits = ["f15bfa94fe0b0c79ae53cab1d87b2777074dd4e0"]
