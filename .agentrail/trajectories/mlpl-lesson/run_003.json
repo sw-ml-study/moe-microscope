@@ -1,0 +1,11 @@
+{
+  "task_type": "mlpl-lesson",
+  "state": {
+    "number": 6,
+    "step": "selective-ssm"
+  },
+  "action": "Probed the selective scan through grad first and hit F17 (record field access not traced), so the gates are computed inline in traced code and the record kept for diagrams; ran a biasless version, read the near-0.5 decay as the cause, and added the bias that makes the block contain SS01; added a matched-width variant to remove the capacity confound; diagrams reviewed as PNG in headless Chrome and adjusted twice (bar fills, overflowing line); mlpl-fmt; added the new library functions to the literate document when the tangle check caught the drift; nohup+Monitor for the gate; named git add, commit, push.",
+  "result": "success",
+  "reward": 1,
+  "timestamp": "2026-09-18T18:36:00"
+}
