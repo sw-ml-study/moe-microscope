@@ -23,6 +23,7 @@ for path in AGENTS.md CLAUDE.md COPYRIGHT LICENSE README.md justfile mlplunit.co
     docs/literate/moe-microscope.org scripts/check-tangle scripts/publish-literate learn/literate.html \
     demos/docent_noffn.mlpl demos/docent_noffn_diagram.mlpl tests/test_noffn.mlpl scripts/run-noffn-demo assets/previews/noffn-model.svg assets/previews/noffn-comparison.svg docs/experiments/SAN01.md \
     lib/ssm.mlpl tests/test_ssm.mlpl demos/ssm_block.mlpl scripts/run-ssm-demo fixtures/ssm/state-bytes-v0.json \
+    demos/ssm_selective.mlpl demos/ssm_selective_diagram.mlpl scripts/run-ssm2-demo assets/previews/ssm2-gates.svg assets/previews/ssm2-comparison.svg docs/experiments/SS02.md \
     assets/previews/ssm-structure.svg assets/previews/ssm-window.svg assets/previews/ssm-bytes.svg docs/experiments/SS01.md docs/concepts/state-space.md \
     demos/teacher.mlpl tests/test_teacher.mlpl docs/implementation/teacher-fixture.md fixtures/teacher/teacher-v0.json \
     fixtures/teacher/index-v1.json assets/previews/teacher-fixture.svg scripts/run-teacher \

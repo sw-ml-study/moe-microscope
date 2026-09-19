@@ -222,6 +222,37 @@ would sit between attention layers; one seed, one corpus, 724 training
 rows; and the matchers still beat every docent on paraphrases (finding
 8), no-FFN included.
 
+## 13. Letting the token choose what to forget is worth a little, and only at a matched budget
+
+Evidence: SS02 replaces SS01's three constants with functions of the token
+(`a_t = sigmoid(x_t Wa + b)`, `b_t = x_t Wb`, `c_t = x_t Wc`). At a matched
+mixer budget (1,040 parameters against SS01's 1,056 and attention's 1,024)
+it reaches validation loss 4.42 against SS01's 4.56, with half the
+persistent state (128 bytes against 256). Widened to SS01's state width the
+mixer costs 2,080 parameters and validation loss rises to 5.63, the worst
+of the four mixers, with the training rows memorized completely; its one
+gain is held-out prose at 1.0, the only mixer to answer every prose prompt.
+Rows SS02 and SS02m; the decay strips and the comparison are drawn from
+the recorded values and the committed table.
+
+Interpretation: selection helps, slightly, when it is not paid for with
+capacity. The learned decay sits near 0.8 with a range of about 0.2 within
+a window and dips lowest at the equals sign of an arithmetic prompt, so
+the block does modulate per token but has not learned a sharp gate that
+holds the prompt and resets at the answer bar. The wide variant is
+[finding 1](#1-a-tiny-dense-model-memorizes-ninety-windows) arriving in a
+new place: more capacity on 90 windows is more memorization.
+
+The bias on the decay is not a detail. With it, `Wa = 0` reproduces SS01
+exactly, so the selective block contains the fixed one and a worse result
+cannot be blamed on the block being unable to express the simpler model.
+The first version had no bias, started every decay at one half, and
+reached 5.86.
+
+Limitation: one seed, one initialization, no learning-rate schedule, 90
+training windows; nothing here separates "selection does not help this
+domain" from "this budget cannot train a gate".
+
 ## Supported now versus plausible but not demonstrated
 
 Supported: more stored than active capacity; measurable specialization; a

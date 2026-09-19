@@ -565,7 +565,9 @@ track in [`plan.md`](plan.md).
   interpreter); a literate org-mode reading of the lessons was inserted
   after SS01 at the user's request, and two steps for sw-atlas's work
   orders followed it: SAN01 (no-FFN docent, done: no loss at matched
-  budget) and the tiered-residency plan (TW01 reframed).
+  budget) and the tiered-residency plan (TW01 reframed). SS02 is done: the
+  selective block beats the fixed decay at a matched mixer (4.42 against
+  4.56) with half the state, and loses when widened.
 - Saga 8 `distillation`: moved ahead of memory and prediction on the
   research note's argument: the student matrix (ground truth, token KD,
   hidden-state KD, both) on the dense student and the hybrid, router warm

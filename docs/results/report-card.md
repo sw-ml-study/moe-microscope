@@ -33,6 +33,7 @@ do not know why", and nothing has earned it.
 | 12 | TE01 in-repo teacher | C- | worse than expected | the teacher is worse held out (4.14) than the student it is meant to teach; distillation cannot start from it |
 | 13 | SS01 state-space block | C+ mechanism A | as expected on memory, worse on loss | 256 B of sequence state at any history against 262,144 B for attention at 1,024 tokens, exactly; validation loss 4.56 against 3.79 and a slower sequential scan in the interpreter |
 | 14 | SAN01 no-FFN docent | B | better than expected | the hidden layer removed at matched budget loses nothing: intent 0.946 and destination 0.934 against 0.938 and 0.925, paraphrases 0.389 against 0.296; the answer sw-atlas needed |
+| 15 | SS02 selective state-space block | C+ | as expected, small | selection beats a fixed decay at a matched mixer (4.42 against 4.56) with half the state bytes, and widening it to SS01's state makes the loss worse (5.63): a small win that capacity erases |
 
 Infrastructure lessons are graded below the mechanisms; they are what
 makes the numbers above trustworthy.
@@ -213,6 +214,23 @@ makes the numbers above trustworthy.
   limitation stated (no sequence mixing in this model).
 - Next: none here; the MoE line stays as the fallback (MOE-RETURN) if
   Atlas's attention-only no-FFN model disappoints at its scale.
+
+
+### SS02 selective state-space block: C+, as expected, small
+
+- Expected: input-dependent gating to close part of the gap a fixed decay
+  left against attention.
+- Result: it closes 0.14 of the 0.77-nat gap at a matched mixer budget
+  (4.42 against SS01's 4.56 and DN01's 3.79) and halves the state bytes;
+  widened to SS01's state it costs twice the mixer parameters and reaches
+  5.63, the worst of the four mixers, memorizing every training row. The
+  learned decay modulates by about 0.2 within a window rather than gating
+  sharply at the answer bar.
+- Value now: the matched row, the decay strips that show what the block
+  marks as a boundary, and a clean statement that the bias is what makes
+  the selective block contain the fixed one.
+- Next: HA01 asks how little attention a hybrid needs, which is the
+  question this result sharpens.
 
 ## Infrastructure lessons
 

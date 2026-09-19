@@ -77,4 +77,59 @@ def u:test_training() {
   u:assert_true(reduce_mul(gt(d, 0)) * reduce_mul(lt(d, 1)), "decay stays inside (0, 1)")
 }
 
+sel_Wa = param[16, 8];
+sel_Wa = randn(41, [16, 8]) * 0.3;
+sel_ba = param[8];
+sel_ba = fill([8], 1);
+sel_Wb = param[16, 8];
+sel_Wb = randn(42, [16, 8]) * 0.3;
+sel_Wc = param[16, 8];
+sel_Wc = randn(43, [16, 8]) * 0.3;
+sel_Wo = param[8, 16];
+sel_Wo = randn(44, [8, 16]) * 0.2;
+
+@test {name: "the selective gates depend on the token and stay inside their ranges", tags: ["ssm", "selective"]}
+def u:test_selective_gates() {
+  "Two different inputs give two different decays; every decay is a probability; the bias sets the baseline.";
+  x1 = randn(45, [6, 16]);
+  x2 = x1 * 3;
+  a1 = u:ssm_sel_decay(x1, sel_Wa, sel_ba);
+  a2 = u:ssm_sel_decay(x2, sel_Wa, sel_ba);
+  u:assert_shape(a1, [6, 8], "decay per position and dimension")?;
+  u:assert_gt(reduce_add(abs(a1 - a2)), 0.1, "the decay changes with the token")?;
+  u:assert_true(reduce_mul(gt(a1, 0)) * reduce_mul(lt(a1, 1)), "every decay is inside (0, 1)")?;
+  u:assert_gt(reduce(:max, a1) - reduce(:min, a1), 0.01, "the decay varies within one window")?;
+  zero = u:ssm_sel_decay(x1, fill([16, 8], 0), sel_ba);
+  u:assert_approx(reduce_add(abs(zero - fill([6, 8], sigmoid(1)))), 0, 0.000000001, "with a zero projection the decay is the bias alone: SS01's fixed decay")
+}
+
+@test {name: "the selective scan reduces to the constant-decay scan when the gates are constant", tags: ["ssm", "selective"]}
+def u:test_selective_reduces() {
+  "A per-position decay that happens to be the same everywhere gives exactly the SS01 scan.";
+  xB = reshape(range(12), [4, 3]);
+  a_const = fill([4, 3], 0.5);
+  u:assert_approx(reduce_add(abs(u:ssm_sel_scan(a_const, xB, 4, 3) - u:ssm_scan(xB, fill([3], 0.5), 4, 3))), 0, 0.000000001, "selective equals fixed under a constant gate")?;
+  a_var = [[1, 1, 1], [0, 0, 0], [1, 1, 1], [0, 0, 0]];
+  states = u:ssm_sel_scan(a_var, xB, 4, 3);
+  u:assert_eq(take(states, 0, 1), [3, 4, 5], "a zero decay drops everything before this position")?;
+  u:assert_eq(take(states, 0, 2), [9, 11, 13], "a unit decay adds to what survived")
+}
+
+@test {name: "gradients reach every part of the selective block", tags: ["ssm", "selective", "grad"]}
+def u:test_selective_gradients() {
+  "The loss depends on the three gate projections, the decay bias, and the output projection.";
+  x = randn(46, [6, 16]);
+  u:assert_shape(u:ssm_sel_out(x, sel_Wa, sel_ba, sel_Wb, sel_Wc, sel_Wo, 6, 8), [6, 16], "block output")?;
+  ga = grad(reduce_add(u:ssm_sel_out(x, sel_Wa, sel_ba, sel_Wb, sel_Wc, sel_Wo, 6, 8) * u:ssm_sel_out(x, sel_Wa, sel_ba, sel_Wb, sel_Wc, sel_Wo, 6, 8)), sel_Wa);
+  gb = grad(reduce_add(u:ssm_sel_out(x, sel_Wa, sel_ba, sel_Wb, sel_Wc, sel_Wo, 6, 8) * u:ssm_sel_out(x, sel_Wa, sel_ba, sel_Wb, sel_Wc, sel_Wo, 6, 8)), sel_ba);
+  gc = grad(reduce_add(u:ssm_sel_out(x, sel_Wa, sel_ba, sel_Wb, sel_Wc, sel_Wo, 6, 8) * u:ssm_sel_out(x, sel_Wa, sel_ba, sel_Wb, sel_Wc, sel_Wo, 6, 8)), sel_Wc);
+  go = grad(reduce_add(u:ssm_sel_out(x, sel_Wa, sel_ba, sel_Wb, sel_Wc, sel_Wo, 6, 8) * u:ssm_sel_out(x, sel_Wa, sel_ba, sel_Wb, sel_Wc, sel_Wo, 6, 8)), sel_Wo);
+  u:assert_gt(reduce_add(abs(ga)), 0, "decay projection gradient")?;
+  u:assert_gt(reduce_add(abs(gb)), 0, "decay bias gradient")?;
+  u:assert_gt(reduce_add(abs(gc)), 0, "read gate gradient")?;
+  u:assert_gt(reduce_add(abs(go)), 0, "output projection gradient")?;
+  u:assert_eq(u:ssm_sel_params(16, 32), 2080, "selective block budget at state 32")?;
+  u:assert_eq(u:ssm_sel_params(16, 16), 1040, "and at state 16, against attention's 1024")
+}
+
 u:run_registered_tests()

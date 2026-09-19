@@ -80,6 +80,10 @@ dense mode="check":
 ssm mode="check":
     ./scripts/run-ssm-demo {{mode}}
 
+# Run SS02, the selective state-space block at two state widths (about a minute), and check its diagrams and results rows; `just ssm2 write` regenerates them.
+ssm2 mode="check":
+    ./scripts/run-ssm2-demo {{mode}}
+
 # Prove that emit_frame streams every train step and while iteration over live SSE, and pin F16.
 emit-frame-loops:
     ./scripts/run-emit-frame-loops

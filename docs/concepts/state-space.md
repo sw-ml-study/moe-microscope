@@ -36,21 +36,26 @@ sequentially over the 28-position window as one `repeat` per position;
 ## What the microscope measured
 
 SS01 is DN01 with attention replaced by the simple scan at matched size
-(1,056 parameters against 1,024), trained with the DN01 budget:
+(1,056 parameters against 1,024); SS02 makes the decay, input, and read
+gates functions of the token, at two state widths. All four share the same
+embedding, feed-forward block, head, data, and epochs:
 
-| | SS01 scan | DN01 attention |
-|---|---:|---:|
-| Validation loss | 4.56 | 3.79 |
-| Held-out exact match, arith / seq / mlpl / prose | 0 / 0 / 0.286 / 0.667 | 0 / 0 / 0 / 0.667 |
-| Training exact match | 0.99 | 0.70 |
-| Persistent state at 1,024 tokens of history | 256 B | 262,144 B |
-| Prefill, microseconds per token at 1,024 tokens (interpreter) | 42.3 | 16.0 |
+| | DN01 attention | SS01 fixed decay | SS02m selective, matched | SS02 selective, wide |
+|---|---:|---:|---:|---:|
+| Mixer parameters | 1,024 | 1,056 | 1,040 | 2,080 |
+| Validation loss | 3.79 | 4.56 | 4.42 | 5.63 |
+| Held-out prose / MLPL | 0.667 / 0 | 0.667 / 0.286 | 0.667 / 0.143 | 1.0 / 0.286 |
+| Training exact match | 0.70 | 0.99 | 0.87 | 1.0 |
+| Persistent state at 1,024 tokens | 262,144 B | 256 B | 128 B | 256 B |
+| Prefill, microseconds per token at 1,024 tokens (interpreter) | 16.0 | 42.3 | - | - |
 
-The learned decay spans 0.26 to 0.98 (mean 0.76): about a third of the
+SS01's learned decay spans 0.26 to 0.98 (mean 0.76): about a third of the
 first position of a seven-token window is still in the state at its end.
-The [SS01 report](../experiments/SS01.md) has the full rows and the three
-diagrams (structure and bytes, the state along one window as fading chips,
-state bytes against history).
+SS02's token-dependent decay sits near 0.8 with a range of about 0.2
+within a window, dipping lowest at the equals sign of an arithmetic
+prompt: it modulates, but it has not learned a sharp boundary gate. The
+[SS01](../experiments/SS01.md) and [SS02](../experiments/SS02.md) reports
+have the full rows and the diagrams.
 
 Did a fixed-size state learn anything here? It learned the training rows
 at least as well as attention (better exact match, lower training loss)
@@ -67,15 +72,16 @@ At matched parameters, the scan block within a small margin of attention's
 validation loss with constant decode memory; and a hybrid ratio that keeps
 attention's held-out MLPL answers (the first ones came from RC01 and RM01)
 while the state-space blocks carry the rest at lower bytes per token. SS01
-delivers the constant memory and not the margin; SS02 (selective gating)
-and HA01 (one attention block among state blocks) are the next two rows.
+and SS02 both deliver the constant memory and neither delivers the margin:
+selection closes 0.14 nats of the 0.77-nat gap, at half the state bytes.
+HA01, one attention block among state blocks, is the next row.
 
 ## Status
 
-Saga 7 (state-space-and-hybrid) is in progress: SS01 is measured (this
-page's table); SS02 selective, HA01 with attention, SM01 with experts, and
-LM01 latent experts follow. The results table carries a state-bytes column
-for every row from SS01 on.
+Saga 7 (state-space-and-hybrid) is in progress: SS01 and SS02 are measured
+(this page's table); HA01 with attention, SM01 with experts, and LM01
+latent experts follow. The results table carries a state-bytes column for
+every row from SS01 on.
 
 ## Deeper reference
 

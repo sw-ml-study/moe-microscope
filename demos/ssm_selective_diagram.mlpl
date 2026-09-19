@@ -1,0 +1,140 @@
+# SS02 diagrams: the selective gates on one arithmetic and one prose window drawn side by side from the trained runs' metrics, and the sequence-mixer comparison (DN01 attention, SS01 fixed decay, SS02m and SS02 selective) drawn from the committed results table so the diagram cannot disagree with it.
+include "../lib/ssm.mlpl";
+include "../lib/svg.mlpl";
+include "../lib/results.mlpl";
+
+out_dir = unwrap(list_get(args(), 0));
+table = "docs/reference/results.md";
+mw = unwrap(parse_json(unwrap(read_text(str_concat(out_dir, "/metrics-wide.json")))));
+mm = unwrap(parse_json(unwrap(read_text(str_concat(out_dir, "/metrics-matched.json")))));
+
+def u:strip(text, decay, x0, y0, wd) {
+  "One window drawn as a character row with a shaded cell per position: opacity is that token's mean decay, the share of the state it lets through.";
+  n = str_len(text);
+  out = "";
+  i = 0;
+  while lt(i, n) {
+    v = take(decay, 0, i);
+    cell = str_concat(str_concat(str_concat(str_concat("<rect x=\"", u:svg_num(x0 + i * wd)), str_concat("\" y=\"", u:svg_num(y0))), str_concat(str_concat("\" width=\"", u:svg_num(wd - 2)), "\" height=\"22\" class=\"heat\" fill-opacity=\"")), str_concat(u:svg_num(u:svg_round(0.06 + 0.94 * v, 2)), "\"/>"));
+    out = str_concat(out, cell);
+    out = str_concat(out, u:svg_text(x0 + i * wd + 5, y0 + 16, "", str_slice(text, i, 1)));
+    out = str_concat(out, u:svg_text(x0 + i * wd + 1, y0 + 34, "s", u:svg_num(u:svg_round(v, 2))));
+    i = i + 1
+  };
+  out
+}
+
+def u:gates_svg() {
+  "Diagram: the learned decay per position on one arithmetic and one prose window, for both trained variants.";
+  page = u:svg_head("What the selective block forgets, and where", "The decay a_t = sigmoid(x_t Wa + b) of the trained selective state-space block, averaged over state dimensions, drawn per position on one arithmetic window and one prose window for both variants; a dark cell keeps almost all of the state, a pale cell drops it.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "SELECTIVE DECAY -- the token decides what the state keeps"));
+  page = str_concat(page, u:svg_text(32, 60, "m", "WHAT: a_t per position, mean over state dimensions. 1.0 keeps the whole state, 0.0 starts again from this token's input."));
+  page = str_concat(page, u:svg_text(40, 92, "k", str_concat("SS02 wide, state 32: arithmetic   mean ", u:svg_num(u:svg_round(mean(mw.decay_arith), 3)))));
+  page = str_concat(page, u:strip(mw.arith_text, mw.decay_arith, 40, 102, 30));
+  page = str_concat(page, u:svg_text(40, 172, "k", str_concat("SS02 wide, state 32: prose   mean ", u:svg_num(u:svg_round(mean(mw.decay_prose), 3)))));
+  page = str_concat(page, u:strip(mw.prose_text, mw.decay_prose, 40, 182, 30));
+  page = str_concat(page, u:svg_text(40, 252, "k", str_concat("SS02m matched, state 16: arithmetic   mean ", u:svg_num(u:svg_round(mean(mm.decay_arith), 3)))));
+  page = str_concat(page, u:strip(mm.arith_text, mm.decay_arith, 40, 262, 30));
+  page = str_concat(page, u:svg_text(40, 332, "k", str_concat("SS02m matched, state 16: prose   mean ", u:svg_num(u:svg_round(mean(mm.decay_prose), 3)))));
+  page = str_concat(page, u:strip(mm.prose_text, mm.decay_prose, 40, 342, 30));
+  page = str_concat(page, u:svg_rect(30, 400, 900, 124, "panel"));
+  page = str_concat(page, u:svg_text(50, 426, "", "WHY: a fixed decay (SS01) forgets on a schedule; a selective decay can hold the state through one token and drop it at"));
+  page = str_concat(page, u:svg_text(50, 448, "", "     the next, which is what a sequence model needs at a boundary such as the bar before the answer."));
+  page = str_concat(page, u:svg_text(50, 474, "", "HOW: u:ssm_sel_decay is sigmoid(x Wa + b); the bias gives the decay a baseline, so Wa = 0 reproduces SS01 exactly and the"));
+  page = str_concat(page, u:svg_text(50, 496, "", "     selective block contains the fixed one as a special case. Without it the decay starts at 0.5 and halves the state each token."));
+  page = str_concat(page, u:svg_text(50, 518, "m", "READ: the range within a window, not the mean, is the selectivity; a flat strip is a fixed decay wearing a gate."));
+  str_concat(page, "</svg>")
+}
+
+def u:cell(lesson, key) {
+  "One numeric column of a lesson from the committed results table.";
+  r = unwrap(u:results_lookup(table, lesson));
+  if str_eq(key, "val_loss") {
+    r.val_loss
+  } else {
+    if str_eq(key, "params") {
+      r.params
+    } else {
+      if str_eq(key, "prose") {
+        r.prose_acc
+      } else {
+        if str_eq(key, "mlpl") {
+          r.mlpl_acc
+        } else {
+          r.ms_per_token
+        }
+      }
+    }
+  }
+}
+
+names = str_split("DN01|SS01|SS02m|SS02", "|");
+labels = str_split("DN01 attention|SS01 fixed decay|SS02m selective, matched|SS02 selective, wide", "|");
+blocks = [1024, 1056, mm.block_params, mw.block_params];
+states = [4096, 256, mm.state_bytes, mw.state_bytes];
+
+def u:series(key) {
+  "The four lessons' values of one column as a vector.";
+  [u:cell(unwrap(list_get(names, 0)), key), u:cell(unwrap(list_get(names, 1)), key), u:cell(unwrap(list_get(names, 2)), key), u:cell(unwrap(list_get(names, 3)), key)]
+}
+
+losses = u:series("val_loss");
+params = u:series("params");
+prose = u:series("prose");
+mlpl = u:series("mlpl");
+
+def u:comparison_svg() {
+  "Diagram: validation loss, held-out family accuracy, sequence-mixer parameters, and state bytes for the four sequence mixers.";
+  page = u:svg_head("Four sequence mixers on the same block", "Validation loss, held-out prose and MLPL exact match, sequence-mixer parameters, and persistent state bytes at a 16-token history for DN01's attention, SS01's fixed decay, and the selective block at matched and wide state, every number read from the results table.");
+  page = str_concat(page, u:svg_text(32, 36, "h", "ATTENTION, FIXED DECAY, SELECTIVE DECAY -- same block, same budget"));
+  page = str_concat(page, u:svg_text(32, 60, "m", "WHAT: one sequence mixer swapped into the DN01 block; everything else (embedding, FFN, norm, head, data, epochs) is identical."));
+  top = reduce(:max, losses) * 1.1;
+  page = str_concat(page, u:svg_text(40, 92, "k", str_concat("validation loss (lower is better; axis top ", str_concat(u:svg_num(u:svg_round(top, 2)), ")"))));
+  i = 0;
+  while lt(i, 4) {
+    h = round(take(losses, 0, i) / top * 112);
+    page = str_concat(page, u:svg_rect(60 + i * 90, 232 - h, 56, h, "tr"));
+    page = str_concat(page, u:svg_text(60 + i * 90, 228 - h, "s", u:svg_num(take(losses, 0, i))));
+    page = str_concat(page, u:svg_text(60 + i * 90, 248, "s", unwrap(list_get(names, i))));
+    i = i + 1
+  };
+  page = str_concat(page, u:svg_text(470, 92, "k", "held-out exact match: prose (violet), MLPL (blue)"));
+  i = 0;
+  while lt(i, 4) {
+    hp = round(take(prose, 0, i) * 112);
+    hm = round(take(mlpl, 0, i) * 112);
+    page = str_concat(page, u:svg_rect(490 + i * 90, 232 - hp, 26, hp + 1, "t3"));
+    page = str_concat(page, u:svg_rect(520 + i * 90, 232 - hm, 26, hm + 1, "t0"));
+    page = str_concat(page, u:svg_text(490 + i * 90, 228 - hp, "s", u:svg_num(take(prose, 0, i))));
+    page = str_concat(page, u:svg_text(490 + i * 90, 248, "s", unwrap(list_get(names, i))));
+    i = i + 1
+  };
+  page = str_concat(page, u:svg_text(40, 290, "k", "mixer                          total params   mixer params   state B (16 tok)   val loss   prose   mlpl"));
+  i = 0;
+  while lt(i, 4) {
+    y = 314 + i * 22;
+    page = str_concat(page, u:svg_text(40, y, "", unwrap(list_get(labels, i))));
+    page = str_concat(page, u:svg_text(300, y, "", u:svg_num(take(params, 0, i))));
+    page = str_concat(page, u:svg_text(410, y, "", u:svg_num(take(blocks, 0, i))));
+    page = str_concat(page, u:svg_text(520, y, "", u:svg_num(take(states, 0, i))));
+    page = str_concat(page, u:svg_text(650, y, "", u:svg_num(take(losses, 0, i))));
+    page = str_concat(page, u:svg_text(730, y, "", u:svg_num(take(prose, 0, i))));
+    page = str_concat(page, u:svg_text(800, y, "", u:svg_num(take(mlpl, 0, i))));
+    i = i + 1
+  };
+  page = str_concat(page, u:svg_rect(30, 412, 900, 112, "panel"));
+  page = str_concat(page, u:svg_text(50, 438, "", "READ: at a matched mixer budget the selective decay beats the fixed one (4.42 against 4.56) with half the state bytes;"));
+  page = str_concat(page, u:svg_text(50, 460, "", "     widening it to SS01's state doubles the mixer parameters and makes the held-out loss worse, not better."));
+  page = str_concat(page, u:svg_text(50, 486, "", "     Attention still wins the loss at this scale, and pays for it with a state that grows with every token of history."));
+  page = str_concat(page, u:svg_text(50, 510, "m", str_concat(str_concat("At a 16-token history attention keeps a key and a value row per token; the scan keeps one vector. Decay range ", u:svg_num(u:svg_round(reduce(:max, mm.decay_arith) - reduce(:min, mm.decay_arith), 2))), " in the matched window: real but narrow.")));
+  str_concat(page, "</svg>")
+}
+
+r1 = write_atomic(str_concat(out_dir, "/ssm2-gates.svg"), u:gates_svg());
+r2 = write_atomic(str_concat(out_dir, "/ssm2-comparison.svg"), u:comparison_svg());
+print("SS02 DIAGRAMS -- val loss", losses, "prose", prose, "mlpl", mlpl, "mixer params", blocks, "state bytes", states);
+if is_ok(r1) * is_ok(r2) {
+  ok("selective diagrams drawn")
+} else {
+  err("selective diagrams not written")
+}

@@ -347,3 +347,19 @@ speed = "two trainings of 40 epochs, about a minute (hashed) and two minutes (wo
 quality = "SAN01 intent 0.946 / destination 0.934 / paraphrase 0.389 / unsupported recall 0.5 against CD01's 0.938 / 0.925 / 0.296 / 0.3; SAN01b 0.938 / 0.925 / 0.444 / 0.3 against CD01b's 0.942 / 0.917 / 0.407 / 0.3; no recording (the corpus is a fixture and the recording surface has no filesystem, finding F16)"
 status = "accepted"
 
+[[lesson]]
+id = "SS02"
+slug = "selective-state-space"
+title = "A selective state-space block: the token decides what the state keeps"
+source = "demos/ssm_selective.mlpl"
+library = ["lib/ssm.mlpl", "lib/dense.mlpl"]
+test = ["tests/test_ssm.mlpl"]
+previews = ["assets/previews/ssm2-gates.svg", "assets/previews/ssm2-comparison.svg"]
+fixture = "fixtures/recordings/selective-state-space-run-v0.json"
+implementation = "from-scratch"
+observations = ["ssm2/config", "ssm2/loss/train", "ssm2/loss/val", "ssm2/accuracy/val", "ssm2/accuracy/train", "ssm2/decay/arith", "ssm2/decay/prose", "ssm2/state/example", "ssm2/logits/example-argmax", "ssm2/decay/spread"]
+memory = "SS02 wide: 4,868 parameters, mixer 2,080, state 256 B at any history; SS02m matched: 3,828 parameters, mixer 1,040 against SS01's 1,056 and attention's 1,024, state 128 B"
+speed = "two trainings of 300 epochs, about 25 and 20 seconds in the interpreter; the scan is sequential, one repeat per position"
+quality = "SS02m validation loss 4.42 against SS01's 4.56 and DN01's 3.79, held-out 0 / 0 / 0.143 / 0.667; SS02 wide 5.63 with held-out prose 1.0 and complete memorization of the training rows"
+status = "accepted"
+

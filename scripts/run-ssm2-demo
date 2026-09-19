@@ -1,0 +1,54 @@
+#!/bin/sh
+# Run SS02 once per variant (wide, matched; one process each, finding F22), compose the gate and comparison diagrams from the two runs' metrics and the committed results table, and check (or write) the two diagrams and the two results rows.
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+mlpl=$("$repo_root/scripts/select-mlpl")
+mode=${1:-check}
+. "$repo_root/scripts/gate-cache"
+gate_cache_start "$mode" run-ssm2-demo \
+    demos/ssm_selective.mlpl demos/ssm_selective_diagram.mlpl \
+    assets/previews/ssm2-gates.svg assets/previews/ssm2-comparison.svg \
+    "row:docs/reference/results.md:| SS02 |" "row:docs/reference/results.md:| SS02m |" \
+    "row:docs/reference/results.md:| SS01 |" "row:docs/reference/results.md:| DN01 |" conf:SS02
+tmp_rel="tmp/ssm2-demo"
+rm -rf "$repo_root/$tmp_rel"
+mkdir -p "$repo_root/$tmp_rel"
+binary=$("$mlpl" --version 2>/dev/null | head -1 | tr -d '\n')
+table="$repo_root/docs/reference/results.md"
+
+for variant in wide matched; do
+    "$mlpl" --source-dir "$repo_root" "$repo_root/demos/ssm_selective.mlpl" -- "$tmp_rel" "$binary" "$variant"
+    row=$(cat "$repo_root/$tmp_rel/results-row-$variant.md")
+    lesson=$(printf '%s\n' "$row" | awk -F'|' '{ gsub(/ /, "", $2); print $2 }')
+    key=$(printf '%s\n' "$row" | awk -F'|' '{ $4=""; $12=""; print }')
+    if [ "$mode" = "write" ]; then
+        grep -q "^| $lesson |" "$table" && sed -i '' "/^| $lesson |/d" "$table"
+        printf '%s\n' "$row" >> "$table"
+    else
+        committed_key=$(grep "^| $lesson |" "$table" | awk -F'|' '{ $4=""; $12=""; print }')
+        [ "$key" = "$committed_key" ] || {
+            echo "$lesson results row differs from $table; run scripts/run-ssm2-demo write" >&2
+            echo "generated: $key" >&2
+            echo "committed: $committed_key" >&2
+            exit 1
+        }
+    fi
+done
+
+"$mlpl" --source-dir "$repo_root" "$repo_root/demos/ssm_selective_diagram.mlpl" -- "$tmp_rel"
+
+for name in ssm2-gates ssm2-comparison; do
+    generated="$repo_root/$tmp_rel/$name.svg"
+    committed="$repo_root/assets/previews/$name.svg"
+    [ -s "$generated" ] || { echo "ssm2 demo did not write $name.svg" >&2; exit 1; }
+    if [ "$mode" = "write" ]; then
+        cp "$generated" "$committed"
+    elif ! cmp -s "$generated" "$committed"; then
+        echo "$name.svg preview is stale; run scripts/run-ssm2-demo write" >&2
+        exit 1
+    fi
+done
+rm -rf "$repo_root/$tmp_rel"
+gate_cache_record "$mode"
+echo "PASS selective state-space contract, previews, and results rows ($mode)"

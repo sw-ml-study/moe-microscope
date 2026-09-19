@@ -49,3 +49,42 @@ def u:ssm_survival(decay, from_pos, to_pos) {
   "Mean over dimensions of the share of position from_pos's contribution still present in the state at to_pos: decay^(to_pos - from_pos), averaged.";
   mean(pow(decay, to_pos - from_pos))
 }
+
+def u:ssm_sel_scan(a, b, n, ds) {
+  "Selective scan over n positions: s_t = a_t * s_(t-1) + b_t, where the decay a [n, ds] and the input b [n, ds] are both functions of the token; the stacked states [n, ds]. One repeat per position, as in the constant-decay scan (probe c1).";
+  h = take(b, 0, 0);
+  out = reshape(h, [1, ds]);
+  t = 1;
+  steps = n - 1;
+  repeat steps {
+    h = take(a, 0, t) * h + take(b, 0, t);
+    out = concat(out, reshape(h, [1, ds]), 0);
+    t = t + 1
+  };
+  out
+}
+
+def u:ssm_sel_decay(x, Wa, ba) {
+  "The token-dependent decay [n, ds]: sigmoid(x Wa + ba), in (0, 1). The bias is what gives the decay a learnable baseline, so that Wa = 0 reproduces SS01's fixed decay exactly and the selective block contains the constant one as a special case; without it the decay starts at one half and the state loses half its content every position.";
+  sigmoid(matmul(x, Wa) + ba)
+}
+
+def u:ssm_sel_gates(x, Wa, ba, Wb, Wc) {
+  "The three token-dependent gates of the selective block as a record, for inspection and diagrams: decay a in (0, 1), input b = x Wb, and read c = x Wc, each [n, ds]. Traced code calls the pieces directly, because a record field access is not a traced form inside grad (finding F17).";
+  {a: u:ssm_sel_decay(x, Wa, ba), b: matmul(x, Wb), c: matmul(x, Wc)}
+}
+
+def u:ssm_sel_states(x, Wa, ba, Wb, Wc, n, ds) {
+  "The selective state at every position [n, ds]: the decay and input gates from the token, then the scan.";
+  u:ssm_sel_scan(u:ssm_sel_decay(x, Wa, ba), matmul(x, Wb), n, ds)
+}
+
+def u:ssm_sel_out(x, Wa, ba, Wb, Wc, Wo, n, ds) {
+  "The selective block output [n, dm]: every state read through its own token's gate c, then the output projection Wo; the caller adds the residual.";
+  matmul(u:ssm_sel_scan(u:ssm_sel_decay(x, Wa, ba), matmul(x, Wb), n, ds) * matmul(x, Wc), Wo)
+}
+
+def u:ssm_sel_params(dm, ds) {
+  "Trainable parameters of the selective block: three token-to-state projections, the decay bias, and one state-to-token projection.";
+  3 * dm * ds + ds + ds * dm
+}

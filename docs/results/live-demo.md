@@ -37,6 +37,15 @@ for it.
 | Routing and dispatch walkthrough | 10 frames stepped, 20 observations rendered, last step 9 |
 | New lesson captions and labels | recurrence strip (`rm/route/example`, `re/route/example`), the Engram rows, gate, and retrieved values of one window (`engram/rows/example`, `engram/gate/example`, `engram/retrieved/example`), the per-recurrence Engram gate (`re/gate/example`), all drawn from recorded values only |
 
+## 2026-09-18, SS02 selective state-space block (local, before deploy)
+
+| Check | Result |
+|---|---|
+| `?verify=1` on the composed site (headless Chrome, 2026-09-18, `scripts/build-site` into a temporary directory) | title `verified: ok`, every lesson stepped to its last frame, no errors |
+| SS02 selective state-space block | 13 frames stepped, 32 observations rendered, last step 300 |
+| The other nine lessons | unchanged: 29, 65, 66, 36, 36, 57, 36, 33, and 20 observations rendered |
+| New lesson labels and captions | `ssm2/config`, `ssm2/decay/arith` (items named by the arithmetic window's characters), `ssm2/decay/prose`, `ssm2/decay/spread`, `ssm2/state/example`, all drawn from recorded values only |
+
 ## 2026-09-17, SS01 state-space block (local, before deploy)
 
 | Check | Result |

@@ -58,8 +58,9 @@ resource budget (RB01) and a measured generation benchmark (GB01);
 recurrence (RC01, RM01); the Engram table from scratch with exact parity
 against the sw-MLPL builtin (EG01); all three sparsities together and the
 seven-row ablation matrix (RE01); a state-space block in place of
-attention with a constant 256-byte sequence state (SS01); the docent
-without its feed-forward layer, sw-atlas's no-FFN check (SAN01); eight recordings
+attention with a constant 256-byte sequence state (SS01) and its selective
+form (SS02); the docent without its feed-forward layer, sw-atlas's no-FFN
+check (SAN01); nine recordings
 replayed in the live demo and handed to the generic Rust/Yew host; the
 campus docent's first five steps (paused: it does not yet beat a
 deterministic matcher).
@@ -136,7 +137,13 @@ to show in the [report card](docs/results/report-card.md).
    0.70) and validation loss 4.56 (DN01 3.79), and the sequential scan is
    two to eight times slower per token in the interpreter. Evidence:
    [SS01](docs/experiments/SS01.md).
-11. **The docent loses nothing without its feed-forward layer.** With the
+11. **Letting the token choose what to forget is worth a little.** The
+   selective block reaches validation loss 4.42 against the fixed decay's
+   4.56 at a matched mixer budget and half the state bytes; widened to the
+   same state width it costs twice the mixer parameters and reaches 5.63,
+   the worst of the four sequence mixers. Evidence:
+   [SS02](docs/experiments/SS02.md).
+12. **The docent loses nothing without its feed-forward layer.** With the
    hidden layer removed at matched budget, both docents match or beat
    their dense twins on every held-out column (intent 0.946 against
    0.938, destination 0.934 against 0.925, paraphrases 0.389 against

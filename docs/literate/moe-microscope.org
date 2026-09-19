@@ -2269,7 +2269,7 @@ def u:engram_bytes(rows, head_dim, bytes_per_value) {
 
 * The state-space block: =lib/ssm.mlpl=
 
-A diagonal linear scan with a learned decay in place of attention. Measured (SS01): 256 bytes of sequence state at any history against attention's 262,144 at 1,024 tokens; validation loss 4.56 against 3.79; training exact match 0.99 against 0.70; the sequential scan two to eight times slower per token in the interpreter.
+A diagonal linear scan in place of attention, first with a learned constant decay (SS01) and then with the decay, input, and read gates computed from the token (SS02). Measured: 256 bytes of sequence state at any history against attention's 262,144 at 1,024 tokens; validation loss 4.56 for the fixed decay and 4.42 for the selective block at a matched mixer budget with half the state, against attention's 3.79; the sequential scan two to eight times slower per token in the interpreter.
 
 ** Module header
 
@@ -2374,6 +2374,81 @@ How much of one position is still in the state at a later one: the mean decay ra
 def u:ssm_survival(decay, from_pos, to_pos) {
   "Mean over dimensions of the share of position from_pos's contribution still present in the state at to_pos: decay^(to_pos - from_pos), averaged.";
   mean(pow(decay, to_pos - from_pos))
+}
+#+end_src
+
+** =u:ssm_sel_scan=
+
+SS02's scan. The only change from the fixed-decay scan is that the decay is now a matrix, one row per position, so `take(a, 0, t)` reads this position's decay instead of using one vector throughout. Everything else, including the sequential `repeat`, is the same.
+
+#+begin_src mlpl :tangle ../../lib/ssm.mlpl
+def u:ssm_sel_scan(a, b, n, ds) {
+  "Selective scan over n positions: s_t = a_t * s_(t-1) + b_t, where the decay a [n, ds] and the input b [n, ds] are both functions of the token; the stacked states [n, ds]. One repeat per position, as in the constant-decay scan (probe c1).";
+  h = take(b, 0, 0);
+  out = reshape(h, [1, ds]);
+  t = 1;
+  steps = n - 1;
+  repeat steps {
+    h = take(a, 0, t) * h + take(b, 0, t);
+    out = concat(out, reshape(h, [1, ds]), 0);
+    t = t + 1
+  };
+  out
+}
+#+end_src
+
+** =u:ssm_sel_decay=
+
+The decay a token asks for. The bias is the part that matters: with it, `Wa = 0` gives a constant decay, so the selective block contains SS01's fixed one exactly and a worse result cannot be blamed on the block being unable to express the simpler model. The first version had no bias, started every decay at one half, and lost half the state every position; it reached validation loss 5.86 against 5.63 with the bias.
+
+#+begin_src mlpl :tangle ../../lib/ssm.mlpl
+def u:ssm_sel_decay(x, Wa, ba) {
+  "The token-dependent decay [n, ds]: sigmoid(x Wa + ba), in (0, 1). The bias is what gives the decay a learnable baseline, so that Wa = 0 reproduces SS01's fixed decay exactly and the selective block contains the constant one as a special case; without it the decay starts at one half and the state loses half its content every position.";
+  sigmoid(matmul(x, Wa) + ba)
+}
+#+end_src
+
+** =u:ssm_sel_gates=
+
+All three gates as a record, for diagrams and inspection. Traced code calls the pieces directly instead, because a record field access is not a traced form inside `grad` (finding F17) -- the same shape of limit the docent lesson meets.
+
+#+begin_src mlpl :tangle ../../lib/ssm.mlpl
+def u:ssm_sel_gates(x, Wa, ba, Wb, Wc) {
+  "The three token-dependent gates of the selective block as a record, for inspection and diagrams: decay a in (0, 1), input b = x Wb, and read c = x Wc, each [n, ds]. Traced code calls the pieces directly, because a record field access is not a traced form inside grad (finding F17).";
+  {a: u:ssm_sel_decay(x, Wa, ba), b: matmul(x, Wb), c: matmul(x, Wc)}
+}
+#+end_src
+
+** =u:ssm_sel_states=
+
+The selective state at every position: this token's decay and input, then the scan.
+
+#+begin_src mlpl :tangle ../../lib/ssm.mlpl
+def u:ssm_sel_states(x, Wa, ba, Wb, Wc, n, ds) {
+  "The selective state at every position [n, ds]: the decay and input gates from the token, then the scan.";
+  u:ssm_sel_scan(u:ssm_sel_decay(x, Wa, ba), matmul(x, Wb), n, ds)
+}
+#+end_src
+
+** =u:ssm_sel_out=
+
+The block output: each state multiplied by its own token's read gate, then projected back to the model width. SS01 read every state through one fixed matrix; here the token also decides how much of its state to expose.
+
+#+begin_src mlpl :tangle ../../lib/ssm.mlpl
+def u:ssm_sel_out(x, Wa, ba, Wb, Wc, Wo, n, ds) {
+  "The selective block output [n, dm]: every state read through its own token's gate c, then the output projection Wo; the caller adds the residual.";
+  matmul(u:ssm_sel_scan(u:ssm_sel_decay(x, Wa, ba), matmul(x, Wb), n, ds) * matmul(x, Wc), Wo)
+}
+#+end_src
+
+** =u:ssm_sel_params=
+
+Three token-to-state projections, the decay bias, and the state-to-token projection: 2,080 at state width 32 and 1,040 at 16, against SS01's 1,056 and attention's 1,024. The matched row of SS02 is the one at width 16.
+
+#+begin_src mlpl :tangle ../../lib/ssm.mlpl
+def u:ssm_sel_params(dm, ds) {
+  "Trainable parameters of the selective block: three token-to-state projections, the decay bias, and one state-to-token projection.";
+  3 * dm * ds + ds + ds * dm
 }
 #+end_src
 

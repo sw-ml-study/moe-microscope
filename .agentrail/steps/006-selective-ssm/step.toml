@@ -1,6 +1,6 @@
 number = 6
 slug = "selective-ssm"
-status = "pending"
+status = "in-progress"
 description = "SS02 selective state-space block. The SS01 block with A, B, and C computed fr..."
 role = "production"
 context_files = []
